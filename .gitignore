@@ -51,6 +51,9 @@ test_*.txt
 *.safetensors
 *.weights
 
+# ===== Prototype (HTML→PDF export) =====
+html_pdf_export/
+
 # ===== Build / output =====
 build/
 dist/
