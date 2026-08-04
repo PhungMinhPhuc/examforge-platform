@@ -51,6 +51,42 @@ class QuestionDetailUpdate(BaseModel):
     is_correct: Optional[bool] = None
     explaination: Optional[str] = None  # lời giải cho từng ý (câu Đúng/Sai)
 
+class QCodingTestcaseCreate(BaseModel):
+    id: Optional[int] = None
+    input_data: str
+    output_data: str
+    point_weight: int = 1
+    is_public: bool = False
+    description: Optional[str] = None
+    order_index: Optional[int] = None
+
+class QCodingDetailsCreate(BaseModel):
+    time_limit_c_cpp: Optional[float] = 1.0
+    time_limit_java: Optional[float] = 2.0
+    time_limit_python: Optional[float] = 2.0
+    memory_limit: Optional[int] = 256
+    max_submissions: Optional[int] = 10
+    solution_code: Optional[str] = None
+    solution_language: Optional[str] = None
+
+class QuestionDetailCreate(BaseModel):
+    content: str
+    is_correct: Optional[bool] = None
+    explaination: Optional[str] = None
+
+class QuestionCreateRequest(BaseModel):
+    subject: str
+    grade: int
+    chapter: Optional[str] = None
+    lesson: Optional[str] = None
+    question_type: str
+    complexity: int
+    content: str
+    solution: Optional[str] = None
+    details: Optional[List[QuestionDetailCreate]] = None
+    coding_details: Optional[QCodingDetailsCreate] = None
+    coding_testcases: Optional[List[QCodingTestcaseCreate]] = None
+
 class QuestionUpdateRequest(BaseModel):
     subject: Optional[str] = None
     grade: Optional[int] = None
@@ -60,6 +96,8 @@ class QuestionUpdateRequest(BaseModel):
     content: Optional[str] = None
     solution: Optional[str] = None
     details: Optional[List[QuestionDetailUpdate]] = None
+    coding_details: Optional[QCodingDetailsCreate] = None
+    coding_testcases: Optional[List[QCodingTestcaseCreate]] = None
 
 
 # ── Upload ───────────────────────────────────────────────────────────────────
