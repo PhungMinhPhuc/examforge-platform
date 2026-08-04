@@ -18,7 +18,12 @@ interface Contest {
   id: number;
   title: string;
   status: string;
-  time_limit: number;
+  time_limit: number | null;
+  assignment_type: "contest" | "coding";
+}
+
+interface AvailableAssignment extends Contest {
+  assigned: boolean;
 }
 
 interface ClassDetail {
@@ -46,6 +51,16 @@ export default function ClassDetailPage() {
   const [error, setError] = useState("");
   const [activeTab, setActiveTab] = useState<Tab>("overview");
   const [copied, setCopied] = useState(false);
+  const [showAssignmentPicker, setShowAssignmentPicker] = useState(false);
+  const [availableAssignments, setAvailableAssignments] = useState<
+    AvailableAssignment[]
+  >([]);
+  const [pickerLoading, setPickerLoading] = useState(false);
+  const [assigningKey, setAssigningKey] = useState("");
+  const [selectedAssignmentKeys, setSelectedAssignmentKeys] = useState<
+    string[]
+  >([]);
+  const [pickerError, setPickerError] = useState("");
 
   useEffect(() => {
     if (!authLoading && !user) {
@@ -84,9 +99,9 @@ export default function ClassDetailPage() {
   }, [studentIdentifier]);
 
   const fetchClassData = () => {
-
     setLoading(true);
-    api.getClass(classId)
+    api
+      .getClass(classId)
       .then((res: any) => {
         setClassData(res);
       })
@@ -136,8 +151,6 @@ export default function ClassDetailPage() {
     }
   };
 
-
-
   const copyCode = () => {
     if (!classData) return;
     navigator.clipboard.writeText(classData.public_id);
@@ -145,11 +158,65 @@ export default function ClassDetailPage() {
     setTimeout(() => setCopied(false), 2000);
   };
 
+  const openAssignmentPicker = async () => {
+    setShowAssignmentPicker(true);
+    setSelectedAssignmentKeys([]);
+    setPickerLoading(true);
+    setPickerError("");
+    try {
+      const data: any = await api.getAvailableClassAssignments(classId);
+      setAvailableAssignments([
+        ...(data.contests || []),
+        ...(data.coding || []),
+      ]);
+    } catch (err: any) {
+      setPickerError(err.message || "Không thể tải danh sách đề");
+    } finally {
+      setPickerLoading(false);
+    }
+  };
+
+  const assignSelected = async () => {
+    const selected = availableAssignments.filter(
+      (item) =>
+        selectedAssignmentKeys.includes(`${item.assignment_type}-${item.id}`) &&
+        !item.assigned,
+    );
+    if (!selected.length) return;
+    setAssigningKey("batch");
+    setPickerError("");
+    try {
+      await Promise.all(
+        selected.map((item) =>
+          api.assignExistingToClass(classId, item.assignment_type, item.id),
+        ),
+      );
+      setAvailableAssignments((items) =>
+        items.map((item) =>
+          selectedAssignmentKeys.includes(`${item.assignment_type}-${item.id}`)
+            ? { ...item, assigned: true }
+            : item,
+        ),
+      );
+      setSelectedAssignmentKeys([]);
+      fetchClassData();
+    } catch (err: any) {
+      setPickerError(err.message || "Không thể giao các đề đã chọn");
+    } finally {
+      setAssigningKey("");
+    }
+  };
+
   const studentCount = classData?.students?.length || 0;
   const contestCount = classData?.contests?.length || 0;
 
   if (authLoading) {
-    return <div className="spinner" style={{ margin: "5rem auto", display: "block" }} />;
+    return (
+      <div
+        className="spinner"
+        style={{ margin: "5rem auto", display: "block" }}
+      />
+    );
   }
 
   const tabs: { key: Tab; label: string }[] = [
@@ -168,7 +235,9 @@ export default function ClassDetailPage() {
             <p className="page-sub" style={{ marginBottom: "0.35rem" }}>
               <Link href="/classes">Lớp học</Link> / Chi tiết
             </p>
-            <h1 className="page-title">{loading ? "Đang tải..." : classData?.class_name || "Lớp học"}</h1>
+            <h1 className="page-title">
+              {loading ? "Đang tải..." : classData?.class_name || "Lớp học"}
+            </h1>
             {classData?.teacher_name && (
               <p className="page-sub">Giáo viên: {classData.teacher_name}</p>
             )}
@@ -197,7 +266,10 @@ export default function ClassDetailPage() {
                   Xóa lớp
                 </button>
               )}
-            <button className="btn btn-secondary" onClick={() => router.push("/classes")}>
+            <button
+              className="btn btn-secondary"
+              onClick={() => router.push("/classes")}
+            >
               Quay lại
             </button>
           </div>
@@ -206,9 +278,17 @@ export default function ClassDetailPage() {
         {error && <div className="alert alert-error">{error}</div>}
 
         {loading ? (
-          <div style={{ display: "flex", flexDirection: "column", gap: "1.5rem" }}>
-            <div className="skeleton" style={{ height: "160px", borderRadius: "var(--radius-lg)" }} />
-            <div className="skeleton" style={{ height: "360px", borderRadius: "var(--radius-lg)" }} />
+          <div
+            style={{ display: "flex", flexDirection: "column", gap: "1.5rem" }}
+          >
+            <div
+              className="skeleton"
+              style={{ height: "160px", borderRadius: "var(--radius-lg)" }}
+            />
+            <div
+              className="skeleton"
+              style={{ height: "360px", borderRadius: "var(--radius-lg)" }}
+            />
           </div>
         ) : classData ? (
           <>
@@ -225,21 +305,52 @@ export default function ClassDetailPage() {
               >
                 <div>
                   {classData.description ? (
-                    <p style={{ color: "var(--text-secondary)", lineHeight: 1.6 }}>
+                    <p
+                      style={{
+                        color: "var(--text-secondary)",
+                        lineHeight: 1.6,
+                      }}
+                    >
                       {classData.description}
                     </p>
                   ) : (
-                    <p style={{ color: "var(--text-muted)" }}>Chưa có mô tả cho lớp học này.</p>
+                    <p style={{ color: "var(--text-muted)" }}>
+                      Chưa có mô tả cho lớp học này.
+                    </p>
                   )}
 
-                  <div style={{ display: "flex", gap: "2.5rem", marginTop: "1.5rem" }}>
+                  <div
+                    style={{
+                      display: "flex",
+                      gap: "2.5rem",
+                      marginTop: "1.5rem",
+                    }}
+                  >
                     <div>
-                      <div style={{ fontSize: "1.6rem", fontWeight: 800 }}>{studentCount}</div>
-                      <div style={{ fontSize: "0.8rem", color: "var(--text-muted)" }}>Học sinh</div>
+                      <div style={{ fontSize: "1.6rem", fontWeight: 800 }}>
+                        {studentCount}
+                      </div>
+                      <div
+                        style={{
+                          fontSize: "0.8rem",
+                          color: "var(--text-muted)",
+                        }}
+                      >
+                        Học sinh
+                      </div>
                     </div>
                     <div>
-                      <div style={{ fontSize: "1.6rem", fontWeight: 800 }}>{contestCount}</div>
-                      <div style={{ fontSize: "0.8rem", color: "var(--text-muted)" }}>Bài tập</div>
+                      <div style={{ fontSize: "1.6rem", fontWeight: 800 }}>
+                        {contestCount}
+                      </div>
+                      <div
+                        style={{
+                          fontSize: "0.8rem",
+                          color: "var(--text-muted)",
+                        }}
+                      >
+                        Bài tập
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -254,7 +365,12 @@ export default function ClassDetailPage() {
                     minWidth: "240px",
                   }}
                 >
-                  <div className="form-label" style={{ marginBottom: "0.6rem" }}>Mã tham gia lớp</div>
+                  <div
+                    className="form-label"
+                    style={{ marginBottom: "0.6rem" }}
+                  >
+                    Mã tham gia lớp
+                  </div>
                   <code
                     style={{
                       display: "block",
@@ -301,7 +417,9 @@ export default function ClassDetailPage() {
                       fontSize: "0.95rem",
                       fontWeight: 600,
                       cursor: "pointer",
-                      color: active ? "var(--accent-primary)" : "var(--text-secondary)",
+                      color: active
+                        ? "var(--accent-primary)"
+                        : "var(--text-secondary)",
                       borderBottom: active
                         ? "2px solid var(--accent-primary)"
                         : "2px solid transparent",
@@ -320,8 +438,9 @@ export default function ClassDetailPage() {
               <div className="card">
                 <h3 style={{ marginBottom: "0.75rem" }}>Lớp học đã sẵn sàng</h3>
                 <p style={{ color: "var(--text-secondary)" }}>
-                  Chuyển sang tab <strong>Bài tập</strong> để xem các đề thi đã giao, hoặc tab{" "}
-                  <strong>Học sinh</strong> để quản lý danh sách lớp.
+                  Chuyển sang tab <strong>Bài tập</strong> để xem các đề thi đã
+                  giao, hoặc tab <strong>Học sinh</strong> để quản lý danh sách
+                  lớp.
                 </p>
               </div>
             )}
@@ -339,9 +458,12 @@ export default function ClassDetailPage() {
                 >
                   <h3 style={{ margin: 0 }}>Danh sách bài tập</h3>
                   {user?.role === "teacher" && (
-                    <Link href={`/contests/new?class_id=${classData.id}`}>
-                      <button className="btn btn-primary">Giao bài mới</button>
-                    </Link>
+                    <button
+                      className="btn btn-primary"
+                      onClick={openAssignmentPicker}
+                    >
+                      Giao bài mới
+                    </button>
                   )}
                 </div>
 
@@ -354,25 +476,75 @@ export default function ClassDetailPage() {
                   <div
                     style={{
                       display: "grid",
-                      gridTemplateColumns: "repeat(auto-fill, minmax(280px, 1fr))",
+                      gridTemplateColumns:
+                        "repeat(auto-fill, minmax(340px, 1fr))",
                       gap: "1rem",
                     }}
                   >
                     {classData.contests.map((c) => (
-                      <Link key={c.id} href={`/contests/${c.id}`} style={{ textDecoration: "none" }}>
-                        <div className="card" style={{ cursor: "pointer", height: "100%" }}>
-                          <h4 style={{ marginBottom: "0.75rem", color: "var(--text-primary)" }}>
+                      <Link
+                        key={`${c.assignment_type}-${c.id}`}
+                        href={
+                          c.assignment_type === "coding"
+                            ? `/coding/${c.id}`
+                            : `/contests/${c.id}`
+                        }
+                        style={{ textDecoration: "none" }}
+                      >
+                        <div
+                          className="card"
+                          style={{
+                            cursor: "pointer",
+                            height: "100%",
+                            padding: "1.15rem 1.25rem",
+                            transition:
+                              "transform .15s ease, box-shadow .15s ease",
+                          }}
+                        >
+                          <h4
+                            style={{
+                              marginBottom: "0.7rem",
+                              color: "var(--text-primary)",
+                              fontSize: "1.05rem",
+                            }}
+                          >
                             {c.title}
                           </h4>
-                          <div style={{ display: "flex", gap: "0.5rem", alignItems: "center" }}>
+                          <div
+                            style={{
+                              display: "flex",
+                              gap: "0.45rem",
+                              alignItems: "center",
+                              flexWrap: "wrap",
+                              marginBottom: ".65rem",
+                            }}
+                          >
                             <span
-                              className={`badge ${c.status === "published" ? "badge-active" : "badge-inactive"}`}
+                              className={`badge ${c.assignment_type === "coding" ? "badge-cd" : ""}`}
+                              style={{ whiteSpace: "nowrap" }}
                             >
-                              {c.status === "published" ? "Đang mở" : "Chưa mở"}
+                              {c.assignment_type === "coding"
+                                ? "Lập trình"
+                                : "Đề thi"}
                             </span>
-                            <span style={{ fontSize: "0.8rem", color: "var(--text-muted)" }}>
-                              {c.time_limit} phút
+                            <span
+                              className={`badge ${c.status === "published" || c.status === "active" ? "badge-active" : "badge-inactive"}`}
+                              style={{ whiteSpace: "nowrap" }}
+                            >
+                              {c.status === "published" || c.status === "active"
+                                ? "Đang mở"
+                                : "Bản nháp"}
                             </span>
+                          </div>
+                          <div
+                            style={{
+                              fontSize: ".82rem",
+                              color: "var(--text-secondary)",
+                            }}
+                          >
+                            {c.time_limit
+                              ? `Có tính giờ · ${c.time_limit} phút`
+                              : "Bài tập · Không giới hạn thời gian"}
                           </div>
                         </div>
                       </Link>
@@ -396,7 +568,10 @@ export default function ClassDetailPage() {
                   <h3 style={{ margin: 0 }}>Danh sách học sinh</h3>
                   {user?.role === "teacher" && (
                     <div style={{ position: "relative" }}>
-                      <form onSubmit={handleAddStudent} style={{ display: "flex", gap: "0.5rem" }}>
+                      <form
+                        onSubmit={handleAddStudent}
+                        style={{ display: "flex", gap: "0.5rem" }}
+                      >
                         <input
                           type="text"
                           className="form-control"
@@ -406,11 +581,19 @@ export default function ClassDetailPage() {
                           onFocus={() => {
                             if (searchResults.length > 0) setShowDropdown(true);
                           }}
-                          onBlur={() => setTimeout(() => setShowDropdown(false), 200)}
+                          onBlur={() =>
+                            setTimeout(() => setShowDropdown(false), 200)
+                          }
                           style={{ width: "240px", marginBottom: 0 }}
                           disabled={addStudentLoading}
                         />
-                        <button type="submit" className="btn btn-primary" disabled={addStudentLoading || !studentIdentifier.trim()}>
+                        <button
+                          type="submit"
+                          className="btn btn-primary"
+                          disabled={
+                            addStudentLoading || !studentIdentifier.trim()
+                          }
+                        >
                           {addStudentLoading ? "Đang thêm..." : "Thêm"}
                         </button>
                       </form>
@@ -434,31 +617,63 @@ export default function ClassDetailPage() {
                           }}
                         >
                           {searchLoading ? (
-                            <li style={{ padding: "0.5rem 1rem", color: "var(--text-muted)", fontSize: "0.85rem", textAlign: "center" }}>
+                            <li
+                              style={{
+                                padding: "0.5rem 1rem",
+                                color: "var(--text-muted)",
+                                fontSize: "0.85rem",
+                                textAlign: "center",
+                              }}
+                            >
                               Đang tìm...
                             </li>
                           ) : searchResults.length === 0 ? (
-                            <li style={{ padding: "0.5rem 1rem", color: "var(--text-muted)", fontSize: "0.85rem", textAlign: "center" }}>
+                            <li
+                              style={{
+                                padding: "0.5rem 1rem",
+                                color: "var(--text-muted)",
+                                fontSize: "0.85rem",
+                                textAlign: "center",
+                              }}
+                            >
                               Không tìm thấy
                             </li>
                           ) : (
                             searchResults.map((st) => (
                               <li
                                 key={st.id}
-                                onMouseDown={() => handleAddStudentById(st.id.toString())}
+                                onMouseDown={() =>
+                                  handleAddStudentById(st.id.toString())
+                                }
                                 style={{
                                   padding: "0.5rem 1rem",
                                   cursor: "pointer",
                                   borderBottom: "1px solid var(--border)",
                                   transition: "background 0.2s",
                                 }}
-                                onMouseEnter={(e) => (e.currentTarget.style.background = "var(--bg-hover)")}
-                                onMouseLeave={(e) => (e.currentTarget.style.background = "transparent")}
+                                onMouseEnter={(e) =>
+                                  (e.currentTarget.style.background =
+                                    "var(--bg-hover)")
+                                }
+                                onMouseLeave={(e) =>
+                                  (e.currentTarget.style.background =
+                                    "transparent")
+                                }
                               >
-                                <div style={{ fontWeight: 600, fontSize: "0.9rem" }}>
+                                <div
+                                  style={{
+                                    fontWeight: 600,
+                                    fontSize: "0.9rem",
+                                  }}
+                                >
                                   [ID: {st.id}] {st.name}
                                 </div>
-                                <div style={{ fontSize: "0.8rem", color: "var(--text-secondary)" }}>
+                                <div
+                                  style={{
+                                    fontSize: "0.8rem",
+                                    color: "var(--text-secondary)",
+                                  }}
+                                >
                                   {st.email}
                                 </div>
                               </li>
@@ -470,7 +685,14 @@ export default function ClassDetailPage() {
                   )}
                 </div>
 
-                {addStudentError && <div className="alert alert-error" style={{ marginBottom: "1rem" }}>{addStudentError}</div>}
+                {addStudentError && (
+                  <div
+                    className="alert alert-error"
+                    style={{ marginBottom: "1rem" }}
+                  >
+                    {addStudentError}
+                  </div>
+                )}
 
                 {studentCount === 0 ? (
                   <div className="empty-state">
@@ -491,19 +713,29 @@ export default function ClassDetailPage() {
                       <tbody>
                         {classData.students.map((s) => (
                           <tr key={s.id}>
-                            <td style={{ fontFamily: "monospace", color: "var(--text-muted)" }}>
+                            <td
+                              style={{
+                                fontFamily: "monospace",
+                                color: "var(--text-muted)",
+                              }}
+                            >
                               #{s.id}
                             </td>
                             <td style={{ fontWeight: 500 }}>{s.name}</td>
-                            <td style={{ color: "var(--text-secondary)" }}>{s.email}</td>
+                            <td style={{ color: "var(--text-secondary)" }}>
+                              {s.email}
+                            </td>
                             <td style={{ color: "var(--text-muted)" }}>
-                              {new Date(s.joined_at).toLocaleDateString("vi-VN", {
-                                year: "numeric",
-                                month: "short",
-                                day: "numeric",
-                                hour: "2-digit",
-                                minute: "2-digit",
-                              })}
+                              {new Date(s.joined_at).toLocaleDateString(
+                                "vi-VN",
+                                {
+                                  year: "numeric",
+                                  month: "short",
+                                  day: "numeric",
+                                  hour: "2-digit",
+                                  minute: "2-digit",
+                                },
+                              )}
                             </td>
                           </tr>
                         ))}
@@ -516,6 +748,188 @@ export default function ClassDetailPage() {
           </>
         ) : null}
       </main>
+      {showAssignmentPicker && (
+        <div
+          onMouseDown={(e) => {
+            if (e.target === e.currentTarget) setShowAssignmentPicker(false);
+          }}
+          style={{
+            position: "fixed",
+            inset: 0,
+            zIndex: 1000,
+            background: "rgba(15,23,42,.58)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            padding: "2.5vh",
+          }}
+        >
+          <div
+            className="card modal-wide-responsive"
+            style={{
+              width: "95vw",
+              maxWidth: 1400,
+              height: "95vh",
+              display: "flex",
+              flexDirection: "column",
+              padding: 0,
+              overflow: "hidden",
+            }}
+          >
+            <div
+              style={{
+                padding: "1.25rem 1.5rem",
+                borderBottom: "1px solid var(--border)",
+                display: "flex",
+                justifyContent: "space-between",
+                alignItems: "center",
+              }}
+            >
+              <div>
+                <h2 style={{ margin: 0 }}>
+                  Giao bài cho {classData?.class_name || "lớp học"}
+                </h2>
+                <p className="page-sub" style={{ margin: ".25rem 0 0" }}>
+                  Chọn một đề đã tạo; cùng một đề có thể giao cho nhiều lớp.
+                </p>
+              </div>
+              <div style={{ display: "flex", gap: ".5rem" }}>
+                <Link
+                  className="btn btn-primary"
+                  href={`/contests/new?class_id=${classId}`}
+                >
+                  Tạo đề thi
+                </Link>
+                <button
+                  className="btn btn-secondary"
+                  onClick={() => setShowAssignmentPicker(false)}
+                >
+                  Đóng
+                </button>
+              </div>
+            </div>
+            <div
+              style={{ padding: "1.25rem 1.5rem", overflowY: "auto", flex: 1 }}
+            >
+              {pickerError && (
+                <div
+                  className="alert alert-error"
+                  style={{ marginBottom: "1rem" }}
+                >
+                  {pickerError}
+                </div>
+              )}
+              {pickerLoading ? (
+                <div className="spinner" style={{ margin: "4rem auto" }} />
+              ) : availableAssignments.length === 0 ? (
+                <div className="empty-state">
+                  <h3>Chưa có đề để giao</h3>
+                  <p>Hãy tạo đề thi hoặc bài tập lập trình trước.</p>
+                </div>
+              ) : (
+                <div
+                  style={{
+                    display: "grid",
+                    gridTemplateColumns:
+                      "repeat(auto-fill, minmax(320px, 1fr))",
+                    gap: "1rem",
+                  }}
+                >
+                  {availableAssignments.map((item) => {
+                    const key = `${item.assignment_type}-${item.id}`;
+                    return (
+                      <label
+                        className="card"
+                        key={key}
+                        style={{
+                          border: item.assigned
+                            ? "1px solid var(--success)"
+                            : selectedAssignmentKeys.includes(key)
+                              ? "2px solid var(--accent-primary)"
+                              : undefined,
+                          cursor: item.assigned ? "default" : "pointer",
+                        }}
+                      >
+                        <div
+                          style={{
+                            display: "flex",
+                            justifyContent: "space-between",
+                            gap: "1rem",
+                            marginBottom: ".75rem",
+                          }}
+                        >
+                          <div
+                            style={{
+                              display: "flex",
+                              gap: ".65rem",
+                              alignItems: "flex-start",
+                            }}
+                          >
+                            <input
+                              type="checkbox"
+                              disabled={item.assigned}
+                              checked={
+                                item.assigned ||
+                                selectedAssignmentKeys.includes(key)
+                              }
+                              onChange={(e) =>
+                                setSelectedAssignmentKeys((keys) =>
+                                  e.target.checked
+                                    ? [...keys, key]
+                                    : keys.filter((x) => x !== key),
+                                )
+                              }
+                            />
+                            <h4 style={{ margin: 0 }}>{item.title}</h4>
+                          </div>
+                          <span className="badge">
+                            {item.assignment_type === "coding"
+                              ? "Lập trình"
+                              : "Đề thi"}
+                          </span>
+                        </div>
+                        <p
+                          style={{
+                            color: "var(--text-muted)",
+                            marginBottom: "1rem",
+                          }}
+                        >
+                          {item.time_limit
+                            ? `${item.time_limit} phút`
+                            : "Không giới hạn thời gian"}
+                        </p>
+                        {item.assigned && (
+                          <span className="badge badge-active">
+                            Đã có trong lớp
+                          </span>
+                        )}
+                      </label>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+            <div
+              style={{
+                padding: "1rem 1.5rem",
+                borderTop: "1px solid var(--border)",
+                display: "flex",
+                justifyContent: "space-between",
+                alignItems: "center",
+              }}
+            >
+              <strong>Đã chọn: {selectedAssignmentKeys.length} đề/bài</strong>
+              <button
+                className="btn btn-primary"
+                disabled={!selectedAssignmentKeys.length || !!assigningKey}
+                onClick={assignSelected}
+              >
+                {assigningKey ? "Đang thêm…" : "Thêm vào lớp"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

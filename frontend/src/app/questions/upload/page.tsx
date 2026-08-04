@@ -11,12 +11,18 @@ import { QuestionEditor, QuestionDetail } from "@/components/QuestionEditor";
 import api from "@/lib/api";
 
 const TYPE_COLORS: Record<string, string> = {
-  mc: "#6c63ff",
-  tf: "#f59e0b",
-  sa: "#10b981",
-  oe: "#3b82f6",
-  st: "#ec4899",
+  mc: "#255BA7",
+  tf: "#B45309",
+  sa: "#047857",
+  oe: "#1D4ED8",
+  st: "#7E22CE",
+  cd: "#0E7490",
 };
+
+const typeBackground = (type: string) =>
+  type === "st" ? "#FAF5FF" : `${TYPE_COLORS[type] || "#64748b"}14`;
+const typeBorder = (type: string) =>
+  type === "st" ? "#E9D5FF" : `${TYPE_COLORS[type] || "#64748b"}33`;
 
 type ParsedItem = {
   table_question: Record<string, unknown>;
@@ -30,6 +36,7 @@ const TYPE_LABELS: Record<string, string> = {
   sa: "Trả lời ngắn",
   oe: "Tự luận",
   st: "Chung giả thiết",
+  cd: "Lập trình",
 };
 const COMPLEXITY_LABELS: Record<number, string> = {
   1: "Nhận biết",
@@ -102,7 +109,12 @@ export default function UploadPage() {
   };
 
   const openEdit = (idx: number, isChild: boolean, childIndex?: number) => {
-    setEditModal({ idx, draft: mapToDetail(preview[idx]), isChild, childIndex });
+    setEditModal({
+      idx,
+      draft: mapToDetail(preview[idx]),
+      isChild,
+      childIndex,
+    });
   };
 
   const saveEdit = () => {
@@ -162,7 +174,14 @@ export default function UploadPage() {
     e.preventDefault();
     setDragging(false);
     const f = e.dataTransfer.files[0];
-    if (f && (f.name.endsWith(".tex") || f.name.endsWith(".txt") || f.name.endsWith(".zip") || f.name.endsWith(".docx"))) setFile(f);
+    if (
+      f &&
+      (f.name.endsWith(".tex") ||
+        f.name.endsWith(".txt") ||
+        f.name.endsWith(".zip") ||
+        f.name.endsWith(".docx"))
+    )
+      setFile(f);
   };
 
   const handleParse = async (overrideFile?: File) => {
@@ -183,7 +202,9 @@ export default function UploadPage() {
       if (res.data && res.data.length > 0) {
         setPreview(res.data);
       } else {
-        setError("Không tìm thấy câu hỏi nào trong file (định dạng chưa chuẩn). Vui lòng đảm bảo các câu hỏi bắt đầu bằng chữ 'Câu 1.', 'Câu 2:',...");
+        setError(
+          "Không tìm thấy câu hỏi nào trong file (định dạng chưa chuẩn). Vui lòng đảm bảo các câu hỏi bắt đầu bằng chữ 'Câu 1.', 'Câu 2:',...",
+        );
       }
     } catch (e: unknown) {
       setError(e instanceof Error ? e.message : "Lỗi parse file");
@@ -200,12 +221,16 @@ export default function UploadPage() {
         if (aiData) {
           try {
             const parsed = JSON.parse(aiData);
-            const questionsArr = parsed.questions || parsed; 
+            const questionsArr = parsed.questions || parsed;
             if (Array.isArray(questionsArr) && questionsArr.length > 0) {
-              const texContent = questionsArr.map((q: any) => q.latex_code || "").join("\n\n");
-              const aiFile = new File([texContent], "ai_normalized.tex", { type: "text/plain" });
+              const texContent = questionsArr
+                .map((q: any) => q.latex_code || "")
+                .join("\n\n");
+              const aiFile = new File([texContent], "ai_normalized.tex", {
+                type: "text/plain",
+              });
               setFile(aiFile);
-              
+
               // Tự động gọi parse với file AI thay vì dùng click
               handleParse(aiFile);
             } else {
@@ -320,7 +345,8 @@ export default function UploadPage() {
           <div>
             <h1 className="page-title">Upload câu hỏi LaTeX</h1>
             <p className="page-sub">
-              Upload file .tex, .txt hoặc .zip chứa câu hỏi định dạng LaTeX chuẩn
+              Upload file .tex, .txt hoặc .zip chứa câu hỏi định dạng LaTeX
+              chuẩn
             </p>
           </div>
         </div>
@@ -346,7 +372,9 @@ export default function UploadPage() {
                 <div className="upload-text">
                   Kéo thả hoặc click để chọn file
                 </div>
-                <div className="upload-sub">Hỗ trợ: .tex, .txt, .zip, .docx</div>
+                <div className="upload-sub">
+                  Hỗ trợ: .tex, .txt, .zip, .docx
+                </div>
                 {file && (
                   <div
                     style={{
@@ -391,7 +419,8 @@ export default function UploadPage() {
                 textAlign: "center",
               }}
             >
-              Môn, khối, chương/bài và mức độ sẽ điền chung cho tất cả câu sau khi parse.
+              Môn, khối, chương/bài và mức độ sẽ điền chung cho tất cả câu sau
+              khi parse.
             </p>
           </div>
         ) : (
@@ -423,7 +452,7 @@ export default function UploadPage() {
                   className="btn btn-secondary"
                   onClick={() => setPreview([])}
                 >
-                  ← Hủy
+                  Hủy
                 </button>
                 <button
                   className="btn btn-secondary"
@@ -479,8 +508,9 @@ export default function UploadPage() {
                     const s = e.target.value;
                     setSubject(s);
                     const gs = Object.keys(
-                      (subjects as Record<string, Record<string, unknown>>)[s] ||
-                        {},
+                      (subjects as Record<string, Record<string, unknown>>)[
+                        s
+                      ] || {},
                     );
                     setGrade(gs[0] || "12");
                     setChapter("");
@@ -557,7 +587,8 @@ export default function UploadPage() {
                   marginTop: "0.6rem",
                 }}
               >
-                Đổi chương/bài/mức độ ở đây sẽ đồng bộ cho mọi câu; vẫn có thể chỉnh riêng từng câu bên dưới.
+                Đổi chương/bài/mức độ ở đây sẽ đồng bộ cho mọi câu; vẫn có thể
+                chỉnh riêng từng câu bên dưới.
               </div>
             </div>
 
@@ -615,39 +646,193 @@ export default function UploadPage() {
                       }}
                     >
                       {/* ST header: content + buttons column */}
-                      <div style={{ display: "flex", alignItems: "flex-start", gap: "1rem", padding: "1.5rem", background: "rgba(78,205,196,0.05)", borderBottom: "2px dashed var(--border)", borderLeft: "4px solid var(--accent-primary)" }}>
+                      <div
+                        style={{
+                          display: "flex",
+                          alignItems: "flex-start",
+                          gap: "1rem",
+                          padding: "1.5rem",
+                          background: "rgba(78,205,196,0.05)",
+                          borderBottom: "2px dashed var(--border)",
+                          borderLeft: "4px solid var(--accent-primary)",
+                        }}
+                      >
                         <div style={{ flex: 1, minWidth: 0 }}>
                           {stRange && (
-                            <div style={{ fontWeight: 700, marginBottom: "0.75rem", color: "var(--accent-primary)", fontSize: "1.1rem" }}>
+                            <div
+                              style={{
+                                fontWeight: 700,
+                                marginBottom: "0.75rem",
+                                color: "var(--accent-primary)",
+                                fontSize: "1.1rem",
+                              }}
+                            >
                               {stRange}
                             </div>
                           )}
-                          <div style={{ display: "flex", gap: "0.5rem", marginBottom: "0.75rem", alignItems: "center", flexWrap: "wrap" }}>
-                            <span style={{ fontSize: "0.75rem", fontWeight: 600, padding: "0.2rem 0.5rem", borderRadius: 99, background: `${TYPE_COLORS[qtype] || "#ccc"}20`, color: TYPE_COLORS[qtype] || "var(--accent-primary)", border: `1px solid ${TYPE_COLORS[qtype] || "#ccc"}40` }}>
+                          <div
+                            style={{
+                              display: "flex",
+                              gap: "0.5rem",
+                              marginBottom: "0.75rem",
+                              alignItems: "center",
+                              flexWrap: "wrap",
+                            }}
+                          >
+                            <span
+                              style={{
+                                fontSize: "0.75rem",
+                                fontWeight: 600,
+                                padding: "0.2rem 0.5rem",
+                                borderRadius: 99,
+                                background: typeBackground(qtype),
+                                color:
+                                  TYPE_COLORS[qtype] || "var(--accent-primary)",
+                                border: `1px solid ${typeBorder(qtype)}`,
+                              }}
+                            >
                               {TYPE_LABELS[qtype] || qtype}
                             </span>
-                            <div style={{ position: "relative", display: "inline-block" }}>
-                              <span className={`badge complexity-${q.complexity}`} style={{ paddingRight: "1.5rem" }}>{COMPLEXITY_LABELS[q.complexity as number]}</span>
-                              <select style={{ position: "absolute", top: 0, left: 0, width: "100%", height: "100%", opacity: 0, cursor: "pointer" }} value={Number(q.complexity) || 1} onChange={(e) => updateItem(originalIdx, "complexity", +e.target.value)}>
-                                {Object.entries(COMPLEXITY_LABELS).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
+                            <div
+                              style={{
+                                position: "relative",
+                                display: "inline-block",
+                              }}
+                            >
+                              <span
+                                className={`badge complexity-${q.complexity}`}
+                                style={{ paddingRight: "1.5rem" }}
+                              >
+                                {COMPLEXITY_LABELS[q.complexity as number]}
+                              </span>
+                              <select
+                                style={{
+                                  position: "absolute",
+                                  top: 0,
+                                  left: 0,
+                                  width: "100%",
+                                  height: "100%",
+                                  opacity: 0,
+                                  cursor: "pointer",
+                                }}
+                                value={Number(q.complexity) || 1}
+                                onChange={(e) =>
+                                  updateItem(
+                                    originalIdx,
+                                    "complexity",
+                                    +e.target.value,
+                                  )
+                                }
+                              >
+                                {Object.entries(COMPLEXITY_LABELS).map(
+                                  ([k, v]) => (
+                                    <option key={k} value={k}>
+                                      {v}
+                                    </option>
+                                  ),
+                                )}
                               </select>
-                              <span style={{ position: "absolute", right: "0.4rem", top: "50%", transform: "translateY(-50%)", fontSize: "0.6rem", pointerEvents: "none", color: "inherit" }}>▼</span>
+                              <span
+                                style={{
+                                  position: "absolute",
+                                  right: "0.4rem",
+                                  top: "50%",
+                                  transform: "translateY(-50%)",
+                                  fontSize: "0.6rem",
+                                  pointerEvents: "none",
+                                  color: "inherit",
+                                }}
+                              >
+                                ▼
+                              </span>
                             </div>
-                            <Combobox className="select" style={{ width: "100px" }} value={q.grade || grade} onChange={(val) => updateItem(originalIdx, "grade", +val)} options={gradeList.map(g => ({ value: g, label: `Lớp ${g}` }))} placeholder="Lớp" />
-                            <Combobox className="select" style={{ flex: 1, minWidth: "150px" }} value={q.chapter || ""} onChange={(val) => updateItem(originalIdx, "chapter", val)} options={Object.keys(((subjects as any)?.[subject]?.[q.grade || grade] || {}))} placeholder="Chương" />
-                            <Combobox className="select" style={{ flex: 1, minWidth: "150px" }} value={q.lesson || ""} onChange={(val) => updateItem(originalIdx, "lesson", val)} options={(((subjects as any)?.[subject]?.[q.grade || grade]?.[q.chapter || ""] || []))} placeholder="Bài" />
+                            <Combobox
+                              className="select"
+                              style={{ width: "100px" }}
+                              value={q.grade || grade}
+                              onChange={(val) =>
+                                updateItem(originalIdx, "grade", +val)
+                              }
+                              options={gradeList.map((g) => ({
+                                value: g,
+                                label: `Lớp ${g}`,
+                              }))}
+                              placeholder="Lớp"
+                            />
+                            <Combobox
+                              className="select"
+                              style={{ flex: 1, minWidth: "150px" }}
+                              value={q.chapter || ""}
+                              onChange={(val) =>
+                                updateItem(originalIdx, "chapter", val)
+                              }
+                              options={Object.keys(
+                                (subjects as any)?.[subject]?.[
+                                  q.grade || grade
+                                ] || {},
+                              )}
+                              placeholder="Chương"
+                            />
+                            <Combobox
+                              className="select"
+                              style={{ flex: 1, minWidth: "150px" }}
+                              value={q.lesson || ""}
+                              onChange={(val) =>
+                                updateItem(originalIdx, "lesson", val)
+                              }
+                              options={
+                                (subjects as any)?.[subject]?.[
+                                  q.grade || grade
+                                ]?.[q.chapter || ""] || []
+                              }
+                              placeholder="Bài"
+                            />
                           </div>
-                          <LatexRenderer content={String(q.content || "")} layoutType={String(q.layout_type || "normal")} images={q.image || q.images} className="question-content" />
+                          <LatexRenderer
+                            content={String(q.content || "")}
+                            layoutType={String(q.layout_type || "normal")}
+                            images={q.image || q.images}
+                            className="question-content"
+                          />
                         </div>
-                        <div style={{ display: "flex", flexDirection: "column", gap: "0.5rem", flexShrink: 0 }}>
-                          <button className="btn btn-secondary btn-sm" onClick={() => openEdit(originalIdx, false)}>Chi tiết</button>
-                          <button className="btn btn-danger btn-sm" onClick={() => removeItem(originalIdx)}>Xóa</button>
+                        <div
+                          style={{
+                            display: "flex",
+                            flexDirection: "column",
+                            gap: "0.5rem",
+                            flexShrink: 0,
+                          }}
+                        >
+                          <button
+                            className="btn btn-secondary btn-sm"
+                            onClick={() => openEdit(originalIdx, false)}
+                          >
+                            Chi tiết
+                          </button>
+                          <button
+                            className="btn btn-danger btn-sm"
+                            onClick={() => removeItem(originalIdx)}
+                          >
+                            Xóa
+                          </button>
                         </div>
                       </div>
                       {/* ST children */}
-                      <div style={{ display: "flex", flexDirection: "column", gap: "0" }}>
+                      <div
+                        style={{
+                          display: "flex",
+                          flexDirection: "column",
+                          gap: "0",
+                        }}
+                      >
                         {children.map((child: any, cIdx: number) => (
-                          <div key={cIdx} style={{ borderTop: cIdx > 0 ? "1px solid var(--border)" : "none" }}>
+                          <div
+                            key={cIdx}
+                            style={{
+                              borderTop:
+                                cIdx > 0 ? "1px solid var(--border)" : "none",
+                            }}
+                          >
                             {renderItem(child, Number(displayNum) + cIdx, true)}
                           </div>
                         ))}
@@ -672,282 +857,397 @@ export default function UploadPage() {
                           }
                     }
                   >
-                    <div style={{ display: "flex", alignItems: "flex-start", gap: "1rem" }}>
-                      <div style={{ flex: 1, minWidth: 0 }}>
                     <div
                       style={{
                         display: "flex",
-                        gap: "0.75rem",
-                        alignItems: "center",
-                        marginBottom: "0.5rem",
+                        alignItems: "flex-start",
+                        gap: "1rem",
                       }}
                     >
-                      <span
-                        style={{
-                          fontWeight: 700,
-                          color: "var(--accent-primary)",
-                          fontSize: "1.1rem",
-                        }}
-                      >
-                        Câu {displayNum}
-                      </span>
-                      {!isChild && (
+                      <div style={{ flex: 1, minWidth: 0 }}>
                         <div
                           style={{
                             display: "flex",
-                            gap: "0.5rem",
+                            gap: "0.75rem",
                             alignItems: "center",
-                            flexWrap: "wrap",
+                            marginBottom: "0.5rem",
                           }}
                         >
                           <span
                             style={{
-                              fontSize: "0.75rem",
-                              fontWeight: 600,
-                              padding: "0.2rem 0.6rem",
-                              borderRadius: 99,
-                              background: `${TYPE_COLORS[qtype] || "#ccc"}20`,
-                              color:
-                                TYPE_COLORS[qtype] || "var(--accent-primary)",
-                              border: `1px solid ${TYPE_COLORS[qtype] || "#ccc"}40`,
+                              fontWeight: 700,
+                              color: "var(--accent-primary)",
+                              fontSize: "1.1rem",
                             }}
                           >
-                            {TYPE_LABELS[qtype] || qtype}
+                            Câu {displayNum}
                           </span>
-                          <div style={{ position: "relative", display: "inline-block" }}>
-                            <span className={`badge complexity-${q.complexity}`} style={{ paddingRight: "1.5rem" }}>
-                              {COMPLEXITY_LABELS[q.complexity as number]}
-                            </span>
-                            <select
-                              style={{ position: "absolute", top: 0, left: 0, width: "100%", height: "100%", opacity: 0, cursor: "pointer" }}
-                              value={Number(q.complexity) || 1}
-                              onChange={(e) => updateItem(originalIdx, "complexity", +e.target.value)}
-                            >
-                              {Object.entries(COMPLEXITY_LABELS).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
-                            </select>
-                            <span style={{ position: "absolute", right: "0.4rem", top: "50%", transform: "translateY(-50%)", fontSize: "0.6rem", pointerEvents: "none", color: "inherit" }}>▼</span>
-                          </div>
-                          <Combobox className="select" style={{ width: "100px" }} value={q.grade || grade} onChange={(val) => updateItem(originalIdx, "grade", +val)} options={gradeList.map(g => ({ value: g, label: `Lớp ${g}` }))} placeholder="Lớp" />
-                          <Combobox className="select" style={{ flex: 1, minWidth: "150px" }} value={q.chapter || ""} onChange={(val) => updateItem(originalIdx, "chapter", val)} options={Object.keys(((subjects as any)?.[subject]?.[q.grade || grade] || {}))} placeholder="Chương" />
-                          <Combobox className="select" style={{ flex: 1, minWidth: "150px" }} value={q.lesson || ""} onChange={(val) => updateItem(originalIdx, "lesson", val)} options={(((subjects as any)?.[subject]?.[q.grade || grade]?.[q.chapter || ""] || []))} placeholder="Bài" />
-                        </div>
-                      )}
-                    </div>
-
-                    <LatexRenderer
-                      content={String(q.content || "")}
-                      layoutType={String(q.layout_type || "normal")}
-                      images={q.image || q.images}
-                      className="question-content"
-                    />
-
-                    {qtype === "mc" && options.length > 0 && (
-                      <AdaptiveOptionGrid
-                        count={options.length}
-                        style={{ marginLeft: "1rem", marginTop: "1rem" }}
-                      >
-                        {options.map((opt: any, oi: number) => {
-                          let bg = "var(--bg-elevated)";
-                          let border = "transparent";
-                          let textColor = "var(--text-secondary)";
-                          if (opt.is_correct) {
-                            bg = "rgba(107,203,119,0.1)";
-                            border = "var(--accent-success)";
-                            textColor = "var(--accent-success)";
-                          }
-                          return (
+                          {!isChild && (
                             <div
-                              key={oi}
-                              data-opt-cell="1"
                               style={{
                                 display: "flex",
-                                alignItems: "baseline",
                                 gap: "0.5rem",
-                                padding: "0.4rem 0.75rem",
-                                borderRadius: "var(--radius-md)",
-                                background: bg,
-                                border: `1px solid ${border}`,
+                                alignItems: "center",
+                                flexWrap: "wrap",
                               }}
                             >
-                              <div style={{ fontWeight: 700, color: textColor }}>
-                                {String.fromCharCode(65 + oi)}.
-                              </div>
-                              <div style={{ flex: 1, minWidth: 0 }}>
-                                <LatexRenderer
-                                  content={String(opt.content || "")}
-                                  images={q.image || q.images}
-                                />
-                              </div>
-                            </div>
-                          );
-                        })}
-                      </AdaptiveOptionGrid>
-                    )}
-
-                    {qtype === "tf" && options.length > 0 && (
-                      <div
-                        style={{
-                          marginLeft: "1rem",
-                          marginTop: "1rem",
-                          display: "flex",
-                          flexDirection: "column",
-                          gap: "0.5rem",
-                        }}
-                      >
-                        {options.map((opt: any, oi: number) => (
-                          <div
-                            key={oi}
-                            style={{
-                              display: "flex",
-                              gap: "0.75rem",
-                              alignItems: "center",
-                              padding: "0.5rem 0.75rem",
-                              borderRadius: "var(--radius-md)",
-                              background: opt.is_correct
-                                ? "rgba(107,203,119,0.1)"
-                                : "rgba(255,107,107,0.1)",
-                              border: `1px solid ${opt.is_correct ? "var(--accent-success)" : "var(--accent-danger)"}`,
-                            }}
-                          >
-                            <div
-                              style={{
-                                fontWeight: 700,
-                                color: "var(--text-secondary)",
-                              }}
-                            >
-                              {String.fromCharCode(97 + oi)})
-                            </div>
-                            <div style={{ flex: 1, minWidth: 0 }}>
-                              <LatexRenderer
-                                content={String(opt.content || "")}
-                                images={q.image || q.images}
-                              />
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    )}
-
-                    {qtype === "sa" &&
-                      options.length > 0 &&
-                      (() => {
-                        const rawAns = String(options[0].content || "")
-                          .replace(/\$/g, "")
-                          .replace(/[{}]/g, "")
-                          .trim();
-                        const chars = rawAns.split("");
-                        const boxes = Array.from({
-                          length: Math.max(4, chars.length),
-                        }).map((_, i) => chars[i] || "");
-
-                        return (
-                          <div
-                            style={{
-                              marginTop: "0.75rem",
-                              padding: "0.5rem 0.75rem",
-                              background: "rgba(255,217,61,0.1)",
-                              border: "1px solid var(--accent-warning)",
-                              borderRadius: "var(--radius-md)",
-                              display: "inline-flex",
-                              alignItems: "center",
-                              gap: "0.75rem",
-                            }}
-                          >
-                            <span
-                              style={{
-                                fontWeight: 600,
-                                color: "var(--accent-warning)",
-                              }}
-                            >
-                              Trả lời ngắn:
-                            </span>
-                            <div style={{ display: "flex", gap: "0.25rem" }}>
-                              {boxes.map((c, i) => (
-                                <div
-                                  key={i}
+                              <span
+                                style={{
+                                  fontSize: "0.75rem",
+                                  fontWeight: 600,
+                                  padding: "0.2rem 0.6rem",
+                                  borderRadius: 99,
+                                  background: typeBackground(qtype),
+                                  color:
+                                    TYPE_COLORS[qtype] ||
+                                    "var(--accent-primary)",
+                                  border: `1px solid ${typeBorder(qtype)}`,
+                                }}
+                              >
+                                {TYPE_LABELS[qtype] || qtype}
+                              </span>
+                              <div
+                                style={{
+                                  position: "relative",
+                                  display: "inline-block",
+                                }}
+                              >
+                                <span
+                                  className={`badge complexity-${q.complexity}`}
+                                  style={{ paddingRight: "1.5rem" }}
+                                >
+                                  {COMPLEXITY_LABELS[q.complexity as number]}
+                                </span>
+                                <select
                                   style={{
-                                    width: "25px",
-                                    height: "27px",
-                                    border: "2px solid var(--accent-warning)",
-                                    display: "flex",
-                                    alignItems: "center",
-                                    justifyContent: "center",
-                                    fontWeight: 700,
-                                    borderRadius: "4px",
-                                    background: "#fff",
-                                    color: "var(--text-primary)",
+                                    position: "absolute",
+                                    top: 0,
+                                    left: 0,
+                                    width: "100%",
+                                    height: "100%",
+                                    opacity: 0,
+                                    cursor: "pointer",
+                                  }}
+                                  value={Number(q.complexity) || 1}
+                                  onChange={(e) =>
+                                    updateItem(
+                                      originalIdx,
+                                      "complexity",
+                                      +e.target.value,
+                                    )
+                                  }
+                                >
+                                  {Object.entries(COMPLEXITY_LABELS).map(
+                                    ([k, v]) => (
+                                      <option key={k} value={k}>
+                                        {v}
+                                      </option>
+                                    ),
+                                  )}
+                                </select>
+                                <span
+                                  style={{
+                                    position: "absolute",
+                                    right: "0.4rem",
+                                    top: "50%",
+                                    transform: "translateY(-50%)",
+                                    fontSize: "0.6rem",
+                                    pointerEvents: "none",
+                                    color: "inherit",
                                   }}
                                 >
-                                  {c}
-                                </div>
-                              ))}
+                                  ▼
+                                </span>
+                              </div>
+                              <Combobox
+                                className="select"
+                                style={{ width: "100px" }}
+                                value={q.grade || grade}
+                                onChange={(val) =>
+                                  updateItem(originalIdx, "grade", +val)
+                                }
+                                options={gradeList.map((g) => ({
+                                  value: g,
+                                  label: `Lớp ${g}`,
+                                }))}
+                                placeholder="Lớp"
+                              />
+                              <Combobox
+                                className="select"
+                                style={{ flex: 1, minWidth: "150px" }}
+                                value={q.chapter || ""}
+                                onChange={(val) =>
+                                  updateItem(originalIdx, "chapter", val)
+                                }
+                                options={Object.keys(
+                                  (subjects as any)?.[subject]?.[
+                                    q.grade || grade
+                                  ] || {},
+                                )}
+                                placeholder="Chương"
+                              />
+                              <Combobox
+                                className="select"
+                                style={{ flex: 1, minWidth: "150px" }}
+                                value={q.lesson || ""}
+                                onChange={(val) =>
+                                  updateItem(originalIdx, "lesson", val)
+                                }
+                                options={
+                                  (subjects as any)?.[subject]?.[
+                                    q.grade || grade
+                                  ]?.[q.chapter || ""] || []
+                                }
+                                placeholder="Bài"
+                              />
                             </div>
-                          </div>
-                        );
-                      })()}
-
-                    {/* Solution */}
-                    {((q.solution && qtype !== "tf") ||
-                      (qtype === "tf" && options.length > 0)) && (
-                      <div
-                        style={{
-                          marginTop: "1.5rem",
-                          marginLeft: "1rem",
-                          padding: "1rem",
-                          background: "var(--bg-surface)",
-                          borderLeft: "4px solid var(--accent-secondary)",
-                          borderRadius: "0 var(--radius-sm) var(--radius-sm) 0",
-                        }}
-                      >
-                        <div
-                          style={{
-                            fontWeight: 700,
-                            marginBottom: "0.5rem",
-                            color: "var(--accent-secondary)",
-                          }}
-                        >
-                          Lời giải:
+                          )}
                         </div>
+
+                        <LatexRenderer
+                          content={String(q.content || "")}
+                          layoutType={String(q.layout_type || "normal")}
+                          images={q.image || q.images}
+                          className="question-content"
+                        />
+
+                        {qtype === "mc" && options.length > 0 && (
+                          <AdaptiveOptionGrid
+                            count={options.length}
+                            style={{ marginLeft: "1rem", marginTop: "1rem" }}
+                          >
+                            {options.map((opt: any, oi: number) => {
+                              let bg = "var(--bg-elevated)";
+                              let border = "transparent";
+                              let textColor = "var(--text-secondary)";
+                              if (opt.is_correct) {
+                                bg = "rgba(107,203,119,0.1)";
+                                border = "var(--accent-success)";
+                                textColor = "var(--accent-success)";
+                              }
+                              return (
+                                <div
+                                  key={oi}
+                                  data-opt-cell="1"
+                                  style={{
+                                    display: "flex",
+                                    alignItems: "baseline",
+                                    gap: "0.5rem",
+                                    padding: "0.4rem 0.75rem",
+                                    borderRadius: "var(--radius-md)",
+                                    background: bg,
+                                    border: `1px solid ${border}`,
+                                  }}
+                                >
+                                  <div
+                                    style={{
+                                      fontWeight: 700,
+                                      color: textColor,
+                                    }}
+                                  >
+                                    {String.fromCharCode(65 + oi)}.
+                                  </div>
+                                  <div style={{ flex: 1, minWidth: 0 }}>
+                                    <LatexRenderer
+                                      content={String(opt.content || "")}
+                                      images={q.image || q.images}
+                                    />
+                                  </div>
+                                </div>
+                              );
+                            })}
+                          </AdaptiveOptionGrid>
+                        )}
+
                         {qtype === "tf" && options.length > 0 && (
                           <div
                             style={{
+                              marginLeft: "1rem",
+                              marginTop: "1rem",
                               display: "flex",
                               flexDirection: "column",
                               gap: "0.5rem",
-                              marginBottom: q.solution ? "1rem" : "0",
                             }}
                           >
                             {options.map((opt: any, oi: number) => (
                               <div
                                 key={oi}
-                                style={{ display: "flex", gap: "0.5rem", alignItems: "baseline" }}
+                                style={{
+                                  display: "flex",
+                                  gap: "0.75rem",
+                                  alignItems: "center",
+                                  padding: "0.5rem 0.75rem",
+                                  borderRadius: "var(--radius-md)",
+                                  background: opt.is_correct
+                                    ? "rgba(107,203,119,0.1)"
+                                    : "rgba(255,107,107,0.1)",
+                                  border: `1px solid ${opt.is_correct ? "var(--accent-success)" : "var(--accent-danger)"}`,
+                                }}
                               >
-                                <strong style={{ flexShrink: 0 }}>
-                                  {String.fromCharCode(97 + oi)}){" "}
-                                  {opt.is_correct ? "Đúng." : "Sai."}
-                                </strong>
+                                <div
+                                  style={{
+                                    fontWeight: 700,
+                                    color: "var(--text-secondary)",
+                                  }}
+                                >
+                                  {String.fromCharCode(97 + oi)})
+                                </div>
                                 <div style={{ flex: 1, minWidth: 0 }}>
-                                  {opt.explaination && (
-                                    <LatexRenderer
-                                      content={String(opt.explaination)}
-                                      images={q.image || q.images}
-                                    />
-                                  )}
+                                  <LatexRenderer
+                                    content={String(opt.content || "")}
+                                    images={q.image || q.images}
+                                  />
                                 </div>
                               </div>
                             ))}
                           </div>
                         )}
-                          {q.solution && (
-                            <LatexRenderer content={String(q.solution)} images={q.image || q.images} />
-                          )}
+
+                        {qtype === "sa" &&
+                          options.length > 0 &&
+                          (() => {
+                            const rawAns = String(options[0].content || "")
+                              .replace(/\$/g, "")
+                              .replace(/[{}]/g, "")
+                              .trim();
+                            const chars = rawAns.split("");
+                            const boxes = Array.from({
+                              length: Math.max(4, chars.length),
+                            }).map((_, i) => chars[i] || "");
+
+                            return (
+                              <div
+                                style={{
+                                  marginTop: "0.75rem",
+                                  padding: "0.5rem 0.75rem",
+                                  background: "rgba(255,217,61,0.1)",
+                                  border: "1px solid var(--accent-warning)",
+                                  borderRadius: "var(--radius-md)",
+                                  display: "inline-flex",
+                                  alignItems: "center",
+                                  gap: "0.75rem",
+                                }}
+                              >
+                                <span
+                                  style={{
+                                    fontWeight: 600,
+                                    color: "var(--accent-warning)",
+                                  }}
+                                >
+                                  Trả lời ngắn:
+                                </span>
+                                <div
+                                  style={{ display: "flex", gap: "0.25rem" }}
+                                >
+                                  {boxes.map((c, i) => (
+                                    <div
+                                      key={i}
+                                      style={{
+                                        width: "25px",
+                                        height: "27px",
+                                        border:
+                                          "2px solid var(--accent-warning)",
+                                        display: "flex",
+                                        alignItems: "center",
+                                        justifyContent: "center",
+                                        fontWeight: 700,
+                                        borderRadius: "4px",
+                                        background: "#fff",
+                                        color: "var(--text-primary)",
+                                      }}
+                                    >
+                                      {c}
+                                    </div>
+                                  ))}
+                                </div>
+                              </div>
+                            );
+                          })()}
+
+                        {/* Solution */}
+                        {((q.solution && qtype !== "tf") ||
+                          (qtype === "tf" && options.length > 0)) && (
+                          <div
+                            style={{
+                              marginTop: "1.5rem",
+                              marginLeft: "1rem",
+                              padding: "1rem",
+                              background: "var(--bg-surface)",
+                              borderLeft: "4px solid var(--accent-secondary)",
+                              borderRadius:
+                                "0 var(--radius-sm) var(--radius-sm) 0",
+                            }}
+                          >
+                            <div
+                              style={{
+                                fontWeight: 700,
+                                marginBottom: "0.5rem",
+                                color: "var(--accent-secondary)",
+                              }}
+                            >
+                              Lời giải:
+                            </div>
+                            {qtype === "tf" && options.length > 0 && (
+                              <div
+                                style={{
+                                  display: "flex",
+                                  flexDirection: "column",
+                                  gap: "0.5rem",
+                                  marginBottom: q.solution ? "1rem" : "0",
+                                }}
+                              >
+                                {options.map((opt: any, oi: number) => (
+                                  <div
+                                    key={oi}
+                                    style={{
+                                      display: "flex",
+                                      gap: "0.5rem",
+                                      alignItems: "baseline",
+                                    }}
+                                  >
+                                    <strong style={{ flexShrink: 0 }}>
+                                      {String.fromCharCode(97 + oi)}){" "}
+                                      {opt.is_correct ? "Đúng." : "Sai."}
+                                    </strong>
+                                    <div style={{ flex: 1, minWidth: 0 }}>
+                                      {opt.explaination && (
+                                        <LatexRenderer
+                                          content={String(opt.explaination)}
+                                          images={q.image || q.images}
+                                        />
+                                      )}
+                                    </div>
+                                  </div>
+                                ))}
+                              </div>
+                            )}
+                            {q.solution && (
+                              <LatexRenderer
+                                content={String(q.solution)}
+                                images={q.image || q.images}
+                              />
+                            )}
+                          </div>
+                        )}
                       </div>
-                    )}
-                      </div>{/* end flex-1 content */}
-                      <div style={{ display: "flex", flexDirection: "column", gap: "0.5rem", flexShrink: 0 }}>
+                      {/* end flex-1 content */}
+                      <div
+                        style={{
+                          display: "flex",
+                          flexDirection: "column",
+                          gap: "0.5rem",
+                          flexShrink: 0,
+                        }}
+                      >
                         <button
                           className="btn btn-secondary btn-sm"
-                          onClick={() => openEdit(originalIdx, isChild, isChild ? Number(displayNum) : undefined)}
+                          onClick={() =>
+                            openEdit(
+                              originalIdx,
+                              isChild,
+                              isChild ? Number(displayNum) : undefined,
+                            )
+                          }
                         >
                           Chi tiết
                         </button>
@@ -958,7 +1258,8 @@ export default function UploadPage() {
                           Xóa
                         </button>
                       </div>
-                    </div>{/* end flex row */}
+                    </div>
+                    {/* end flex row */}
                   </div>
                 );
               };
@@ -988,7 +1289,7 @@ export default function UploadPage() {
                 className="btn btn-secondary"
                 onClick={() => setPreview([])}
               >
-                ← Hủy
+                Hủy
               </button>
               <button
                 className="btn btn-secondary btn-lg"
@@ -1018,9 +1319,13 @@ export default function UploadPage() {
         {showContestModal && (
           <div
             style={{
-              position: "fixed", inset: 0, zIndex: 1100,
+              position: "fixed",
+              inset: 0,
+              zIndex: 1100,
               background: "rgba(0,0,0,0.5)",
-              display: "flex", alignItems: "center", justifyContent: "center",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
               padding: "2rem",
             }}
             onMouseDown={(e) => {
@@ -1029,14 +1334,17 @@ export default function UploadPage() {
           >
             <div
               style={{
-                width: "100%", maxWidth: 460,
+                width: "100%",
+                maxWidth: 460,
                 background: "var(--bg-surface)",
                 borderRadius: "var(--radius-lg)",
                 boxShadow: "var(--shadow-lg)",
                 padding: "1.5rem",
               }}
             >
-              <h3 style={{ margin: "0 0 1rem" }}>Tạo đề thi từ các câu vừa import</h3>
+              <h3 style={{ margin: "0 0 1rem" }}>
+                Tạo đề thi từ các câu vừa import
+              </h3>
               <label className="form-label">Tên đề thi</label>
               <input
                 className="input"
@@ -1048,14 +1356,35 @@ export default function UploadPage() {
                 }}
                 placeholder="Nhập tên đề thi"
               />
-              <p style={{ fontSize: "0.78rem", color: "var(--text-muted)", marginTop: "0.5rem" }}>
-                Các câu sẽ được lưu vào ngân hàng và tạo thành 1 đề thi (mặc định: chưa mở, 45 phút). Có thể chỉnh lại sau ở trang đề thi.
+              <p
+                style={{
+                  fontSize: "0.78rem",
+                  color: "var(--text-muted)",
+                  marginTop: "0.5rem",
+                }}
+              >
+                Các câu sẽ được lưu vào ngân hàng và tạo thành 1 đề thi (mặc
+                định: chưa mở, 45 phút). Có thể chỉnh lại sau ở trang đề thi.
               </p>
-              <div style={{ display: "flex", justifyContent: "flex-end", gap: "0.75rem", marginTop: "1.25rem" }}>
-                <button className="btn btn-secondary" onClick={() => setShowContestModal(false)}>
+              <div
+                style={{
+                  display: "flex",
+                  justifyContent: "flex-end",
+                  gap: "0.75rem",
+                  marginTop: "1.25rem",
+                }}
+              >
+                <button
+                  className="btn btn-secondary"
+                  onClick={() => setShowContestModal(false)}
+                >
                   Hủy
                 </button>
-                <button className="btn btn-primary" onClick={doCreateContest} disabled={loading}>
+                <button
+                  className="btn btn-primary"
+                  onClick={doCreateContest}
+                  disabled={loading}
+                >
                   Tạo đề thi
                 </button>
               </div>
@@ -1067,17 +1396,24 @@ export default function UploadPage() {
         {editModal && (
           <div
             style={{
-              position: "fixed", inset: 0, zIndex: 1000,
+              position: "fixed",
+              inset: 0,
+              zIndex: 1000,
               background: "rgba(0,0,0,0.5)",
-              display: "flex", alignItems: "flex-start", justifyContent: "center",
+              display: "flex",
+              alignItems: "flex-start",
+              justifyContent: "center",
               padding: "2rem",
               overflowY: "auto",
             }}
-            onMouseDown={(e) => { if (e.target === e.currentTarget) setEditModal(null); }}
+            onMouseDown={(e) => {
+              if (e.target === e.currentTarget) setEditModal(null);
+            }}
           >
             <div
               style={{
-                width: "100%", maxWidth: 900,
+                width: "100%",
+                maxWidth: 900,
                 background: "var(--bg-surface)",
                 borderRadius: "var(--radius-lg)",
                 boxShadow: "var(--shadow-lg)",
@@ -1088,13 +1424,23 @@ export default function UploadPage() {
                 style={{
                   padding: "1rem 1.5rem",
                   borderBottom: "1px solid var(--border)",
-                  display: "flex", justifyContent: "space-between", alignItems: "center",
+                  display: "flex",
+                  justifyContent: "space-between",
+                  alignItems: "center",
                 }}
               >
                 <h3 style={{ margin: 0 }}>Chi tiết câu hỏi</h3>
                 <button
                   onClick={() => setEditModal(null)}
-                  style={{ background: "none", border: "none", cursor: "pointer", fontSize: 20, color: "var(--text-secondary)", lineHeight: 1, padding: 4 }}
+                  style={{
+                    background: "none",
+                    border: "none",
+                    cursor: "pointer",
+                    fontSize: 20,
+                    color: "var(--text-secondary)",
+                    lineHeight: 1,
+                    padding: 4,
+                  }}
                 >
                   ✕
                 </button>
@@ -1103,7 +1449,9 @@ export default function UploadPage() {
               <div style={{ padding: "1.5rem" }}>
                 <QuestionEditor
                   qData={editModal.draft}
-                  onChange={(newDraft) => setEditModal((m) => m ? { ...m, draft: newDraft } : m)}
+                  onChange={(newDraft) =>
+                    setEditModal((m) => (m ? { ...m, draft: newDraft } : m))
+                  }
                   isChild={editModal.isChild}
                   childIndex={editModal.childIndex}
                   imageEditable={true}
@@ -1114,10 +1462,15 @@ export default function UploadPage() {
                 style={{
                   padding: "1rem 1.5rem",
                   borderTop: "1px solid var(--border)",
-                  display: "flex", justifyContent: "flex-end", gap: "0.75rem",
+                  display: "flex",
+                  justifyContent: "flex-end",
+                  gap: "0.75rem",
                 }}
               >
-                <button className="btn btn-secondary" onClick={() => setEditModal(null)}>
+                <button
+                  className="btn btn-secondary"
+                  onClick={() => setEditModal(null)}
+                >
                   Hủy bỏ
                 </button>
                 <button className="btn btn-primary" onClick={saveEdit}>

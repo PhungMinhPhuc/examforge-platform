@@ -1,6 +1,12 @@
-'use client';
+"use client";
 
-import { useRef, useLayoutEffect, useState, ReactNode, CSSProperties } from 'react';
+import {
+  useRef,
+  useLayoutEffect,
+  useState,
+  ReactNode,
+  CSSProperties,
+} from "react";
 
 /**
  * Lưới đáp án tự chọn số cột dựa trên KẾT QUẢ RENDER thật, không đếm ký tự.
@@ -34,30 +40,33 @@ export default function AdaptiveOptionGrid({
     // So sánh chiều rộng lý tưởng (nếu không xuống dòng) với chiều rộng thực tế.
     // Nếu lý tưởng > thực tế -> nội dung đang bị bẻ dòng hoặc tràn ngang.
     const anyWraps = () => {
-      const cells = Array.from(el.querySelectorAll<HTMLElement>('[data-opt-cell]'));
+      const cells = Array.from(
+        el.querySelectorAll<HTMLElement>("[data-opt-cell]"),
+      );
       return cells.some((cell) => {
-        const content = cell.querySelector<HTMLElement>('.latex-content') || cell;
-        
+        const content =
+          cell.querySelector<HTMLElement>(".latex-content") || cell;
+
         const avail = content.getBoundingClientRect().width;
-        
+
         const prevWidth = content.style.width;
         const prevMaxWidth = content.style.maxWidth;
         const prevFlexShrink = content.style.flexShrink;
-        
+
         // Ép width để đo kích thước lý tưởng, chống shrink nếu là flex item
-        content.style.width = 'max-content';
-        content.style.maxWidth = 'none';
-        content.style.flexShrink = '0';
-        
+        content.style.width = "max-content";
+        content.style.maxWidth = "none";
+        content.style.flexShrink = "0";
+
         const needed = content.getBoundingClientRect().width;
-        
+
         // Khôi phục
         content.style.width = prevWidth;
         content.style.maxWidth = prevMaxWidth;
         content.style.flexShrink = prevFlexShrink;
-        
+
         // Xóa thông tin debug cũ nếu có
-        const oldDebug = cell.querySelector('.debug-info');
+        const oldDebug = cell.querySelector(".debug-info");
         if (oldDebug) oldDebug.remove();
 
         // +2px dung sai để tránh giảm cột vì sai số làm tròn.
@@ -96,10 +105,10 @@ export default function AdaptiveOptionGrid({
     <div
       ref={ref}
       style={{
-        display: 'grid',
-        gap: '0.75rem',
+        display: "grid",
+        gap: "0.75rem",
         gridTemplateColumns: `repeat(${cols}, minmax(0, 1fr))`,
-        alignItems: 'baseline',
+        alignItems: "baseline",
         ...style,
       }}
     >
