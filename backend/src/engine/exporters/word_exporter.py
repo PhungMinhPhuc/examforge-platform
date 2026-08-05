@@ -1,7 +1,12 @@
 import os
 import re
 from typing import List, Dict, Any
-from .common import fix_soft_newlines, get_svg_native_width_inches
+from .common import (
+    fix_soft_newlines,
+    get_image_storage_root,
+    get_svg_native_width_inches,
+    resolve_image_file,
+)
 
 def _render_word_question_body(contest: dict, questions: List[dict], include_solution: bool = True) -> List[str]:
     total_mc = sum(1 for q in questions if q.get('question_type') == 'mc')
@@ -52,29 +57,14 @@ def _render_word_question_body(contest: dict, questions: List[dict], include_sol
         options = q.get('options', [])
         
         def replace_img(match):
-            import urllib.parse
-            url = urllib.parse.unquote(match.group(1)).split('?')[0]
-            if "/static/images/" in url:
-                rel_path = url.split("/static/images/")[-1]
-            else:
-                rel_path = url.split("/")[-1]
-            
-            img_storage_path = os.getenv("IMG_STORAGE_PATH", "./storage")
-            local_path = os.path.join(img_storage_path, rel_path)
-            abs_path = os.path.abspath(local_path).replace('\\', '/')
-            
+            url = match.group(1)
+            abs_path, matched_image = resolve_image_file(url, q.get('images', []))
             scale_factor = 0.4
-            match_name = rel_path.split('/')[-1]
-            for img in q.get('images', []):
-                sp = img.get('storage_path', '')
-                if sp and sp.replace('\\', '/').endswith(match_name):
-                    sc = img.get('img_scale')
-                    if sc is not None:
-                        try:
-                            scale_factor = float(sc)
-                        except (ValueError, TypeError):
-                            pass
-                    break
+            if matched_image and matched_image.get('img_scale') is not None:
+                try:
+                    scale_factor = float(matched_image['img_scale'])
+                except (ValueError, TypeError):
+                    pass
             
             if abs_path.lower().endswith('.svg'):
                 pdf_path = abs_path.replace('.svg', '.pdf')
@@ -321,10 +311,10 @@ def _render_answer_key_body(contest: dict, questions: List[dict], exam_title: st
 def get_word_simplified_latex(contest: dict, questions: List[dict], exam_title: str = "", department: str = "", exam_type: str = "", subject: str = "", duration: int = 50, general_info: str = "", code: str = "000", include_solution: bool = True, dual_section: bool = False) -> str:
     lines = ["\\begin{document}\n\n"]
     if general_info:
-        for line in general_info.strip().split('\n'):
-            line = line.strip()
-            if line:
-                lines.append(f"{line}\n\n")
+        # Keep the editor's LaTeX block intact. Inserting a blank paragraph
+        # after every source line breaks multiline commands such as
+        # ``\textit{line 1\nline 2}``, which Pandoc reports as "unexpected ()".
+        lines.append(general_info.strip() + "\n\n")
 
     if dual_section:
         # Phần 1: chỉ đề thi (không lời giải)
@@ -444,7 +434,7 @@ def post_process_word_docx(tmp_docx: str, original_code: str, department: str, e
         c.width = Cm(12.5)
         p = c.paragraphs[0]
         p.alignment = WD_ALIGN_PARAGRAPH.CENTER
-        title = exam_title if exam_title else contest.get('title', 'Đề thi')
+        title = exam_title
         p.add_run(title).bold = True
         p.add_run('\n')
         p.add_run('Môn thi: ' + (subject or '...')).bold = True
@@ -727,7 +717,7 @@ def export_word(contest: dict, questions: list, code: str, exam_title: str, depa
     try:
         cmd = ["pandoc", tmp_tex, "-f", "latex", "-o", tmp_docx, "--mathml"]
         
-        sp = os.getenv("IMG_STORAGE_PATH", "./storage")
+        sp = get_image_storage_root()
         ref_path = os.path.join(sp, "reference.docx")
         if not os.path.exists(ref_path):
             try:
