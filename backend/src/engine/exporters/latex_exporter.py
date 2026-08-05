@@ -1,7 +1,7 @@
 import os
 import re
 from typing import List, Dict, Any
-from .common import fix_soft_newlines
+from .common import fix_soft_newlines, resolve_image_file
 from dotenv import load_dotenv
 
 load_dotenv(dotenv_path=os.path.join(os.path.dirname(__file__), "..", "..", "..", "..", "api", ".env"))
@@ -46,11 +46,11 @@ def replace_img_with_tikz(q: dict, options_tex: str = "", for_pdf_compilation: b
 
 def replace_img_with_tikz_in_str(content: str, images: list, for_pdf_compilation: bool = False) -> str:
     def replacer(match):
-        import urllib.parse
-        url = urllib.parse.unquote(match.group(1)).split('?')[0]
+        url = match.group(1)
+        abs_path, matched_image = resolve_image_file(url, images)
         scale_factor = 1
         for img in images:
-            if img.get('storage_path', '').split('?')[0] == url:
+            if img is matched_image:
                 sc = img.get('img_scale')
                 if sc is not None:
                     try: scale_factor = float(sc)
@@ -58,25 +58,10 @@ def replace_img_with_tikz_in_str(content: str, images: list, for_pdf_compilation
                     
                 if img.get('img_type') == 'tikz' and img.get('raw_code'):
                     if for_pdf_compilation:
-                        if "/static/images/" in url:
-                            rel = url.split("/static/images/")[-1]
-                        else:
-                            rel = url.split("/")[-1]
-                        sp = os.getenv("IMG_STORAGE_PATH", "./storage")
-                        ap = os.path.abspath(os.path.join(sp, rel)).replace('\\', '/')
-                        pdf = ap.replace('.svg', '.pdf')
+                        pdf = abs_path.rsplit('.', 1)[0] + '.pdf'
                         if os.path.exists(pdf):
                             return f"\\includegraphics[scale={scale_factor:.2f}]{{{pdf}}}"
                     return "\n" + img.get('raw_code') + "\n"
-        
-        if "/static/images/" in url:
-            rel_path = url.split("/static/images/")[-1]
-        else:
-            rel_path = url.split("/")[-1]
-        
-        sp = os.getenv("IMG_STORAGE_PATH", "./storage")
-        local_path = os.path.join(sp, rel_path)
-        abs_path = os.path.abspath(local_path).replace('\\', '/')
         
         ext = os.path.splitext(abs_path)[1].lower()
         if ext in ['.emf', '.wmf']:
@@ -91,7 +76,7 @@ def replace_img_with_tikz_in_str(content: str, images: list, for_pdf_compilation
             return f"\\includegraphics[scale={scale_factor:.2f}]{{{abs_path}}}"
     return re.sub(r'!\[.*?\]\((.*?)\)', replacer, content)
 
-def render_options_and_solution_latex(q: dict, include_solution: bool = True, for_pdf_compilation: bool = False) -> tuple[str, str]:
+def render_options_and_solution_latex(q: dict, include_solution: bool = True, for_pdf_compilation: bool = False, show_answers: bool = True) -> tuple[str, str]:
     q_type = q.get('question_type')
     options = q.get('options', [])
     solution = q.get('solution', '') or ''
@@ -107,14 +92,14 @@ def render_options_and_solution_latex(q: dict, include_solution: bool = True, fo
     if q_type == 'mc':
         options_lines.append("\\choice")
         for opt in options:
-            mark = "\\True " if opt.get('is_correct') else ""
+            mark = "\\True " if (show_answers and opt.get('is_correct')) else ""
             opt_content = replace_img_with_tikz_in_str(opt.get('content', ''), q.get('images', []), for_pdf_compilation)
             options_lines.append(f"{{{mark}{opt_content}}}")
-            
+
     elif q_type == 'tf':
         options_lines.append("\\choiceTF[1]")
         for opt in options:
-            mark = "\\True " if opt.get('is_correct') else ""
+            mark = "\\True " if (show_answers and opt.get('is_correct')) else ""
             opt_content = replace_img_with_tikz_in_str(opt.get('content', ''), q.get('images', []), for_pdf_compilation)
             options_lines.append(f"{{{mark}{opt_content}}}")
             
@@ -130,6 +115,8 @@ def render_options_and_solution_latex(q: dict, include_solution: bool = True, fo
             
     elif q_type == 'sa':
         correct_ans = options[0].get('content', '') if options else ''
+        if not show_answers:
+            correct_ans = ''
         options_lines.append(f"\\shortans{{{correct_ans}}}")
         
     solution_lines = []
@@ -137,7 +124,7 @@ def render_options_and_solution_latex(q: dict, include_solution: bool = True, fo
         solution_lines.append(f"\\loigiai{{{solution}}}")
     return "\n".join(options_lines), "\n".join(solution_lines)
 
-def get_raw_latex(contest: dict, questions: List[dict], include_header: bool = True, use_minipage: bool = True, exam_title: str = "", general_info: str = "", code: str = "000", department: str = "", exam_type: str = "", subject: str = "", duration: int = 50, include_solution: bool = True, for_pdf_compilation: bool = False) -> str:
+def get_raw_latex(contest: dict, questions: List[dict], include_header: bool = True, use_minipage: bool = True, exam_title: str = "", general_info: str = "", code: str = "000", department: str = "", exam_type: str = "", subject: str = "", duration: int = 50, include_solution: bool = True, for_pdf_compilation: bool = False, show_answers: bool = True, force_solcolor: bool = False) -> str:
     lines = []
     
     # Calculate section counts
@@ -151,9 +138,8 @@ def get_raw_latex(contest: dict, questions: List[dict], include_header: bool = T
     
     if include_header:
         # Default fallback
-        if not exam_title: exam_title = contest.get('title', 'Đề thi')
             
-        extest_option = "solcolor" if include_solution else "dethi"
+        extest_option = "solcolor" if (include_solution or force_solcolor) else "dethi"
         header_tex = f"""\\documentclass[12pt, a4paper]{{article}}
 \\usepackage{{amsmath,amssymb,fancyhdr}}
 \\usepackage[top=1.2cm, bottom=2cm, left=1.5cm, right=1.2cm]{{geometry}}
@@ -337,7 +323,7 @@ def get_raw_latex(contest: dict, questions: List[dict], include_header: bool = T
             
             for child in children:
                 lines.append("    \\begin{chc}")
-                options_tex, solution_tex = render_options_and_solution_latex(child, include_solution, for_pdf_compilation)
+                options_tex, solution_tex = render_options_and_solution_latex(child, include_solution, for_pdf_compilation, show_answers)
                 lines.append("        " + replace_img_with_tikz(child, options_tex, for_pdf_compilation))
                 if solution_tex:
                     lines.append("        " + solution_tex)
@@ -362,7 +348,7 @@ def get_raw_latex(contest: dict, questions: List[dict], include_header: bool = T
             if not for_pdf_compilation:
                 lines.append(f"% Câu {cau_counter}")
             lines.append("\\begin{ex}")
-            options_tex, solution_tex = render_options_and_solution_latex(q, include_solution, for_pdf_compilation)
+            options_tex, solution_tex = render_options_and_solution_latex(q, include_solution, for_pdf_compilation, show_answers)
             lines.append("    " + replace_img_with_tikz(q, options_tex, for_pdf_compilation))
             if solution_tex:
                 lines.append("    " + solution_tex)
@@ -383,6 +369,104 @@ def get_raw_latex(contest: dict, questions: List[dict], include_header: bool = T
     raw = "\n".join(lines)
     from .common import balance_latex_braces
     return balance_latex_braces(raw)
+
+
+def _render_answer_key_latex(contest: dict, questions: List[dict]) -> str:
+    """Dựng BẢNG ĐÁP ÁN (mã câu -> đáp án đúng) bằng LaTeX cho đề gốc PDF."""
+    mc = [q for q in questions if q.get('question_type') == 'mc']
+    tf = [q for q in questions if q.get('question_type') == 'tf']
+    sa = [q for q in questions if q.get('question_type') == 'sa']
+
+    def mc_letter(q: dict) -> str:
+        for i, o in enumerate(q.get('options', [])):
+            if o.get('is_correct'):
+                return chr(65 + i)
+        return ''
+
+    out: List[str] = []
+
+    if mc:
+        out.append("\\par\\addvspace{5pt}\\noindent\\textbf{PHẦN I. Câu trắc nghiệm nhiều phương án lựa chọn.}\\par\\addvspace{4pt}")
+        items = [(i + 1, mc_letter(q)) for i, q in enumerate(mc)]
+        per = 10
+        for s in range(0, len(items), per):
+            chunk = items[s:s + per]
+            n = len(chunk)
+            out.append("\\noindent\\begin{tabular}{|" + "c|" * n + "}\\hline")
+            out.append(" & ".join(f"\\textbf{{{c[0]}}}" for c in chunk) + " \\\\\\hline")
+            out.append(" & ".join(f"{c[1]}" for c in chunk) + " \\\\\\hline")
+            out.append("\\end{tabular}\\par\\addvspace{6pt}")
+
+    if tf:
+        out.append("\\par\\addvspace{5pt}\\noindent\\textbf{PHẦN II. Câu trắc nghiệm đúng sai.}\\par\\addvspace{4pt}")
+        for i, q in enumerate(tf):
+            marks = []
+            for j, o in enumerate(q.get('options', [])):
+                letter = chr(97 + j)
+                ds = "\\textbf{Đ}" if o.get('is_correct') else "S"
+                marks.append(f"{letter}) {ds}")
+            out.append(f"\\noindent Câu {i + 1}:\\quad " + "\\quad ".join(marks) + "\\par")
+        out.append("\\addvspace{6pt}")
+
+    if sa:
+        out.append("\\par\\addvspace{5pt}\\noindent\\textbf{PHẦN III. Câu trắc nghiệm trả lời ngắn.}\\par\\addvspace{4pt}")
+        items = []
+        for i, q in enumerate(sa):
+            ans = q.get('options', [{}])[0].get('content', '') if q.get('options') else ''
+            ans = str(ans).replace('\n', ' ').strip()
+            items.append((i + 1, ans))
+        per = 8
+        for s in range(0, len(items), per):
+            chunk = items[s:s + per]
+            n = len(chunk)
+            out.append("\\noindent\\begin{tabular}{|c|" + "c|" * n + "}\\hline")
+            out.append("\\textbf{Câu} & " + " & ".join(f"\\textbf{{{c[0]}}}" for c in chunk) + " \\\\\\hline")
+            out.append("\\textbf{Đáp án} & " + " & ".join(f"{c[1]}" for c in chunk) + " \\\\\\hline")
+            out.append("\\end{tabular}\\par\\addvspace{6pt}")
+
+    return "\n".join(out)
+
+
+def get_original_exam_latex(contest: dict, questions: List[dict], exam_title: str = "", general_info: str = "", code: str = "000", department: str = "", exam_type: str = "", subject: str = "", duration: int = 50, for_pdf_compilation: bool = True, use_minipage: bool = True) -> str:
+    """Đề gốc = 3 mục trong 1 file: (1) ĐỀ sạch, (2) BẢNG ĐÁP ÁN, (3) LỜI GIẢI CHI TIẾT.
+
+    Cả tài liệu chạy ở chế độ solcolor (force_solcolor) để mục 3 hiện đáp án tô màu
+    + lời giải; mục 1 dựng với show_answers=False/include_solution=False nên đề sạch.
+    """
+    # Mục 1: ĐỀ sạch — kèm preamble + header + dòng HẾT + \label{mylt}
+    de = get_raw_latex(
+        contest, questions, include_header=True, use_minipage=use_minipage,
+        exam_title=exam_title, general_info=general_info, code=code,
+        department=department, exam_type=exam_type, subject=subject, duration=duration,
+        include_solution=False, show_answers=False, force_solcolor=True,
+        for_pdf_compilation=for_pdf_compilation,
+    )
+    head = de.rpartition("\\end{document}")[0]  # tất cả trước \end{document}
+
+    # Mục 2: BẢNG ĐÁP ÁN
+    key = _render_answer_key_latex(contest, questions)
+
+    # Mục 3: ĐỀ + LỜI GIẢI CHI TIẾT
+    sol = get_raw_latex(
+        contest, questions, include_header=False, use_minipage=use_minipage,
+        exam_title=exam_title, general_info=general_info, code=code,
+        department=department, exam_type=exam_type, subject=subject, duration=duration,
+        include_solution=True, show_answers=True, force_solcolor=True,
+        for_pdf_compilation=for_pdf_compilation,
+    )
+
+    doc = (
+        head
+        + "\n\\clearpage\\rfoot{Mã đề thi " + code + "}%\n"
+        + "{\\centering\\bfseries\\large BẢNG ĐÁP ÁN\\par}\\addvspace{6pt}\n"
+        + key
+        + "\n\\clearpage\n"
+        + "{\\centering\\bfseries\\large LỜI GIẢI CHI TIẾT\\par}\\addvspace{6pt}\n"
+        + sol
+        + "\n\\end{document}\n"
+    )
+    from .common import balance_latex_braces
+    return balance_latex_braces(doc)
 
 
 def get_combined_latex(contest: dict, codes_data: list, exam_title: str = "", general_info: str = "", department: str = "", exam_type: str = "", subject: str = "", duration: int = 50, for_pdf_compilation: bool = True, use_minipage: bool = True) -> str:
