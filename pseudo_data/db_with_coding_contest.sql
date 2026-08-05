@@ -2,12 +2,12 @@
 -- PostgreSQL database dump
 --
 
-\restrict ewqwwRwELzVBYPpmDWKLh1AKNRHvYHyjTH8TfvAtlTbqHLNhP20ltnPKwQTVCPP
+\restrict kZc0G4ajxcDRdtcvJXfAMFQSVc93upn4TBgBao58FtrwFjafuQYUK3jW7dhktIn
 
 -- Dumped from database version 18.3
 -- Dumped by pg_dump version 18.3
 
--- Started on 2026-08-05 11:11:44
+-- Started on 2026-08-05 15:04:25
 
 SET statement_timeout = 0;
 SET lock_timeout = 0;
@@ -62,7 +62,7 @@ CREATE SEQUENCE public.accounts_id_seq
 ALTER SEQUENCE public.accounts_id_seq OWNER TO postgres;
 
 --
--- TOC entry 5287 (class 0 OID 0)
+-- TOC entry 5288 (class 0 OID 0)
 -- Dependencies: 220
 -- Name: accounts_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: postgres
 --
@@ -135,7 +135,7 @@ CREATE SEQUENCE public.classes_id_seq
 ALTER SEQUENCE public.classes_id_seq OWNER TO postgres;
 
 --
--- TOC entry 5288 (class 0 OID 0)
+-- TOC entry 5289 (class 0 OID 0)
 -- Dependencies: 222
 -- Name: classes_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: postgres
 --
@@ -316,7 +316,7 @@ CREATE SEQUENCE public.contest_results_id_seq
 ALTER SEQUENCE public.contest_results_id_seq OWNER TO postgres;
 
 --
--- TOC entry 5289 (class 0 OID 0)
+-- TOC entry 5290 (class 0 OID 0)
 -- Dependencies: 224
 -- Name: contest_results_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: postgres
 --
@@ -365,7 +365,7 @@ CREATE SEQUENCE public.contests_id_seq
 ALTER SEQUENCE public.contests_id_seq OWNER TO postgres;
 
 --
--- TOC entry 5290 (class 0 OID 0)
+-- TOC entry 5291 (class 0 OID 0)
 -- Dependencies: 226
 -- Name: contests_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: postgres
 --
@@ -421,7 +421,7 @@ CREATE SEQUENCE public.q_choice_details_id_seq
 ALTER SEQUENCE public.q_choice_details_id_seq OWNER TO postgres;
 
 --
--- TOC entry 5291 (class 0 OID 0)
+-- TOC entry 5292 (class 0 OID 0)
 -- Dependencies: 229
 -- Name: q_choice_details_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: postgres
 --
@@ -461,7 +461,8 @@ CREATE TABLE public.q_coding_testcases (
     point_weight integer DEFAULT 1,
     is_public boolean DEFAULT false,
     description text,
-    order_index integer DEFAULT 0
+    order_index integer DEFAULT 0,
+    is_sample boolean DEFAULT false
 );
 
 
@@ -483,7 +484,7 @@ CREATE SEQUENCE public.q_coding_testcases_id_seq
 ALTER SEQUENCE public.q_coding_testcases_id_seq OWNER TO postgres;
 
 --
--- TOC entry 5292 (class 0 OID 0)
+-- TOC entry 5293 (class 0 OID 0)
 -- Dependencies: 245
 -- Name: q_coding_testcases_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: postgres
 --
@@ -524,7 +525,7 @@ CREATE SEQUENCE public.q_images_id_seq
 ALTER SEQUENCE public.q_images_id_seq OWNER TO postgres;
 
 --
--- TOC entry 5293 (class 0 OID 0)
+-- TOC entry 5294 (class 0 OID 0)
 -- Dependencies: 231
 -- Name: q_images_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: postgres
 --
@@ -562,7 +563,7 @@ CREATE SEQUENCE public.q_shortans_details_id_seq
 ALTER SEQUENCE public.q_shortans_details_id_seq OWNER TO postgres;
 
 --
--- TOC entry 5294 (class 0 OID 0)
+-- TOC entry 5295 (class 0 OID 0)
 -- Dependencies: 233
 -- Name: q_shortans_details_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: postgres
 --
@@ -604,7 +605,7 @@ CREATE SEQUENCE public.q_truefalse_details_id_seq
 ALTER SEQUENCE public.q_truefalse_details_id_seq OWNER TO postgres;
 
 --
--- TOC entry 5295 (class 0 OID 0)
+-- TOC entry 5296 (class 0 OID 0)
 -- Dependencies: 235
 -- Name: q_truefalse_details_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: postgres
 --
@@ -654,7 +655,7 @@ CREATE SEQUENCE public.questions_id_seq
 ALTER SEQUENCE public.questions_id_seq OWNER TO postgres;
 
 --
--- TOC entry 5296 (class 0 OID 0)
+-- TOC entry 5297 (class 0 OID 0)
 -- Dependencies: 237
 -- Name: questions_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: postgres
 --
@@ -702,7 +703,7 @@ CREATE SEQUENCE public.student_coding_submissions_id_seq
 ALTER SEQUENCE public.student_coding_submissions_id_seq OWNER TO postgres;
 
 --
--- TOC entry 5297 (class 0 OID 0)
+-- TOC entry 5298 (class 0 OID 0)
 -- Dependencies: 247
 -- Name: student_coding_submissions_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: postgres
 --
@@ -744,7 +745,7 @@ CREATE SEQUENCE public.student_option_submissions_id_seq
 ALTER SEQUENCE public.student_option_submissions_id_seq OWNER TO postgres;
 
 --
--- TOC entry 5298 (class 0 OID 0)
+-- TOC entry 5299 (class 0 OID 0)
 -- Dependencies: 239
 -- Name: student_option_submissions_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: postgres
 --
@@ -887,7 +888,7 @@ ALTER TABLE ONLY public.questions ALTER COLUMN id SET DEFAULT nextval('public.qu
 
 
 --
--- TOC entry 4977 (class 2604 OID 231327)
+-- TOC entry 4978 (class 2604 OID 231327)
 -- Name: student_coding_submissions id; Type: DEFAULT; Schema: public; Owner: postgres
 --
 
@@ -903,7 +904,7 @@ ALTER TABLE ONLY public.student_option_submissions ALTER COLUMN id SET DEFAULT n
 
 
 --
--- TOC entry 5007 (class 2606 OID 124600)
+-- TOC entry 5008 (class 2606 OID 124600)
 -- Name: accounts accounts_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
 --
 
@@ -912,7 +913,7 @@ ALTER TABLE ONLY public.accounts
 
 
 --
--- TOC entry 5009 (class 2606 OID 124602)
+-- TOC entry 5010 (class 2606 OID 124602)
 -- Name: accounts accounts_public_id_key; Type: CONSTRAINT; Schema: public; Owner: postgres
 --
 
@@ -921,7 +922,7 @@ ALTER TABLE ONLY public.accounts
 
 
 --
--- TOC entry 4998 (class 2606 OID 214816)
+-- TOC entry 4999 (class 2606 OID 214816)
 -- Name: contests check_valid_status; Type: CHECK CONSTRAINT; Schema: public; Owner: postgres
 --
 
@@ -930,7 +931,7 @@ ALTER TABLE public.contests
 
 
 --
--- TOC entry 5087 (class 2606 OID 239677)
+-- TOC entry 5088 (class 2606 OID 239677)
 -- Name: class_coding_assignments class_coding_assignments_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
 --
 
@@ -939,7 +940,7 @@ ALTER TABLE ONLY public.class_coding_assignments
 
 
 --
--- TOC entry 5084 (class 2606 OID 239653)
+-- TOC entry 5085 (class 2606 OID 239653)
 -- Name: class_contests class_contests_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
 --
 
@@ -948,7 +949,7 @@ ALTER TABLE ONLY public.class_contests
 
 
 --
--- TOC entry 5012 (class 2606 OID 124604)
+-- TOC entry 5013 (class 2606 OID 124604)
 -- Name: classes classes_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
 --
 
@@ -957,7 +958,7 @@ ALTER TABLE ONLY public.classes
 
 
 --
--- TOC entry 5014 (class 2606 OID 124606)
+-- TOC entry 5015 (class 2606 OID 124606)
 -- Name: classes classes_public_id_key; Type: CONSTRAINT; Schema: public; Owner: postgres
 --
 
@@ -966,7 +967,7 @@ ALTER TABLE ONLY public.classes
 
 
 --
--- TOC entry 5077 (class 2606 OID 239598)
+-- TOC entry 5078 (class 2606 OID 239598)
 -- Name: coding_assignment_questions coding_assignment_questions_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
 --
 
@@ -975,7 +976,7 @@ ALTER TABLE ONLY public.coding_assignment_questions
 
 
 --
--- TOC entry 5079 (class 2606 OID 239624)
+-- TOC entry 5080 (class 2606 OID 239624)
 -- Name: coding_assignment_students coding_assignment_students_assignment_id_student_id_key; Type: CONSTRAINT; Schema: public; Owner: postgres
 --
 
@@ -984,7 +985,7 @@ ALTER TABLE ONLY public.coding_assignment_students
 
 
 --
--- TOC entry 5081 (class 2606 OID 239622)
+-- TOC entry 5082 (class 2606 OID 239622)
 -- Name: coding_assignment_students coding_assignment_students_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
 --
 
@@ -993,7 +994,7 @@ ALTER TABLE ONLY public.coding_assignment_students
 
 
 --
--- TOC entry 5069 (class 2606 OID 239570)
+-- TOC entry 5070 (class 2606 OID 239570)
 -- Name: coding_assignments coding_assignments_legacy_contest_id_key; Type: CONSTRAINT; Schema: public; Owner: postgres
 --
 
@@ -1002,7 +1003,7 @@ ALTER TABLE ONLY public.coding_assignments
 
 
 --
--- TOC entry 5071 (class 2606 OID 239566)
+-- TOC entry 5072 (class 2606 OID 239566)
 -- Name: coding_assignments coding_assignments_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
 --
 
@@ -1011,7 +1012,7 @@ ALTER TABLE ONLY public.coding_assignments
 
 
 --
--- TOC entry 5073 (class 2606 OID 239568)
+-- TOC entry 5074 (class 2606 OID 239568)
 -- Name: coding_assignments coding_assignments_public_id_key; Type: CONSTRAINT; Schema: public; Owner: postgres
 --
 
@@ -1020,7 +1021,7 @@ ALTER TABLE ONLY public.coding_assignments
 
 
 --
--- TOC entry 5090 (class 2606 OID 239717)
+-- TOC entry 5091 (class 2606 OID 239717)
 -- Name: coding_submission_testcase_results coding_submission_testcase_result_submission_id_order_index_key; Type: CONSTRAINT; Schema: public; Owner: postgres
 --
 
@@ -1029,7 +1030,7 @@ ALTER TABLE ONLY public.coding_submission_testcase_results
 
 
 --
--- TOC entry 5092 (class 2606 OID 239715)
+-- TOC entry 5093 (class 2606 OID 239715)
 -- Name: coding_submission_testcase_results coding_submission_testcase_results_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
 --
 
@@ -1038,7 +1039,7 @@ ALTER TABLE ONLY public.coding_submission_testcase_results
 
 
 --
--- TOC entry 5018 (class 2606 OID 124608)
+-- TOC entry 5019 (class 2606 OID 124608)
 -- Name: contest_results contest_results_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
 --
 
@@ -1047,7 +1048,7 @@ ALTER TABLE ONLY public.contest_results
 
 
 --
--- TOC entry 5021 (class 2606 OID 124610)
+-- TOC entry 5022 (class 2606 OID 124610)
 -- Name: contests contests_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
 --
 
@@ -1056,7 +1057,7 @@ ALTER TABLE ONLY public.contests
 
 
 --
--- TOC entry 5023 (class 2606 OID 124612)
+-- TOC entry 5024 (class 2606 OID 124612)
 -- Name: contests contests_public_id_key; Type: CONSTRAINT; Schema: public; Owner: postgres
 --
 
@@ -1065,7 +1066,7 @@ ALTER TABLE ONLY public.contests
 
 
 --
--- TOC entry 5028 (class 2606 OID 124614)
+-- TOC entry 5029 (class 2606 OID 124614)
 -- Name: contests_questions pk_contests_questions; Type: CONSTRAINT; Schema: public; Owner: postgres
 --
 
@@ -1074,7 +1075,7 @@ ALTER TABLE ONLY public.contests_questions
 
 
 --
--- TOC entry 5031 (class 2606 OID 124616)
+-- TOC entry 5032 (class 2606 OID 124616)
 -- Name: q_choice_details q_choice_details_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
 --
 
@@ -1083,7 +1084,7 @@ ALTER TABLE ONLY public.q_choice_details
 
 
 --
--- TOC entry 5061 (class 2606 OID 231297)
+-- TOC entry 5062 (class 2606 OID 231297)
 -- Name: q_coding_details q_coding_details_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
 --
 
@@ -1092,7 +1093,7 @@ ALTER TABLE ONLY public.q_coding_details
 
 
 --
--- TOC entry 5063 (class 2606 OID 231317)
+-- TOC entry 5064 (class 2606 OID 231317)
 -- Name: q_coding_testcases q_coding_testcases_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
 --
 
@@ -1101,7 +1102,7 @@ ALTER TABLE ONLY public.q_coding_testcases
 
 
 --
--- TOC entry 5034 (class 2606 OID 124618)
+-- TOC entry 5035 (class 2606 OID 124618)
 -- Name: q_images q_images_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
 --
 
@@ -1110,7 +1111,7 @@ ALTER TABLE ONLY public.q_images
 
 
 --
--- TOC entry 5036 (class 2606 OID 124620)
+-- TOC entry 5037 (class 2606 OID 124620)
 -- Name: q_shortans_details q_shortans_details_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
 --
 
@@ -1119,7 +1120,7 @@ ALTER TABLE ONLY public.q_shortans_details
 
 
 --
--- TOC entry 5038 (class 2606 OID 124622)
+-- TOC entry 5039 (class 2606 OID 124622)
 -- Name: q_truefalse_details q_truefalse_details_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
 --
 
@@ -1128,7 +1129,7 @@ ALTER TABLE ONLY public.q_truefalse_details
 
 
 --
--- TOC entry 5043 (class 2606 OID 124624)
+-- TOC entry 5044 (class 2606 OID 124624)
 -- Name: questions questions_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
 --
 
@@ -1137,7 +1138,7 @@ ALTER TABLE ONLY public.questions
 
 
 --
--- TOC entry 5045 (class 2606 OID 124626)
+-- TOC entry 5046 (class 2606 OID 124626)
 -- Name: questions questions_public_id_key; Type: CONSTRAINT; Schema: public; Owner: postgres
 --
 
@@ -1146,7 +1147,7 @@ ALTER TABLE ONLY public.questions
 
 
 --
--- TOC entry 5066 (class 2606 OID 231337)
+-- TOC entry 5067 (class 2606 OID 231337)
 -- Name: student_coding_submissions student_coding_submissions_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
 --
 
@@ -1155,7 +1156,7 @@ ALTER TABLE ONLY public.student_coding_submissions
 
 
 --
--- TOC entry 5047 (class 2606 OID 124628)
+-- TOC entry 5048 (class 2606 OID 124628)
 -- Name: student_option_submissions student_option_submissions_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
 --
 
@@ -1164,7 +1165,7 @@ ALTER TABLE ONLY public.student_option_submissions
 
 
 --
--- TOC entry 5055 (class 2606 OID 124630)
+-- TOC entry 5056 (class 2606 OID 124630)
 -- Name: students_classes students_classes_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
 --
 
@@ -1173,7 +1174,7 @@ ALTER TABLE ONLY public.students_classes
 
 
 --
--- TOC entry 5057 (class 2606 OID 124632)
+-- TOC entry 5058 (class 2606 OID 124632)
 -- Name: students_contests students_contests_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
 --
 
@@ -1182,7 +1183,7 @@ ALTER TABLE ONLY public.students_contests
 
 
 --
--- TOC entry 5050 (class 2606 OID 124634)
+-- TOC entry 5051 (class 2606 OID 124634)
 -- Name: students students_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
 --
 
@@ -1191,7 +1192,7 @@ ALTER TABLE ONLY public.students
 
 
 --
--- TOC entry 5059 (class 2606 OID 124636)
+-- TOC entry 5060 (class 2606 OID 124636)
 -- Name: teachers teachers_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
 --
 
@@ -1200,7 +1201,7 @@ ALTER TABLE ONLY public.teachers
 
 
 --
--- TOC entry 5010 (class 1259 OID 214817)
+-- TOC entry 5011 (class 1259 OID 214817)
 -- Name: idx_accounts_email; Type: INDEX; Schema: public; Owner: postgres
 --
 
@@ -1208,7 +1209,7 @@ CREATE UNIQUE INDEX idx_accounts_email ON public.accounts USING btree (email);
 
 
 --
--- TOC entry 5088 (class 1259 OID 239694)
+-- TOC entry 5089 (class 1259 OID 239694)
 -- Name: idx_class_coding_assignments_assignment; Type: INDEX; Schema: public; Owner: postgres
 --
 
@@ -1216,7 +1217,7 @@ CREATE INDEX idx_class_coding_assignments_assignment ON public.class_coding_assi
 
 
 --
--- TOC entry 5085 (class 1259 OID 239693)
+-- TOC entry 5086 (class 1259 OID 239693)
 -- Name: idx_class_contests_contest; Type: INDEX; Schema: public; Owner: postgres
 --
 
@@ -1224,7 +1225,7 @@ CREATE INDEX idx_class_contests_contest ON public.class_contests USING btree (co
 
 
 --
--- TOC entry 5015 (class 1259 OID 214827)
+-- TOC entry 5016 (class 1259 OID 214827)
 -- Name: idx_classes_public_id; Type: INDEX; Schema: public; Owner: postgres
 --
 
@@ -1232,7 +1233,7 @@ CREATE UNIQUE INDEX idx_classes_public_id ON public.classes USING btree (public_
 
 
 --
--- TOC entry 5016 (class 1259 OID 214829)
+-- TOC entry 5017 (class 1259 OID 214829)
 -- Name: idx_classes_teacher_id; Type: INDEX; Schema: public; Owner: postgres
 --
 
@@ -1240,7 +1241,7 @@ CREATE INDEX idx_classes_teacher_id ON public.classes USING btree (teacher_id);
 
 
 --
--- TOC entry 5082 (class 1259 OID 239642)
+-- TOC entry 5083 (class 1259 OID 239642)
 -- Name: idx_coding_assignment_students_student; Type: INDEX; Schema: public; Owner: postgres
 --
 
@@ -1248,7 +1249,7 @@ CREATE INDEX idx_coding_assignment_students_student ON public.coding_assignment_
 
 
 --
--- TOC entry 5074 (class 1259 OID 239641)
+-- TOC entry 5075 (class 1259 OID 239641)
 -- Name: idx_coding_assignments_class; Type: INDEX; Schema: public; Owner: postgres
 --
 
@@ -1256,7 +1257,7 @@ CREATE INDEX idx_coding_assignments_class ON public.coding_assignments USING btr
 
 
 --
--- TOC entry 5075 (class 1259 OID 239640)
+-- TOC entry 5076 (class 1259 OID 239640)
 -- Name: idx_coding_assignments_teacher; Type: INDEX; Schema: public; Owner: postgres
 --
 
@@ -1264,7 +1265,7 @@ CREATE INDEX idx_coding_assignments_teacher ON public.coding_assignments USING b
 
 
 --
--- TOC entry 5064 (class 1259 OID 239643)
+-- TOC entry 5065 (class 1259 OID 239643)
 -- Name: idx_coding_submissions_progress_question; Type: INDEX; Schema: public; Owner: postgres
 --
 
@@ -1272,7 +1273,7 @@ CREATE INDEX idx_coding_submissions_progress_question ON public.student_coding_s
 
 
 --
--- TOC entry 5093 (class 1259 OID 239728)
+-- TOC entry 5094 (class 1259 OID 239728)
 -- Name: idx_coding_testcase_results_submission; Type: INDEX; Schema: public; Owner: postgres
 --
 
@@ -1280,7 +1281,7 @@ CREATE INDEX idx_coding_testcase_results_submission ON public.coding_submission_
 
 
 --
--- TOC entry 5019 (class 1259 OID 214824)
+-- TOC entry 5020 (class 1259 OID 214824)
 -- Name: idx_contest_results_contest_id; Type: INDEX; Schema: public; Owner: postgres
 --
 
@@ -1288,7 +1289,7 @@ CREATE INDEX idx_contest_results_contest_id ON public.contest_results USING btre
 
 
 --
--- TOC entry 5024 (class 1259 OID 214830)
+-- TOC entry 5025 (class 1259 OID 214830)
 -- Name: idx_contests_class_id; Type: INDEX; Schema: public; Owner: postgres
 --
 
@@ -1296,7 +1297,7 @@ CREATE INDEX idx_contests_class_id ON public.contests USING btree (class_id);
 
 
 --
--- TOC entry 5026 (class 1259 OID 214823)
+-- TOC entry 5027 (class 1259 OID 214823)
 -- Name: idx_contests_questions_contest_id; Type: INDEX; Schema: public; Owner: postgres
 --
 
@@ -1304,7 +1305,7 @@ CREATE INDEX idx_contests_questions_contest_id ON public.contests_questions USIN
 
 
 --
--- TOC entry 5025 (class 1259 OID 214822)
+-- TOC entry 5026 (class 1259 OID 214822)
 -- Name: idx_contests_teacher_id; Type: INDEX; Schema: public; Owner: postgres
 --
 
@@ -1312,7 +1313,7 @@ CREATE INDEX idx_contests_teacher_id ON public.contests USING btree (teacher_id)
 
 
 --
--- TOC entry 5029 (class 1259 OID 214820)
+-- TOC entry 5030 (class 1259 OID 214820)
 -- Name: idx_q_choice_details_question_id; Type: INDEX; Schema: public; Owner: postgres
 --
 
@@ -1320,7 +1321,7 @@ CREATE INDEX idx_q_choice_details_question_id ON public.q_choice_details USING b
 
 
 --
--- TOC entry 5032 (class 1259 OID 214821)
+-- TOC entry 5033 (class 1259 OID 214821)
 -- Name: idx_q_images_question_id; Type: INDEX; Schema: public; Owner: postgres
 --
 
@@ -1328,7 +1329,7 @@ CREATE INDEX idx_q_images_question_id ON public.q_images USING btree (question_i
 
 
 --
--- TOC entry 5039 (class 1259 OID 214828)
+-- TOC entry 5040 (class 1259 OID 214828)
 -- Name: idx_questions_dashboard; Type: INDEX; Schema: public; Owner: postgres
 --
 
@@ -1336,7 +1337,7 @@ CREATE INDEX idx_questions_dashboard ON public.questions USING btree (teacher_id
 
 
 --
--- TOC entry 5040 (class 1259 OID 214819)
+-- TOC entry 5041 (class 1259 OID 214819)
 -- Name: idx_questions_parent_id; Type: INDEX; Schema: public; Owner: postgres
 --
 
@@ -1344,7 +1345,7 @@ CREATE INDEX idx_questions_parent_id ON public.questions USING btree (parent_id)
 
 
 --
--- TOC entry 5041 (class 1259 OID 214818)
+-- TOC entry 5042 (class 1259 OID 214818)
 -- Name: idx_questions_search; Type: INDEX; Schema: public; Owner: postgres
 --
 
@@ -1352,7 +1353,7 @@ CREATE INDEX idx_questions_search ON public.questions USING btree (teacher_id, s
 
 
 --
--- TOC entry 5051 (class 1259 OID 214826)
+-- TOC entry 5052 (class 1259 OID 214826)
 -- Name: idx_sc_class_id; Type: INDEX; Schema: public; Owner: postgres
 --
 
@@ -1360,7 +1361,7 @@ CREATE INDEX idx_sc_class_id ON public.students_classes USING btree (class_id);
 
 
 --
--- TOC entry 5052 (class 1259 OID 214825)
+-- TOC entry 5053 (class 1259 OID 214825)
 -- Name: idx_sc_student_id; Type: INDEX; Schema: public; Owner: postgres
 --
 
@@ -1368,7 +1369,7 @@ CREATE INDEX idx_sc_student_id ON public.students_classes USING btree (student_i
 
 
 --
--- TOC entry 5053 (class 1259 OID 214831)
+-- TOC entry 5054 (class 1259 OID 214831)
 -- Name: idx_students_classes_class_id; Type: INDEX; Schema: public; Owner: postgres
 --
 
@@ -1376,7 +1377,7 @@ CREATE INDEX idx_students_classes_class_id ON public.students_classes USING btre
 
 
 --
--- TOC entry 5067 (class 1259 OID 239644)
+-- TOC entry 5068 (class 1259 OID 239644)
 -- Name: uq_coding_submission_attempt; Type: INDEX; Schema: public; Owner: postgres
 --
 
@@ -1384,7 +1385,7 @@ CREATE UNIQUE INDEX uq_coding_submission_attempt ON public.student_coding_submis
 
 
 --
--- TOC entry 5048 (class 1259 OID 239700)
+-- TOC entry 5049 (class 1259 OID 239700)
 -- Name: uq_submission_result_question; Type: INDEX; Schema: public; Owner: postgres
 --
 
@@ -1392,7 +1393,7 @@ CREATE UNIQUE INDEX uq_submission_result_question ON public.student_option_submi
 
 
 --
--- TOC entry 5130 (class 2606 OID 239688)
+-- TOC entry 5131 (class 2606 OID 239688)
 -- Name: class_coding_assignments class_coding_assignments_assigned_by_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
 --
 
@@ -1401,7 +1402,7 @@ ALTER TABLE ONLY public.class_coding_assignments
 
 
 --
--- TOC entry 5131 (class 2606 OID 239683)
+-- TOC entry 5132 (class 2606 OID 239683)
 -- Name: class_coding_assignments class_coding_assignments_assignment_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
 --
 
@@ -1410,7 +1411,7 @@ ALTER TABLE ONLY public.class_coding_assignments
 
 
 --
--- TOC entry 5132 (class 2606 OID 239678)
+-- TOC entry 5133 (class 2606 OID 239678)
 -- Name: class_coding_assignments class_coding_assignments_class_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
 --
 
@@ -1419,7 +1420,7 @@ ALTER TABLE ONLY public.class_coding_assignments
 
 
 --
--- TOC entry 5127 (class 2606 OID 239664)
+-- TOC entry 5128 (class 2606 OID 239664)
 -- Name: class_contests class_contests_assigned_by_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
 --
 
@@ -1428,7 +1429,7 @@ ALTER TABLE ONLY public.class_contests
 
 
 --
--- TOC entry 5128 (class 2606 OID 239654)
+-- TOC entry 5129 (class 2606 OID 239654)
 -- Name: class_contests class_contests_class_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
 --
 
@@ -1437,7 +1438,7 @@ ALTER TABLE ONLY public.class_contests
 
 
 --
--- TOC entry 5129 (class 2606 OID 239659)
+-- TOC entry 5130 (class 2606 OID 239659)
 -- Name: class_contests class_contests_contest_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
 --
 
@@ -1446,7 +1447,7 @@ ALTER TABLE ONLY public.class_contests
 
 
 --
--- TOC entry 5123 (class 2606 OID 239599)
+-- TOC entry 5124 (class 2606 OID 239599)
 -- Name: coding_assignment_questions coding_assignment_questions_assignment_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
 --
 
@@ -1455,7 +1456,7 @@ ALTER TABLE ONLY public.coding_assignment_questions
 
 
 --
--- TOC entry 5124 (class 2606 OID 239604)
+-- TOC entry 5125 (class 2606 OID 239604)
 -- Name: coding_assignment_questions coding_assignment_questions_question_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
 --
 
@@ -1464,7 +1465,7 @@ ALTER TABLE ONLY public.coding_assignment_questions
 
 
 --
--- TOC entry 5125 (class 2606 OID 239625)
+-- TOC entry 5126 (class 2606 OID 239625)
 -- Name: coding_assignment_students coding_assignment_students_assignment_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
 --
 
@@ -1473,7 +1474,7 @@ ALTER TABLE ONLY public.coding_assignment_students
 
 
 --
--- TOC entry 5126 (class 2606 OID 239630)
+-- TOC entry 5127 (class 2606 OID 239630)
 -- Name: coding_assignment_students coding_assignment_students_student_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
 --
 
@@ -1482,7 +1483,7 @@ ALTER TABLE ONLY public.coding_assignment_students
 
 
 --
--- TOC entry 5120 (class 2606 OID 239571)
+-- TOC entry 5121 (class 2606 OID 239571)
 -- Name: coding_assignments coding_assignments_class_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
 --
 
@@ -1491,7 +1492,7 @@ ALTER TABLE ONLY public.coding_assignments
 
 
 --
--- TOC entry 5121 (class 2606 OID 239581)
+-- TOC entry 5122 (class 2606 OID 239581)
 -- Name: coding_assignments coding_assignments_legacy_contest_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
 --
 
@@ -1500,7 +1501,7 @@ ALTER TABLE ONLY public.coding_assignments
 
 
 --
--- TOC entry 5122 (class 2606 OID 239576)
+-- TOC entry 5123 (class 2606 OID 239576)
 -- Name: coding_assignments coding_assignments_teacher_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
 --
 
@@ -1509,7 +1510,7 @@ ALTER TABLE ONLY public.coding_assignments
 
 
 --
--- TOC entry 5133 (class 2606 OID 239718)
+-- TOC entry 5134 (class 2606 OID 239718)
 -- Name: coding_submission_testcase_results coding_submission_testcase_results_submission_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
 --
 
@@ -1518,7 +1519,7 @@ ALTER TABLE ONLY public.coding_submission_testcase_results
 
 
 --
--- TOC entry 5134 (class 2606 OID 239723)
+-- TOC entry 5135 (class 2606 OID 239723)
 -- Name: coding_submission_testcase_results coding_submission_testcase_results_testcase_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
 --
 
@@ -1527,7 +1528,7 @@ ALTER TABLE ONLY public.coding_submission_testcase_results
 
 
 --
--- TOC entry 5097 (class 2606 OID 181032)
+-- TOC entry 5098 (class 2606 OID 181032)
 -- Name: contests contests_fk_teachers; Type: FK CONSTRAINT; Schema: public; Owner: postgres
 --
 
@@ -1536,7 +1537,7 @@ ALTER TABLE ONLY public.contests
 
 
 --
--- TOC entry 5109 (class 2606 OID 124638)
+-- TOC entry 5110 (class 2606 OID 124638)
 -- Name: students fk_account_student; Type: FK CONSTRAINT; Schema: public; Owner: postgres
 --
 
@@ -1545,7 +1546,7 @@ ALTER TABLE ONLY public.students
 
 
 --
--- TOC entry 5114 (class 2606 OID 124643)
+-- TOC entry 5115 (class 2606 OID 124643)
 -- Name: teachers fk_account_teacher; Type: FK CONSTRAINT; Schema: public; Owner: postgres
 --
 
@@ -1554,7 +1555,7 @@ ALTER TABLE ONLY public.teachers
 
 
 --
--- TOC entry 5099 (class 2606 OID 124653)
+-- TOC entry 5100 (class 2606 OID 124653)
 -- Name: contests_questions fk_contests_questions_contests; Type: FK CONSTRAINT; Schema: public; Owner: postgres
 --
 
@@ -1563,7 +1564,7 @@ ALTER TABLE ONLY public.contests_questions
 
 
 --
--- TOC entry 5100 (class 2606 OID 124658)
+-- TOC entry 5101 (class 2606 OID 124658)
 -- Name: contests_questions fk_contests_questions_questions; Type: FK CONSTRAINT; Schema: public; Owner: postgres
 --
 
@@ -1572,7 +1573,7 @@ ALTER TABLE ONLY public.contests_questions
 
 
 --
--- TOC entry 5098 (class 2606 OID 181027)
+-- TOC entry 5099 (class 2606 OID 181027)
 -- Name: contests fk_contests_teacher; Type: FK CONSTRAINT; Schema: public; Owner: postgres
 --
 
@@ -1581,7 +1582,7 @@ ALTER TABLE ONLY public.contests
 
 
 --
--- TOC entry 5105 (class 2606 OID 124663)
+-- TOC entry 5106 (class 2606 OID 124663)
 -- Name: questions fk_parent_question; Type: FK CONSTRAINT; Schema: public; Owner: postgres
 --
 
@@ -1590,7 +1591,7 @@ ALTER TABLE ONLY public.questions
 
 
 --
--- TOC entry 5101 (class 2606 OID 124668)
+-- TOC entry 5102 (class 2606 OID 124668)
 -- Name: q_choice_details fk_question_images; Type: FK CONSTRAINT; Schema: public; Owner: postgres
 --
 
@@ -1599,7 +1600,7 @@ ALTER TABLE ONLY public.q_choice_details
 
 
 --
--- TOC entry 5102 (class 2606 OID 124673)
+-- TOC entry 5103 (class 2606 OID 124673)
 -- Name: q_images fk_question_images; Type: FK CONSTRAINT; Schema: public; Owner: postgres
 --
 
@@ -1608,7 +1609,7 @@ ALTER TABLE ONLY public.q_images
 
 
 --
--- TOC entry 5103 (class 2606 OID 124678)
+-- TOC entry 5104 (class 2606 OID 124678)
 -- Name: q_shortans_details fk_question_images; Type: FK CONSTRAINT; Schema: public; Owner: postgres
 --
 
@@ -1617,7 +1618,7 @@ ALTER TABLE ONLY public.q_shortans_details
 
 
 --
--- TOC entry 5104 (class 2606 OID 124683)
+-- TOC entry 5105 (class 2606 OID 124683)
 -- Name: q_truefalse_details fk_question_images; Type: FK CONSTRAINT; Schema: public; Owner: postgres
 --
 
@@ -1626,7 +1627,7 @@ ALTER TABLE ONLY public.q_truefalse_details
 
 
 --
--- TOC entry 5106 (class 2606 OID 124688)
+-- TOC entry 5107 (class 2606 OID 124688)
 -- Name: questions fk_questions_teacher; Type: FK CONSTRAINT; Schema: public; Owner: postgres
 --
 
@@ -1635,7 +1636,7 @@ ALTER TABLE ONLY public.questions
 
 
 --
--- TOC entry 5107 (class 2606 OID 124693)
+-- TOC entry 5108 (class 2606 OID 124693)
 -- Name: student_option_submissions fk_student_option_submissions_contest_results; Type: FK CONSTRAINT; Schema: public; Owner: postgres
 --
 
@@ -1644,7 +1645,7 @@ ALTER TABLE ONLY public.student_option_submissions
 
 
 --
--- TOC entry 5108 (class 2606 OID 124698)
+-- TOC entry 5109 (class 2606 OID 124698)
 -- Name: student_option_submissions fk_student_option_submissions_questions; Type: FK CONSTRAINT; Schema: public; Owner: postgres
 --
 
@@ -1653,7 +1654,7 @@ ALTER TABLE ONLY public.student_option_submissions
 
 
 --
--- TOC entry 5110 (class 2606 OID 124703)
+-- TOC entry 5111 (class 2606 OID 124703)
 -- Name: students_classes fk_students_classes_classes; Type: FK CONSTRAINT; Schema: public; Owner: postgres
 --
 
@@ -1662,7 +1663,7 @@ ALTER TABLE ONLY public.students_classes
 
 
 --
--- TOC entry 5111 (class 2606 OID 124708)
+-- TOC entry 5112 (class 2606 OID 124708)
 -- Name: students_classes fk_students_classes_students; Type: FK CONSTRAINT; Schema: public; Owner: postgres
 --
 
@@ -1671,7 +1672,7 @@ ALTER TABLE ONLY public.students_classes
 
 
 --
--- TOC entry 5095 (class 2606 OID 124713)
+-- TOC entry 5096 (class 2606 OID 124713)
 -- Name: contest_results fk_students_contests_contests; Type: FK CONSTRAINT; Schema: public; Owner: postgres
 --
 
@@ -1680,7 +1681,7 @@ ALTER TABLE ONLY public.contest_results
 
 
 --
--- TOC entry 5112 (class 2606 OID 124718)
+-- TOC entry 5113 (class 2606 OID 124718)
 -- Name: students_contests fk_students_contests_contests; Type: FK CONSTRAINT; Schema: public; Owner: postgres
 --
 
@@ -1689,7 +1690,7 @@ ALTER TABLE ONLY public.students_contests
 
 
 --
--- TOC entry 5096 (class 2606 OID 124723)
+-- TOC entry 5097 (class 2606 OID 124723)
 -- Name: contest_results fk_students_contests_students; Type: FK CONSTRAINT; Schema: public; Owner: postgres
 --
 
@@ -1698,7 +1699,7 @@ ALTER TABLE ONLY public.contest_results
 
 
 --
--- TOC entry 5113 (class 2606 OID 124728)
+-- TOC entry 5114 (class 2606 OID 124728)
 -- Name: students_contests fk_students_contests_students; Type: FK CONSTRAINT; Schema: public; Owner: postgres
 --
 
@@ -1707,7 +1708,7 @@ ALTER TABLE ONLY public.students_contests
 
 
 --
--- TOC entry 5094 (class 2606 OID 124733)
+-- TOC entry 5095 (class 2606 OID 124733)
 -- Name: classes fk_teacher_classes; Type: FK CONSTRAINT; Schema: public; Owner: postgres
 --
 
@@ -1716,7 +1717,7 @@ ALTER TABLE ONLY public.classes
 
 
 --
--- TOC entry 5115 (class 2606 OID 231298)
+-- TOC entry 5116 (class 2606 OID 231298)
 -- Name: q_coding_details q_coding_details_question_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
 --
 
@@ -1725,7 +1726,7 @@ ALTER TABLE ONLY public.q_coding_details
 
 
 --
--- TOC entry 5116 (class 2606 OID 231318)
+-- TOC entry 5117 (class 2606 OID 231318)
 -- Name: q_coding_testcases q_coding_testcases_question_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
 --
 
@@ -1734,7 +1735,7 @@ ALTER TABLE ONLY public.q_coding_testcases
 
 
 --
--- TOC entry 5117 (class 2606 OID 239635)
+-- TOC entry 5118 (class 2606 OID 239635)
 -- Name: student_coding_submissions student_coding_submissions_assignment_student_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
 --
 
@@ -1743,7 +1744,7 @@ ALTER TABLE ONLY public.student_coding_submissions
 
 
 --
--- TOC entry 5118 (class 2606 OID 231338)
+-- TOC entry 5119 (class 2606 OID 231338)
 -- Name: student_coding_submissions student_coding_submissions_contest_result_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
 --
 
@@ -1752,7 +1753,7 @@ ALTER TABLE ONLY public.student_coding_submissions
 
 
 --
--- TOC entry 5119 (class 2606 OID 231343)
+-- TOC entry 5120 (class 2606 OID 231343)
 -- Name: student_coding_submissions student_coding_submissions_question_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
 --
 
@@ -1760,11 +1761,11 @@ ALTER TABLE ONLY public.student_coding_submissions
     ADD CONSTRAINT student_coding_submissions_question_id_fkey FOREIGN KEY (question_id) REFERENCES public.questions(id) ON DELETE CASCADE;
 
 
--- Completed on 2026-08-05 11:11:44
+-- Completed on 2026-08-05 15:04:25
 
 --
 -- PostgreSQL database dump complete
 --
 
-\unrestrict ewqwwRwELzVBYPpmDWKLh1AKNRHvYHyjTH8TfvAtlTbqHLNhP20ltnPKwQTVCPP
+\unrestrict kZc0G4ajxcDRdtcvJXfAMFQSVc93upn4TBgBao58FtrwFjafuQYUK3jW7dhktIn
 
