@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { useAuth } from "@/lib/auth-context";
 import { useRouter } from "next/navigation";
 import Sidebar from "@/components/Sidebar";
+import useScrollRestoration from "@/lib/useScrollRestoration";
 import api from "@/lib/api";
 import Link from "next/link";
 
@@ -33,6 +34,8 @@ export default function ClassesPage() {
   useEffect(() => {
     if (!isLoading && !user) router.replace("/");
   }, [user, isLoading, router]);
+
+  useScrollRestoration(!loading);
 
   const fetchClasses = () => {
     setLoading(true);
@@ -186,8 +189,8 @@ export default function ClassesPage() {
                       style={{
                         width: 44,
                         height: 44,
-                        background: "rgba(37,91,167,0.08)",
-                        border: "1px solid rgba(37,91,167,0.15)",
+                        background: "rgba(30,63,170,0.08)",
+                        border: "1px solid rgba(30,63,170,0.15)",
                         borderRadius: 12,
                         display: "flex",
                         alignItems: "center",

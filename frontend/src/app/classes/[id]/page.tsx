@@ -1,11 +1,12 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useParams, useRouter } from "next/navigation";
+import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { useAuth } from "@/lib/auth-context";
 import Sidebar from "@/components/Sidebar";
 import api from "@/lib/api";
 import Link from "next/link";
+import useScrollRestoration from "@/lib/useScrollRestoration";
 
 interface Student {
   id: number;
@@ -19,12 +20,39 @@ interface Contest {
   title: string;
   status: string;
   time_limit: number | null;
+  due_at?: string | null;
   assignment_type: "contest" | "coding";
+}
+
+/**
+ * Không có hạn nộp thì coi như không giới hạn thời gian; có hạn nộp thì ghi
+ * thời gian làm bài kèm mốc hết hạn.
+ */
+function scheduleLabel(item: Contest) {
+  if (!item.due_at) return "Không giới hạn thời gian";
+  const due = new Date(item.due_at).toLocaleString("vi-VN", {
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+  const doing = item.time_limit
+    ? `${item.time_limit} phút`
+    : "Không giới hạn thời gian làm bài";
+  return `${doing} · Hạn ${due}`;
 }
 
 interface AvailableAssignment extends Contest {
   assigned: boolean;
 }
+
+/** Trạng thái làm bài lập trình — coding_assignment_students.status */
+const CODING_PROGRESS_LABELS: Record<string, string> = {
+  not_started: "Chưa bắt đầu",
+  in_progress: "Đang làm",
+  completed: "Đã hoàn thành",
+};
 
 interface ClassDetail {
   id: number;
@@ -44,12 +72,17 @@ export default function ClassDetailPage() {
   const { user, isLoading: authLoading } = useAuth();
   const router = useRouter();
   const params = useParams();
+  const searchParams = useSearchParams();
   const classId = Number(params.id);
 
   const [classData, setClassData] = useState<ClassDetail | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
-  const [activeTab, setActiveTab] = useState<Tab>("overview");
+  // Tab nằm trong URL để khi quay lại trang còn đúng tab cũ, thay vì rơi về
+  // Tổng quan.
+  const [activeTab, setActiveTab] = useState<Tab>(
+    (searchParams.get("tab") as Tab) || "overview",
+  );
   const [copied, setCopied] = useState(false);
   const [showAssignmentPicker, setShowAssignmentPicker] = useState(false);
   const [availableAssignments, setAvailableAssignments] = useState<
@@ -61,12 +94,21 @@ export default function ClassDetailPage() {
     string[]
   >([]);
   const [pickerError, setPickerError] = useState("");
+  const [removingKey, setRemovingKey] = useState("");
+  const [submissionModal, setSubmissionModal] = useState<{
+    item: Contest;
+    rows: any[];
+    loading: boolean;
+    error: string;
+  } | null>(null);
 
   useEffect(() => {
     if (!authLoading && !user) {
       router.replace("/");
     }
   }, [user, authLoading, router]);
+
+  useScrollRestoration(!!classData);
 
   const [studentIdentifier, setStudentIdentifier] = useState("");
   const [addStudentLoading, setAddStudentLoading] = useState(false);
@@ -158,6 +200,60 @@ export default function ClassDetailPage() {
     setTimeout(() => setCopied(false), 2000);
   };
 
+  // Gỡ hẳn một đề khỏi lớp: học sinh lớp này không truy cập được nữa, bài đã
+  // nộp vẫn giữ.
+  const removeFromClass = async (item: Contest) => {
+    const isCoding = item.assignment_type === "coding";
+    if (
+      !confirm(
+        `Gỡ "${item.title}" khỏi lớp ${classData?.class_name || "này"}?\n\n` +
+          `Học sinh trong lớp sẽ không còn thấy và không vào làm được ${isCoding ? "bài" : "đề"} này nữa. ` +
+          "Bài đã nộp vẫn giữ nguyên.",
+      )
+    )
+      return;
+    setRemovingKey(`${item.assignment_type}-${item.id}`);
+    try {
+      await api.unassignFromClass(classId, item.assignment_type, item.id);
+      await fetchClassData();
+    } catch (err: any) {
+      setError(err.message || "Không thể gỡ khỏi lớp");
+    } finally {
+      setRemovingKey("");
+    }
+  };
+
+  // Bài làm của riêng lớp này: lọc theo thành viên hiện tại của lớp.
+  const openClassSubmissions = async (item: Contest) => {
+    setSubmissionModal({ item, rows: [], loading: true, error: "" });
+    try {
+      if (item.assignment_type === "coding") {
+        const data: any = await api.getCodingAssignment(item.id, classId);
+        setSubmissionModal({
+          item,
+          rows: data.students || [],
+          loading: false,
+          error: "",
+        });
+      } else {
+        const data: any = await api.getContestSubmissions(item.id, classId);
+        setSubmissionModal({
+          item,
+          rows: data.submissions || [],
+          loading: false,
+          error: "",
+        });
+      }
+    } catch (err: any) {
+      setSubmissionModal({
+        item,
+        rows: [],
+        loading: false,
+        error: err.message || "Không thể tải bài làm",
+      });
+    }
+  };
+
   const openAssignmentPicker = async () => {
     setShowAssignmentPicker(true);
     setSelectedAssignmentKeys([]);
@@ -209,6 +305,27 @@ export default function ClassDetailPage() {
 
   const studentCount = classData?.students?.length || 0;
   const contestCount = classData?.contests?.length || 0;
+
+  // Một học sinh thi nhiều lượt vẫn chỉ là một người đã làm, nên đếm theo
+  // student_id chứ không đếm số bản ghi.
+  const distinctDoerCount = new Set(
+    (submissionModal?.rows || []).map(
+      (row: any) => row.student_id ?? `result-${row.result_id ?? row.id}`,
+    ),
+  ).size;
+
+  // Đề đã có trong lớp thì không chọn được nữa, nên "chọn tất cả" chỉ tính
+  // trên những đề còn lại.
+  const selectableKeys = availableAssignments
+    .filter((item) => !item.assigned)
+    .map((item) => `${item.assignment_type}-${item.id}`);
+  const allSelected =
+    selectableKeys.length > 0 &&
+    selectableKeys.every((key) => selectedAssignmentKeys.includes(key));
+  const toggleAssignmentKey = (key: string, on: boolean) =>
+    setSelectedAssignmentKeys((keys) =>
+      on ? [...new Set([...keys, key])] : keys.filter((x) => x !== key),
+    );
 
   if (authLoading) {
     return (
@@ -409,7 +526,10 @@ export default function ClassDetailPage() {
                 return (
                   <button
                     key={t.key}
-                    onClick={() => setActiveTab(t.key)}
+                    onClick={() => {
+                      setActiveTab(t.key);
+                      router.replace(`?tab=${t.key}`, { scroll: false });
+                    }}
                     style={{
                       background: "none",
                       border: "none",
@@ -482,24 +602,23 @@ export default function ClassDetailPage() {
                     }}
                   >
                     {classData.contests.map((c) => (
-                      <Link
+                      <div
                         key={`${c.assignment_type}-${c.id}`}
-                        href={
-                          c.assignment_type === "coding"
-                            ? `/coding/${c.id}`
-                            : `/contests/${c.id}`
-                        }
-                        style={{ textDecoration: "none" }}
+                        className="card"
+                        style={{
+                          height: "100%",
+                          padding: "1.15rem 1.25rem",
+                          display: "flex",
+                          flexDirection: "column",
+                        }}
                       >
-                        <div
-                          className="card"
-                          style={{
-                            cursor: "pointer",
-                            height: "100%",
-                            padding: "1.15rem 1.25rem",
-                            transition:
-                              "transform .15s ease, box-shadow .15s ease",
-                          }}
+                        <Link
+                          href={
+                            c.assignment_type === "coding"
+                              ? `/coding/${c.id}`
+                              : `/contests/${c.id}`
+                          }
+                          style={{ textDecoration: "none" }}
                         >
                           <h4
                             style={{
@@ -510,44 +629,71 @@ export default function ClassDetailPage() {
                           >
                             {c.title}
                           </h4>
+                        </Link>
+                        <div
+                          style={{
+                            display: "flex",
+                            gap: "0.45rem",
+                            alignItems: "center",
+                            flexWrap: "wrap",
+                            marginBottom: ".65rem",
+                          }}
+                        >
+                          <span
+                            className={`badge ${c.assignment_type === "coding" ? "badge-cd" : ""}`}
+                            style={{ whiteSpace: "nowrap" }}
+                          >
+                            {c.assignment_type === "coding"
+                              ? "Lập trình"
+                              : "Đề thi"}
+                          </span>
+                          <span
+                            className={`badge ${c.status === "published" || c.status === "active" ? "badge-active" : "badge-inactive"}`}
+                            style={{ whiteSpace: "nowrap" }}
+                          >
+                            {c.status === "published" || c.status === "active"
+                              ? "Đang mở"
+                              : "Bản nháp"}
+                          </span>
+                        </div>
+                        <div
+                          style={{
+                            fontSize: ".82rem",
+                            color: "var(--text-secondary)",
+                          }}
+                        >
+                          {scheduleLabel(c)}
+                        </div>
+                        {user?.role === "teacher" && (
                           <div
                             style={{
                               display: "flex",
-                              gap: "0.45rem",
-                              alignItems: "center",
-                              flexWrap: "wrap",
-                              marginBottom: ".65rem",
+                              gap: ".5rem",
+                              marginTop: "auto",
+                              paddingTop: ".8rem",
                             }}
                           >
-                            <span
-                              className={`badge ${c.assignment_type === "coding" ? "badge-cd" : ""}`}
-                              style={{ whiteSpace: "nowrap" }}
+                            <button
+                              className="btn btn-secondary btn-sm"
+                              onClick={() => openClassSubmissions(c)}
                             >
-                              {c.assignment_type === "coding"
-                                ? "Lập trình"
-                                : "Đề thi"}
-                            </span>
-                            <span
-                              className={`badge ${c.status === "published" || c.status === "active" ? "badge-active" : "badge-inactive"}`}
-                              style={{ whiteSpace: "nowrap" }}
+                              Bài làm của lớp
+                            </button>
+                            <button
+                              className="btn btn-ghost btn-sm"
+                              style={{ color: "var(--accent-danger)" }}
+                              disabled={
+                                removingKey === `${c.assignment_type}-${c.id}`
+                              }
+                              onClick={() => removeFromClass(c)}
                             >
-                              {c.status === "published" || c.status === "active"
-                                ? "Đang mở"
-                                : "Bản nháp"}
-                            </span>
+                              {removingKey === `${c.assignment_type}-${c.id}`
+                                ? "Đang gỡ…"
+                                : "Gỡ khỏi lớp"}
+                            </button>
                           </div>
-                          <div
-                            style={{
-                              fontSize: ".82rem",
-                              color: "var(--text-secondary)",
-                            }}
-                          >
-                            {c.time_limit
-                              ? `Có tính giờ · ${c.time_limit} phút`
-                              : "Bài tập · Không giới hạn thời gian"}
-                          </div>
-                        </div>
-                      </Link>
+                        )}
+                      </div>
                     ))}
                   </div>
                 )}
@@ -700,8 +846,8 @@ export default function ClassDetailPage() {
                     <p>Lớp học hiện chưa có học sinh nào tham gia.</p>
                   </div>
                 ) : (
-                  <div className="table-wrap">
-                    <table>
+                  <div style={{ overflowX: "auto" }}>
+                    <table className="problem-table">
                       <thead>
                         <tr>
                           <th>ID</th>
@@ -713,19 +859,15 @@ export default function ClassDetailPage() {
                       <tbody>
                         {classData.students.map((s) => (
                           <tr key={s.id}>
+                            <td style={{ fontFamily: "monospace" }}>{s.id}</td>
                             <td
-                              style={{
-                                fontFamily: "monospace",
-                                color: "var(--text-muted)",
-                              }}
+                              className="col-text"
+                              style={{ fontWeight: 500 }}
                             >
-                              #{s.id}
+                              {s.name}
                             </td>
-                            <td style={{ fontWeight: 500 }}>{s.name}</td>
-                            <td style={{ color: "var(--text-secondary)" }}>
-                              {s.email}
-                            </td>
-                            <td style={{ color: "var(--text-muted)" }}>
+                            <td className="col-text">{s.email}</td>
+                            <td>
                               {new Date(s.joined_at).toLocaleDateString(
                                 "vi-VN",
                                 {
@@ -827,85 +969,105 @@ export default function ClassDetailPage() {
                   <p>Hãy tạo đề thi hoặc bài tập lập trình trước.</p>
                 </div>
               ) : (
-                <div
-                  style={{
-                    display: "grid",
-                    gridTemplateColumns:
-                      "repeat(auto-fill, minmax(320px, 1fr))",
-                    gap: "1rem",
-                  }}
-                >
-                  {availableAssignments.map((item) => {
-                    const key = `${item.assignment_type}-${item.id}`;
-                    return (
-                      <label
-                        className="card"
-                        key={key}
-                        style={{
-                          border: item.assigned
-                            ? "1px solid var(--success)"
-                            : selectedAssignmentKeys.includes(key)
-                              ? "2px solid var(--accent-primary)"
-                              : undefined,
-                          cursor: item.assigned ? "default" : "pointer",
-                        }}
-                      >
-                        <div
-                          style={{
-                            display: "flex",
-                            justifyContent: "space-between",
-                            gap: "1rem",
-                            marginBottom: ".75rem",
-                          }}
-                        >
-                          <div
-                            style={{
-                              display: "flex",
-                              gap: ".65rem",
-                              alignItems: "flex-start",
-                            }}
+                <div style={{ overflowX: "auto" }}>
+                  <table className="problem-table pick-table">
+                    <colgroup>
+                      <col className="pick-col" />
+                      <col style={{ width: "38%" }} />
+                      <col style={{ width: "14%" }} />
+                      <col style={{ width: "16%" }} />
+                      <col style={{ width: "14%" }} />
+                      <col style={{ width: "18%" }} />
+                    </colgroup>
+                    <thead>
+                      <tr>
+                        <th>
+                          <input
+                            type="checkbox"
+                            aria-label="Chọn tất cả"
+                            disabled={!selectableKeys.length}
+                            checked={allSelected}
+                            onChange={(e) =>
+                              setSelectedAssignmentKeys(
+                                e.target.checked ? selectableKeys : [],
+                              )
+                            }
+                          />
+                        </th>
+                        <th>Đề / bài</th>
+                        <th>Loại</th>
+                        <th>Thời lượng</th>
+                        <th>Trạng thái</th>
+                        <th>Trong lớp</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {availableAssignments.map((item) => {
+                        const key = `${item.assignment_type}-${item.id}`;
+                        const selected = selectedAssignmentKeys.includes(key);
+                        return (
+                          <tr
+                            key={key}
+                            className={
+                              item.assigned
+                                ? "is-assigned"
+                                : selected
+                                  ? "is-selected"
+                                  : undefined
+                            }
+                            onClick={() =>
+                              !item.assigned &&
+                              toggleAssignmentKey(key, !selected)
+                            }
                           >
-                            <input
-                              type="checkbox"
-                              disabled={item.assigned}
-                              checked={
-                                item.assigned ||
-                                selectedAssignmentKeys.includes(key)
-                              }
-                              onChange={(e) =>
-                                setSelectedAssignmentKeys((keys) =>
-                                  e.target.checked
-                                    ? [...keys, key]
-                                    : keys.filter((x) => x !== key),
-                                )
-                              }
-                            />
-                            <h4 style={{ margin: 0 }}>{item.title}</h4>
-                          </div>
-                          <span className="badge">
-                            {item.assignment_type === "coding"
-                              ? "Lập trình"
-                              : "Đề thi"}
-                          </span>
-                        </div>
-                        <p
-                          style={{
-                            color: "var(--text-muted)",
-                            marginBottom: "1rem",
-                          }}
-                        >
-                          {item.time_limit
-                            ? `${item.time_limit} phút`
-                            : "Không giới hạn thời gian"}
-                        </p>
-                        {item.assigned && (
-                          <span className="badge badge-active">
-                            Đã có trong lớp
-                          </span>
-                        )}
-                      </label>
-                    );
-                  })}
+                            <td onClick={(e) => e.stopPropagation()}>
+                              <input
+                                type="checkbox"
+                                disabled={item.assigned}
+                                checked={item.assigned || selected}
+                                onChange={(e) =>
+                                  toggleAssignmentKey(key, e.target.checked)
+                                }
+                              />
+                            </td>
+                            <td className="col-text">
+                              <strong>{item.title}</strong>
+                            </td>
+                            <td>
+                              <span
+                                className={`badge ${item.assignment_type === "coding" ? "badge-cd" : "badge-mode"}`}
+                              >
+                                {item.assignment_type === "coding"
+                                  ? "Lập trình"
+                                  : "Đề thi"}
+                              </span>
+                            </td>
+                            <td>
+                              {item.time_limit
+                                ? `${item.time_limit} phút`
+                                : "Không giới hạn"}
+                            </td>
+                            <td>
+                              <span
+                                className={`badge ${item.status === "active" ? "badge-active" : "badge-inactive"}`}
+                              >
+                                {item.status === "active" ? "Đang mở" : "Đóng"}
+                              </span>
+                            </td>
+                            <td>
+                              {item.assigned ? (
+                                <span className="badge badge-active">
+                                  Đã có
+                                </span>
+                              ) : (
+                                "—"
+                              )}
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
                 </div>
               )}
             </div>
@@ -926,6 +1088,201 @@ export default function ClassDetailPage() {
               >
                 {assigningKey ? "Đang thêm…" : "Thêm vào lớp"}
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Bài làm của riêng lớp này */}
+      {submissionModal && (
+        <div
+          style={{
+            position: "fixed",
+            inset: 0,
+            zIndex: 1200,
+            background: "rgba(15,23,42,.58)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            padding: "2.5vh",
+          }}
+          onMouseDown={(e) => {
+            if (e.target === e.currentTarget) setSubmissionModal(null);
+          }}
+        >
+          <div
+            className="card modal-wide-responsive"
+            style={{
+              width: "90vw",
+              maxWidth: 1100,
+              maxHeight: "90vh",
+              display: "flex",
+              flexDirection: "column",
+              padding: 0,
+              overflow: "hidden",
+            }}
+          >
+            <div
+              style={{
+                padding: "1.25rem 1.5rem",
+                borderBottom: "1px solid var(--border)",
+                display: "flex",
+                justifyContent: "space-between",
+                alignItems: "flex-start",
+              }}
+            >
+              <div>
+                <h2 style={{ margin: 0, fontSize: "1.1rem" }}>
+                  Bài làm của lớp · {submissionModal.item.title}
+                </h2>
+                <p className="page-sub" style={{ margin: ".25rem 0 0" }}>
+                  {classData?.class_name} · {distinctDoerCount}/{studentCount}{" "}
+                  học sinh đã làm
+                  {submissionModal.item.assignment_type !== "coding" &&
+                  submissionModal.rows.length !== distinctDoerCount
+                    ? ` · ${submissionModal.rows.length} lượt thi`
+                    : ""}
+                </p>
+              </div>
+              <button
+                className="btn btn-ghost btn-sm"
+                onClick={() => setSubmissionModal(null)}
+              >
+                Đóng
+              </button>
+            </div>
+            <div
+              style={{ padding: "1.25rem 1.5rem", overflowY: "auto", flex: 1 }}
+            >
+              {submissionModal.error ? (
+                <div className="alert alert-error">{submissionModal.error}</div>
+              ) : submissionModal.loading ? (
+                <div className="spinner" style={{ margin: "3rem auto" }} />
+              ) : submissionModal.rows.length === 0 ? (
+                <div className="empty-state">
+                  <p>Chưa có học sinh nào trong lớp làm bài này.</p>
+                </div>
+              ) : submissionModal.item.assignment_type === "coding" ? (
+                <div style={{ overflowX: "auto" }}>
+                  <table className="problem-table people-table">
+                    <colgroup>
+                      <col style={{ width: "34%" }} />
+                      <col style={{ width: "15%" }} />
+                      <col style={{ width: "18%" }} />
+                      <col style={{ width: "18%" }} />
+                      <col style={{ width: "15%" }} />
+                    </colgroup>
+                    <thead>
+                      <tr>
+                        <th>Học sinh</th>
+                        <th>Trạng thái</th>
+                        <th>Lượt nộp</th>
+                        <th>Lần nộp cuối</th>
+                        <th>Thao tác</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {submissionModal.rows.map((s: any) => (
+                        <tr key={s.id}>
+                          <td className="col-text">
+                            <strong>{s.student_name}</strong>
+                            <span className="cell-sub">{s.email}</span>
+                          </td>
+                          <td>
+                            {s.has_late_submission ? (
+                              <span className="badge badge-late">Nộp muộn</span>
+                            ) : (
+                              <span
+                                className={`badge ${s.status === "completed" ? "badge-active" : "badge-inactive"}`}
+                              >
+                                {CODING_PROGRESS_LABELS[s.status] || s.status}
+                              </span>
+                            )}
+                          </td>
+                          <td>{s.submission_count}</td>
+                          <td>
+                            {s.last_submission_at
+                              ? new Date(s.last_submission_at).toLocaleString(
+                                  "vi-VN",
+                                )
+                              : "—"}
+                          </td>
+                          <td>
+                            <Link
+                              href={`/coding/${submissionModal.item.id}`}
+                              className="btn btn-secondary btn-sm"
+                            >
+                              Chi tiết
+                            </Link>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              ) : (
+                <div style={{ overflowX: "auto" }}>
+                  <table className="problem-table people-table">
+                    <colgroup>
+                      <col style={{ width: "34%" }} />
+                      <col style={{ width: "15%" }} />
+                      <col style={{ width: "18%" }} />
+                      <col style={{ width: "18%" }} />
+                      <col style={{ width: "15%" }} />
+                    </colgroup>
+                    <thead>
+                      <tr>
+                        <th>Thí sinh</th>
+                        <th>Trạng thái</th>
+                        <th>Thời gian nộp</th>
+                        <th>Điểm số</th>
+                        <th>Thao tác</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {submissionModal.rows.map((sub: any) => (
+                        <tr key={sub.result_id}>
+                          <td className="col-text">
+                            <strong>{sub.student_name}</strong>
+                            <span className="cell-sub">
+                              {sub.student_email || "Thí sinh tự do"}
+                            </span>
+                          </td>
+                          <td>
+                            {!sub.end_time ? (
+                              <span className="badge badge-inactive">
+                                Đang làm
+                              </span>
+                            ) : sub.submitted_late ? (
+                              <span className="badge badge-late">Nộp muộn</span>
+                            ) : (
+                              <span className="badge badge-active">Đã nộp</span>
+                            )}
+                          </td>
+                          <td>
+                            {sub.end_time
+                              ? new Date(sub.end_time).toLocaleString("vi-VN")
+                              : "—"}
+                          </td>
+                          <td className="cell-score">
+                            {sub.total_score != null
+                              ? Number(sub.total_score).toFixed(2)
+                              : "—"}
+                          </td>
+                          <td>
+                            <Link
+                              href={`/results/${sub.result_id}`}
+                              className="btn btn-secondary btn-sm"
+                            >
+                              Chi tiết
+                            </Link>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
             </div>
           </div>
         </div>
