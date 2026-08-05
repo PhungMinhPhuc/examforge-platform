@@ -69,6 +69,11 @@ database_question_dataset/
      DB_PASSWORD=xxxxxx
      DB_HOST=localhost
      DB_PORT=5432
+     SECRET_KEY=your-super-secret-jwt-key
+     ALGORITHM=xxxxxx
+     ACCESS_TOKEN_EXPIRE_MINUTES=xxxxxx
+     IMG_STORAGE_PATH=xxxxxx
+     FRONTEND_URL=xxxxxx
      ```
 3. **Cài đặt thư viện Python (API & Engine):**
    ```bash
