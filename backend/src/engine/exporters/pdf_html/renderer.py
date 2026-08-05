@@ -1,6 +1,6 @@
 """
 HTML + MathJax 3 (CHTML) + Playwright PDF Export
-=============================================
+
 Render đề thi thành HTML:
 - MathJax 3 CHTML: Render LaTeX toán học dưới dạng HTML/CSS (chữ thực tế, không phải ảnh SVG)
   (không bị lỗi đè nét căn \\sqrt{}, đè dòng phân số \\frac{}{}, chữ nghiêng/đứng chuẩn xác)
@@ -18,9 +18,7 @@ from typing import List, Dict, Any
 from ..common import resolve_image_file
 
 
-# ═══════════════════════════════════════════════════════════════════════════════
 # Image helpers
-# ═══════════════════════════════════════════════════════════════════════════════
 
 def _img_to_data_uri(path: str) -> str:
     """Convert local image file to base64 data URI."""
@@ -137,9 +135,7 @@ def _convert_tabular_to_html(text: str) -> str:
     return table_re.sub(repl, text)
 
 
-# ═══════════════════════════════════════════════════════════════════════════════
 # LaTeX → HTML conversion
-# ═══════════════════════════════════════════════════════════════════════════════
 
 def _latex_to_html(text: str, images: list = None) -> str:
     """Convert LaTeX-flavored markdown to HTML with MathJax syntax."""
@@ -147,7 +143,7 @@ def _latex_to_html(text: str, images: list = None) -> str:
         return ""
     images = images or []
 
-    # ── 1. Protect math blocks ───────────────────────────────────────────────
+    # 1. Protect math blocks
     math_blocks: list[str] = []
     math_inline: list[bool] = []
 
@@ -167,7 +163,7 @@ def _latex_to_html(text: str, images: list = None) -> str:
     # Convert before generic row-break handling consumes LaTeX's \\.
     text = _convert_tabular_to_html(text)
 
-    # ── 2. Convert images to base64 ──────────────────────────────────────────
+    # 2. Convert images to base64
     def _replace_img(m):
         data_uri, scale, w, h = _resolve_image(m.group(1), images)
         if data_uri:
@@ -178,11 +174,11 @@ def _latex_to_html(text: str, images: list = None) -> str:
 
     text = re.sub(r'!\[.*?\]\((.*?)\)', _replace_img, text)
 
-    # ── 3. Line breaks: \\ → <br> (outside math) ────────────────────────────
+    # 3. Line breaks: \\ → <br> (outside math)
     text = re.sub(r'\\\\', '<br>', text)
     text = text.replace('\\newline', '<br>')
 
-    # ── 4. LaTeX text commands ───────────────────────────────────────────────
+    # 4. LaTeX text commands
     text = re.sub(r'\\textbf\{([^}]*)\}', r'<strong>\1</strong>', text)
     text = re.sub(r'\\textit\{([^}]*)\}', r'<em>\1</em>', text)
     text = re.sub(r'\\underline\{([^}]*)\}', r'<u>\1</u>', text)
@@ -194,7 +190,7 @@ def _latex_to_html(text: str, images: list = None) -> str:
     text = re.sub(r'\n[ \t\r]*\n(?:[ \t\r]*\n)*', '</p><p>', text)
     text = text.replace('\n', '<br>')
 
-    # ── 5. Restore math delimiters for MathJax ──────────────────────────────
+    # 5. Restore math delimiters for MathJax
     for i in range(len(math_blocks) - 1, -1, -1):
         block = math_blocks[i]
         is_inline = math_inline[i]
@@ -228,9 +224,7 @@ def _latex_to_html(text: str, images: list = None) -> str:
     return text
 
 
-# ═══════════════════════════════════════════════════════════════════════════════
 # Question renderers
-# ═══════════════════════════════════════════════════════════════════════════════
 
 def _extract_wrap_images(q: dict) -> tuple[str, str]:
     """Extract images for immini (wrap) layout → (text_html, img_html)."""
@@ -379,9 +373,7 @@ def _render_single_question(q: dict, counter: int, include_solution: bool, show_
     return '\n'.join(parts)
 
 
-# ═══════════════════════════════════════════════════════════════════════════════
 # Full exam renderer
-# ═══════════════════════════════════════════════════════════════════════════════
 
 def render_exam_html(
     contest: dict,
@@ -606,9 +598,7 @@ document.addEventListener("DOMContentLoaded", function() {{
 </html>"""
 
 
-# ═══════════════════════════════════════════════════════════════════════════════
 # CSS
-# ═══════════════════════════════════════════════════════════════════════════════
 
 def _get_css(font_family: str = "'Times New Roman', 'Tinos', serif", math_font: str = "") -> str:
     # Với Temml, không cần CSS ép font toán vì Temml-Local.css đã tự dùng Cambria Math.
@@ -699,7 +689,7 @@ math mtext {
 .latex-table { border-collapse: collapse; width: auto; max-width: 100%; font-size: 0.95em; }
 .latex-table td { border: 1px solid #000; padding: 4px 7px; text-align: center; vertical-align: middle; }
 
-/* ── Wrap text (immini layout) ── */
+/* Wrap text (immini layout) */
 .immini::after {
     content: "";
     display: table;
@@ -759,9 +749,7 @@ math mtext {
     return css
 
 
-# ═══════════════════════════════════════════════════════════════════════════════
 # Measure heights via Playwright
-# ═══════════════════════════════════════════════════════════════════════════════
 
 async def measure_unit_heights_html_async(html_content: str) -> dict:
     from playwright.async_api import async_playwright
@@ -895,9 +883,7 @@ def measure_unit_heights_html_sync(html_content: str) -> dict:
     return asyncio.run(measure_unit_heights_html_async(html_content))
 
 
-# ═══════════════════════════════════════════════════════════════════════════════
 # PDF export via Playwright
-# ═══════════════════════════════════════════════════════════════════════════════
 
 async def html_to_pdf(html_content: str, output_path: str, code: str = "000",
                       html_output_path: str = None):

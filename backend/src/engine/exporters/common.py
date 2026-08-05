@@ -105,7 +105,7 @@ def get_svg_native_width_inches(filepath: str, default_inches: float = 2.6) -> f
         pass
     return default_inches
 
-# ── Kích thước trang/chữ (pt) — A4 12pt, geometry top=1.2 bottom=2 left=1.5 right=1.2
+# Kích thước trang/chữ (pt) — A4 12pt, geometry top=1.2 bottom=2 left=1.5 right=1.2
 LINE_PT = 16.5            # chiều cao 1 dòng (12pt × setstretch ~1.18)
 TEXTWIDTH_PT = 520.0      # 18.3cm bề ngang chữ
 CHARS_PER_LINE = 88

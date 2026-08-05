@@ -242,7 +242,7 @@ def _render_answer_key_body(contest: dict, questions: List[dict], exam_title: st
                 return chr(65 + idx)
         return ''
 
-    # ── Phần trắc nghiệm khách quan ──
+    # Phần trắc nghiệm khách quan
     if has_oe:
         points_A = len(mc_list) * w['mc'] + len(tf_list) * w['tf'] + len(sa_list) * w['sa']
         lines.append(f"\\textbf{{PHẦN TRẮC NGHIỆM: {_fmt_points(points_A)} điểm}}\n\n")
@@ -295,12 +295,12 @@ def _render_answer_key_body(contest: dict, questions: List[dict], exam_title: st
             lines.append('Đáp án & ' + ' & '.join(ans) + ' \\\\\n\\hline\n')
         lines.append('\\end{tabular}\n\n')
 
-    # ── Phần tự luận (ghi tổng điểm; lời giải nằm ở mục Lời giải chi tiết bên dưới) ──
+    # Phần tự luận (ghi tổng điểm; lời giải nằm ở mục Lời giải chi tiết bên dưới)
     if has_oe:
         points_B = len(oe_list) * w['oe']
         lines.append(f"\\textbf{{PHẦN TỰ LUẬN: {_fmt_points(points_B)} điểm}}\n\n")
 
-    # ── Lời giải chi tiết toàn bộ câu hỏi (nằm bên dưới bảng đáp án) ──
+    # Lời giải chi tiết toàn bộ câu hỏi (nằm bên dưới bảng đáp án)
     lines.append("~\n\n")  # 1 dòng trống ngăn cách với bảng đáp án phía trên
     lines.append("[CENTER]\\textbf{LỜI GIẢI CHI TIẾT}\n\n")
     lines += _render_word_question_body(contest, questions, include_solution=True)
