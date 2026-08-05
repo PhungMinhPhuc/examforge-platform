@@ -8,6 +8,69 @@ from typing import List, Dict, Any
 import xml.etree.ElementTree as ET
 
 
+def get_image_storage_root() -> str:
+    """Return the absolute image-storage directory independently of cwd.
+
+    Production may override it with IMG_STORAGE_PATH.  The local fallback is
+    resolved from this source file to the repository root, never from the
+    process working directory.
+    """
+    configured = os.getenv("IMG_STORAGE_PATH")
+    if configured:
+        return os.path.abspath(os.path.expanduser(configured))
+    project_root = os.path.abspath(
+        os.path.join(os.path.dirname(__file__), "..", "..", "..", "..")
+    )
+    return os.path.join(project_root, "storage")
+
+
+def resolve_image_file(url: str, images: list | None = None) -> tuple[str, dict | None]:
+    """Resolve an image URL/DB path to a local file and matching metadata.
+
+    Supports absolute paths stored by older imports, relative DB paths and
+    public ``/static/images/...`` URLs. Existing metadata paths take priority.
+    """
+    import urllib.parse
+
+    storage_root = get_image_storage_root()
+    clean_url = urllib.parse.unquote(str(url or '')).split('?', 1)[0]
+    normalized_url = clean_url.replace('\\', '/')
+    if '/static/images/' in normalized_url:
+        relative_url = normalized_url.split('/static/images/', 1)[1]
+    else:
+        relative_url = normalized_url.lstrip('/')
+    relative_url = os.path.normpath(relative_url)
+    if relative_url == '..' or relative_url.startswith('..' + os.sep):
+        relative_url = os.path.basename(relative_url)
+
+    target_name = os.path.basename(relative_url).lower()
+    matched = None
+    candidates: list[str] = []
+    for image in images or []:
+        stored = str(image.get('storage_path') or '').split('?', 1)[0]
+        stored_normalized = stored.replace('\\', '/')
+        if target_name and os.path.basename(stored_normalized).lower() != target_name:
+            continue
+        matched = image
+        if os.path.isabs(stored):
+            candidates.append(stored)
+        elif '/static/images/' in stored_normalized:
+            candidates.append(os.path.join(storage_root, stored_normalized.split('/static/images/', 1)[1]))
+        elif stored:
+            candidates.append(os.path.join(storage_root, stored.lstrip('/\\')))
+        break
+
+    candidates.extend([
+        os.path.join(storage_root, relative_url),
+        os.path.join(storage_root, os.path.basename(relative_url)),
+    ])
+    for candidate in candidates:
+        absolute = os.path.abspath(candidate)
+        if os.path.exists(absolute):
+            return absolute.replace('\\', '/'), matched
+    return os.path.abspath(candidates[0]).replace('\\', '/'), matched
+
+
 
 def fix_soft_newlines(text: str) -> str:
     if not text: return text
@@ -98,18 +161,9 @@ def _image_height_pt(img: dict) -> float:
         sc = float(img.get('img_scale') or 0.4)
     except (TypeError, ValueError):
         sc = 0.4
-    sp = os.getenv("IMG_STORAGE_PATH", "./storage")
     storage_path = img.get('storage_path', '') or ''
-    candidates = []
-    if storage_path:
-        rel = storage_path.split('/static/images/')[-1].split('?')[0]
-        candidates.append(os.path.join(sp, rel))
-        candidates.append(os.path.join(sp, os.path.basename(rel)))
-    size = None
-    for c in candidates:
-        size = _read_image_size_px(c)
-        if size:
-            break
+    resolved_path, _ = resolve_image_file(storage_path, [img])
+    size = _read_image_size_px(resolved_path)
     if not size:
         # Không đọc được file: ước lượng thô theo scale (hơi cao cho an toàn)
         return 120.0 + sc * 260.0
@@ -198,9 +252,28 @@ def _pack_with_count(shuffled_questions: List[dict], heights: dict = None, page_
 
     def unit_height(u: List[dict]) -> float:
         if heights:
-            hh = heights.get(u[0].get('id'))
-            if hh is not None:
-                return hh + 1.6 * LINE_PT  # cộng khoảng cách giữa các câu
+            is_html = '__PAGE__' in heights
+            if is_html:
+                # HTML: đo rời rạc từng câu (câu dẫn riêng, câu hỏi con riêng)
+                total_h = 0.0
+                all_found = True
+                for q in u:
+                    q_id = q.get('id')
+                    hh = heights.get(q_id) if heights.get(q_id) is not None else heights.get(str(q_id))
+                    if hh is not None:
+                        # Bộ đo HTML đã trả cả margin thực từ computed style.
+                        total_h += hh
+                    else:
+                        all_found = False
+                        break
+                if all_found:
+                    return total_h
+            else:
+                # LaTeX: đo dính chùm toàn bộ khối (lưu dưới id câu dẫn đầu tiên)
+                q_id = u[0].get('id')
+                hh = heights.get(q_id) if heights.get(q_id) is not None else heights.get(str(q_id))
+                if hh is not None:
+                    return hh + (1.6 * LINE_PT)
         return _estimate_unit_height(u)
 
     def eff_type(u: List[dict]) -> str:
@@ -224,37 +297,115 @@ def _pack_with_count(shuffled_questions: List[dict], heights: dict = None, page_
             continue
         # tiêu đề PHẦN (chiều cao đo thật theo từng phần)
         PART = part_height(t)
-        if page_cap - used < PART:
-            pages += 1; used = 0.0; page_cap = page_capacity
-        used += PART
+        
         def movable(u):
             return u[0].get('is_shufflable', True)
 
         rem = [[u, unit_height(u)] for u in gus]
-        # FFD chỉ sắp khi KHÔNG có câu cố định (để câu is_shufflable=False giữ nguyên vị trí)
-        if ffd and all(movable(u) for u, _h in rem):
-            rem.sort(key=lambda x: -x[1])
+
+        def best_page_subset(items, capacity):
+            """Chọn tổ hợp lấp trang tốt nhất (subset-sum theo 0.5px).
+
+            Sắp giảm dần rồi xuất tuần tự chỉ là Next-Fit-Decreasing, không phải
+            First-Fit-Decreasing và có thể tốn thêm một trang.  DP này chọn cả
+            tổ hợp câu cho trang hiện tại, sau đó mới chuyển sang trang kế.
+            """
+            scale = 2
+            cap = max(0, int(capacity * scale + 1e-6))
+            states = {0: ()}
+            for i, (_u, h) in enumerate(items):
+                weight = max(1, int(h * scale + 0.999999))
+                additions = {}
+                for used_w, chosen in tuple(states.items()):
+                    new_w = used_w + weight
+                    if new_w <= cap and new_w not in states:
+                        additions[new_w] = chosen + (i,)
+                states.update(additions)
+            return states[max(states)] if states else ()
+            
+        if page_cap - used < PART:
+            pages += 1; used = 0.0; page_cap = page_capacity
+        used += PART
         while rem:
+            # Với toàn bộ câu có thể đảo, chọn nguyên một tổ hợp tốt nhất cho
+            # phần trống còn lại. Đây mới là nhánh dùng để tính min_pages.
+            if ffd and all(movable(u) for u, _h in rem):
+                chosen = best_page_subset(rem, page_cap - used)
+                if chosen:
+                    chosen_set = set(chosen)
+                    selected = [item for i, item in enumerate(rem) if i in chosen_set]
+                    rem = [item for i, item in enumerate(rem) if i not in chosen_set]
+                    for u, h in selected:
+                        result.extend(u)
+                        used += h
+                    continue
+                # Một câu cao hơn cả trang: vẫn đặt nó để trình phân trang xử
+                # lý, tránh lặp vô hạn trong trường hợp dữ liệu bất thường.
+                if used == 0.0 and rem:
+                    u, h = rem.pop(0)
+                    result.extend(u)
+                    used = h
+                    continue
+                pages += 1; used = 0.0; page_cap = page_capacity
+                continue
+
             u0, h0 = rem[0]
-            if h0 <= page_cap - used:
-                rem.pop(0); result.extend(u0); used += h0
+            
+            # Tính chiều cao phần không thể chia tách (Bây giờ chỉ là Câu dẫn độc lập)
+            def get_indivisible_h(u):
+                return unit_height([u[0]])
+
+            def simulate_flow(u, start_used, cap):
+                # Mô phỏng việc Paged.js ngắt trang cho cụm u
+                p = 0
+                usd = start_used
+                i = 0
+                while i < len(u):
+                    h = unit_height([u[i]])
+                    if h > cap - usd:
+                        p += 1; usd = h; cap = page_capacity
+                    else:
+                        usd += h
+                    i += 1
+                return p, usd, cap
+
+            h_indiv = get_indivisible_h(u0)
+            
+            if h_indiv <= page_cap - used:
+                # Đủ chỗ cho phần không thể tách -> Nhét luôn cụm này (nó có thể tràn sang trang sau một cách tự nhiên)
+                rem.pop(0)
+                result.extend(u0)
+                added_pages, used, page_cap = simulate_flow(u0, used, page_cap)
+                pages += added_pages
             elif not movable(u0):
                 # câu cố định không vừa -> sang trang, đặt nó (không được dời)
                 pages += 1; used = 0.0; page_cap = page_capacity
-                rem.pop(0); result.extend(u0); used += h0
+                rem.pop(0)
+                result.extend(u0)
+                added_pages, used, page_cap = simulate_flow(u0, used, page_cap)
+                pages += added_pages
             else:
-                # câu được phép đảo: tìm câu MOVABLE phía sau (không vượt câu cố định) vừa để lấp
+                # Tìm câu MOVABLE phía sau (không vượt câu cố định) có phần indivisible lấp vừa
                 idx = None
                 for i, (u, h) in enumerate(rem):
                     if not movable(u):
                         break
-                    if h <= page_cap - used:
+                    if get_indivisible_h(u) <= page_cap - used:
                         idx = i; break
+                
                 if idx is None:
+                    # Không có câu nào vừa -> qua trang mới
                     pages += 1; used = 0.0; page_cap = page_capacity
-                    rem.pop(0); result.extend(u0); used += h0
+                    rem.pop(0)
+                    result.extend(u0)
+                    added_pages, used, page_cap = simulate_flow(u0, used, page_cap)
+                    pages += added_pages
                 else:
-                    u, h = rem.pop(idx); result.extend(u); used += h
+                    u, h = rem.pop(idx)
+                    result.extend(u)
+                    added_pages, used, page_cap = simulate_flow(u, used, page_cap)
+                    pages += added_pages
+                    
     return result, pages
 
 
@@ -264,8 +415,14 @@ def reorder_for_packing(shuffled_questions: List[dict], page_capacity: float = 7
 
 
 def min_pages(questions: List[dict], heights: dict = None) -> int:
-    """Số trang TỐI THIỂU (target) cho bộ câu — xếp tối ưu FFD."""
-    return _pack_with_count(questions, heights, ffd=True)[1]
+    """Số trang TỐI THIỂU (target) cho bộ câu — thử đảo ngẫu nhiên nhiều lần để tìm ra mốc nhỏ nhất."""
+    best_pages = _pack_with_count(questions, heights, ffd=True)[1]
+    for _ in range(50):
+        sq = _do_shuffle(questions)
+        pages = _pack_with_count(sq, heights)[1]
+        if pages < best_pages:
+            best_pages = pages
+    return best_pages
 
 
 def _build_answer_key(shuffled_questions: List[dict]) -> dict:
@@ -373,7 +530,7 @@ def _do_shuffle(questions: List[dict], shuffle_order: bool = True, shuffle_optio
     return shuffled_questions
 
 
-def shuffle_contest(questions: List[dict], pack: bool = False, heights: dict = None, target_pages: int = None, max_tries: int = 60, shuffle_order: bool = True, shuffle_options: bool = True) -> tuple[List[dict], dict]:
+def shuffle_contest(questions: List[dict], pack: bool = False, heights: dict = None, target_pages: int = None, max_tries: int = 300, shuffle_order: bool = True, shuffle_options: bool = True) -> tuple[List[dict], dict]:
     """Đảo đề. Nếu pack=True: xếp câu lấp đầy trang + đồng bộ số trang.
 
     shuffle_order/shuffle_options: chế độ đảo (xem _do_shuffle).
@@ -465,3 +622,26 @@ def balance_latex_braces(text: str) -> str:
         res.append('}')
         depth -= 1
     return "".join(res)
+
+
+def sanitize_general_info_for_pandoc(text: str) -> str:
+    """Sanitize general_info LaTeX so Pandoc can parse it without errors.
+
+    Pandoc's LaTeX reader chokes on certain constructs commonly found in
+    Vietnamese exam general_info strings (e.g. ``{,}`` decimal commas,
+    ``\\,`` thin spaces, ``\\mathrm``).  This function normalises them to
+    Pandoc-safe equivalents that preserve visual appearance in Word output.
+    """
+    if not text:
+        return text
+    # 1. Fix bare ^\circ -> ^{\circ}
+    text = text.replace(r'^\circ', r'^{\circ}')
+    # 2. Replace {,} (Vietnamese decimal comma) -> plain comma
+    text = text.replace('{,}', ',')
+    # 3. Replace \, (thin space) -> ~ (non-breaking space, Pandoc-safe)
+    text = text.replace(r'\,', '~')
+    # 4. Replace \mathrm{...} -> \text{...} (Pandoc handles \text better)
+    text = re.sub(r'\\mathrm\{([^}]*)\}', r'\\text{\1}', text)
+
+    return text
+
