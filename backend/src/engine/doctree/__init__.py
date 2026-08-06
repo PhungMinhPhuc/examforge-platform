@@ -44,6 +44,7 @@ from .schema import check_layout_consistency, validate
 from .write.docx import to_docx
 from .write.html import doc_to_html, to_html
 from .write.tex import doc_to_tex, to_tex
+from .write.text import doc_to_text
 
 __all__ = [
     # lược đồ
@@ -52,5 +53,5 @@ __all__ = [
     "read_tex_block", "read_tex_file", "read_field", "read_docx",
     "split_questions", "UnknownCommand", "BadSource",
     # ghi
-    "to_tex", "doc_to_tex", "to_html", "doc_to_html", "to_docx",
+    "to_tex", "doc_to_tex", "to_html", "doc_to_html", "to_docx", "doc_to_text",
 ]

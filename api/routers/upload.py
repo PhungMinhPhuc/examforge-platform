@@ -2,6 +2,8 @@ import os
 import sys
 import json
 import uuid
+
+from psycopg2.extras import Json
 import shutil
 import zipfile
 import tempfile
@@ -27,7 +29,7 @@ IMG_STORAGE_PATH = os.getenv("IMG_STORAGE_PATH", _default_storage)
 
 router = APIRouter(prefix="/upload", tags=["Upload"])
 
-# ── In-memory job store ───────────────────────────────────────────────────────
+# In-memory job store
 # { job_id: { status, progress, total, result, error } }
 _jobs: dict[str, dict] = {}
 _jobs_lock = threading.Lock()
@@ -42,7 +44,7 @@ def _progress_cb(job_id: str, done: int, total: int):
     _set_job(job_id, progress=done, total=total)
 
 
-# ── Background worker ─────────────────────────────────────────────────────────
+# Background worker
 
 def _run_job(job_id: str, file_path: str, job_dir: str,
              teacher_id: int, subject: str, grade: str,
@@ -51,8 +53,7 @@ def _run_job(job_id: str, file_path: str, job_dir: str,
     try:
         # Imports are inside the try so a missing module sets status="error"
         # instead of silently killing the thread and leaving status="processing".
-        from parsers.logic_manager import run_parser
-        from parsers.parse_docx import convert_docx_to_tex
+        from doctree.importer import import_docx, import_tex
 
         fname = os.path.basename(file_path)
 
@@ -70,27 +71,23 @@ def _run_job(job_id: str, file_path: str, job_dir: str,
             img_dir = IMG_STORAGE_PATH
 
         elif fname.endswith(".docx"):
-            media_dir = os.path.join(job_dir, "media")
-            os.makedirs(media_dir, exist_ok=True)
-
-            final_tex = convert_docx_to_tex(
-                file_path, media_dir,
-                progress_cb=lambda d, t: _progress_cb(job_id, d, t),
+            # Đọc thẳng .docx, không đi vòng qua pandoc nữa: bảng giữ được là
+            # bảng, công thức Word giữ được là công thức.
+            results = import_docx(
+                file_path, teacher_id, subject, grade,
+                chapter, lesson, complexity, IMG_STORAGE_PATH,
             )
-            # Images must go into IMG_STORAGE_PATH so the static file server
-            # can find them at /static/images/...  Using media_dir (a temp
-            # folder) caused 404s because the URL mapping always references
-            # IMG_STORAGE_PATH.
-            img_dir = IMG_STORAGE_PATH
+            final_tex = None
 
         else:  # .tex or .txt
             final_tex = file_path
             img_dir = IMG_STORAGE_PATH
 
-        results = run_parser(
-            final_tex, teacher_id, subject, grade,
-            chapter, lesson, complexity, img_dir,
-        )
+        if final_tex is not None:
+            results = import_tex(
+                final_tex, teacher_id, subject, grade,
+                chapter, lesson, complexity, img_dir,
+            )
 
         # Rewrite image storage paths to relative URLs
         for item in results:
@@ -116,7 +113,7 @@ def _run_job(job_id: str, file_path: str, job_dir: str,
         shutil.rmtree(job_dir, ignore_errors=True)
 
 
-# ── Endpoints ─────────────────────────────────────────────────────────────────
+# Endpoints
 
 @router.post("/tex")
 async def upload_tex(
@@ -222,7 +219,16 @@ async def get_job_status(
     return response
 
 
-# ── Confirm (unchanged) ───────────────────────────────────────────────────────
+# Confirm (unchanged)
+
+def _doc(value):
+    """Bọc cây tài liệu cho cột jsonb.
+
+    psycopg2 không tự biết một `dict` là jsonb, phải nói bằng `Json()`. Giá trị
+    `None` để nguyên, vì cột cho phép NULL (câu không có lời giải chẳng hạn).
+    """
+    return Json(value) if isinstance(value, (dict, list)) else value
+
 
 def _persist_questions(cur, data, teacher_id, grade, subject) -> list[int]:
     """Insert reviewed questions (and their images/details) into the DB.
@@ -255,7 +261,7 @@ def _persist_questions(cur, data, teacher_id, grade, subject) -> list[int]:
                 q["teacher_id"], q.get("public_id") or str(uuid.uuid4()),
                 q["subject"], q["grade"], internal_parent_id,
                 q.get("question_type"), q.get("layout_type"),
-                q.get("content"), q.get("solution"),
+                _doc(q.get("content")), _doc(q.get("solution")),
                 q.get("chapter", ""), q.get("lesson", ""),
                 q.get("complexity", 1), q.get("is_shufflable", True),
             ),
@@ -267,9 +273,9 @@ def _persist_questions(cur, data, teacher_id, grade, subject) -> list[int]:
 
         for img in item.get("table_images", []):
             cur.execute(
-                "INSERT INTO q_images (question_id, storage_path, img_type, img_scale, raw_code) VALUES (%s,%s,%s,%s,%s)",
+                "INSERT INTO q_images (question_id, storage_path, img_type, width, raw_code) VALUES (%s,%s,%s,%s,%s)",
                 (new_id, img.get("storage_path"), img.get("img_type"),
-                 img.get("img_scale"), img.get("raw_code")),
+                 img.get("width"), img.get("raw_code")),
             )
 
         details = item.get("table_details", {})
@@ -280,15 +286,15 @@ def _persist_questions(cur, data, teacher_id, grade, subject) -> list[int]:
             for idx, rec in enumerate(records):
                 cur.execute(
                     "INSERT INTO q_choice_details (question_id, content, is_correct, order_index, is_shufflable) VALUES (%s,%s,%s,%s,%s)",
-                    (new_id, rec["content"], rec.get("is_correct", False),
+                    (new_id, _doc(rec["content"]), rec.get("is_correct", False),
                      rec.get("order_index", idx), rec.get("is_shufflable", True)),
                 )
         elif target == "q_truefalse_details":
             for idx, rec in enumerate(records):
                 cur.execute(
                     "INSERT INTO q_truefalse_details (question_id, content, is_correct, explaination, order_index, is_shufflable) VALUES (%s,%s,%s,%s,%s,%s)",
-                    (new_id, rec["content"], rec.get("is_correct", False),
-                     rec.get("explaination") or rec.get("explanation"),
+                    (new_id, _doc(rec["content"]), rec.get("is_correct", False),
+                     _doc(rec.get("explaination") or rec.get("explanation")),
                      rec.get("order_index", idx), rec.get("is_shufflable", True)),
                 )
         elif target == "q_shortans_details":
@@ -298,6 +304,11 @@ def _persist_questions(cur, data, teacher_id, grade, subject) -> list[int]:
                     (new_id, rec["content"]),
                 )
 
+    if created_ids:
+        cur.execute(
+            "UPDATE teachers SET question_count=question_count+%s WHERE id=%s",
+            (len(created_ids), teacher_id),
+        )
     return created_ids
 
 
@@ -320,6 +331,9 @@ def confirm_as_contest(body: UploadAsContestRequest,
     Per the current decision the imported questions are always saved to the bank
     (no hidden/exam-only flag yet); the contest simply references them in order.
     """
+    if any((item.get("table_question") or {}).get("question_type") == "cd" for item in body.data):
+        raise HTTPException(400, "Câu lập trình phải được lưu vào ngân hàng rồi giao bằng module Bài tập lập trình")
+
     with get_cursor() as (cur, conn):
         ids = _persist_questions(cur, body.data, current_user["user_id"], body.grade, body.subject)
         if not ids:
@@ -338,12 +352,24 @@ def confirm_as_contest(body: UploadAsContestRequest,
         )
         contest = cur.fetchone()
         contest_id = contest["id"]
+        if body.class_id is not None:
+            cur.execute(
+                "INSERT INTO class_contests(class_id,contest_id,assigned_by) VALUES (%s,%s,%s) ON CONFLICT DO NOTHING",
+                (body.class_id, contest_id, current_user["user_id"]),
+            )
+            if cur.rowcount:
+                cur.execute("UPDATE classes SET contest_count=contest_count+1 WHERE id=%s", (body.class_id,))
 
         for order, q_id in enumerate(ids, 1):
             cur.execute(
                 "INSERT INTO contests_questions (contest_id, question_id, original_order, point_weight) VALUES (%s,%s,%s,%s)",
                 (contest_id, q_id, order, 1.0),
             )
+        question_count = sum(
+            (item.get("table_question") or {}).get("question_type") != "st"
+            for item in body.data
+        )
+        cur.execute("UPDATE contests SET question_count=%s WHERE id=%s", (question_count, contest_id))
         conn.commit()
 
     return {

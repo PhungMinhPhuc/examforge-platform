@@ -222,8 +222,16 @@ def read_docx(path, media_dir=None, figs=None, with_mathtype=True):
 # -------------------------------------------------------- tách thành câu ---
 
 RE_CAU = re.compile(r"^\s*(?:Câu|Bài)\s*(\d+)\s*[:.)]", re.I)
-# Phương án: "A." đầu dòng, hoặc "B." sau khoảng trắng khi cả bốn chung một đoạn.
+# "PHẦN I/II/III" — đề chuẩn hóa đánh SỐ CÂU LẠI TỪ 1 ở mỗi phần, nên không biết
+# đang ở phần nào thì không tra được bảng đáp án.
+RE_PHAN = re.compile(r"^\s*PHẦN\s+(I{1,3})\b", re.I)
+# Sau vạch "HẾT" là bảng đáp án, không còn câu nào. `read_answer_tables()` đã
+# đọc mấy bảng đó rồi; đọc lại ở đây sẽ đẻ ra câu ma.
+RE_HET = re.compile(r"^[\s\-–—]*HẾT[\s\-–—]*$", re.I)
+# Phương án trắc nghiệm "A." và mệnh đề đúng/sai "a)" — hai lối viết khác nhau,
+# và cùng một đoạn có thể chứa cả bốn hoặc chỉ một.
 RE_OPT = re.compile(r"(?:(?<=^)|(?<=\s))([A-D])[.)]\s")
+RE_OPT_TF = re.compile(r"(?:(?<=^)|(?<=\s))([a-d])\)\s")
 
 
 def plain(nodes):
@@ -267,15 +275,16 @@ def strip_edges(nodes):
     return [n for n in ns if n["type"] != "text" or n["text"]]
 
 
-def split_options(block):
+def split_options(block, tf=False):
     """Đoạn chứa phương án -> [{key, content}]. None nếu không phải.
 
     Đề Word có hai kiểu, file mẫu có cả hai: bốn phương án chung một đoạn
     ("A. … B. … C. … D. …"), hoặc mỗi phương án một đoạn riêng.
+    `tf=True` thì tìm mệnh đề đúng/sai "a) … b) …" thay cho "A. … B. …".
     """
     nodes = block.get("content", [])
     text, span = plain(nodes)
-    hits = list(RE_OPT.finditer(text))
+    hits = list((RE_OPT_TF if tf else RE_OPT).finditer(text))
     if not hits or hits[0].start() > 2:
         return None
 
@@ -305,38 +314,57 @@ def strip_prefix(block, n):
 def split_questions(tree):
     """Cắt cây của cả file thành từng câu.
 
-    Hai tín hiệu, theo thứ tự tin cậy:
+    Ba tín hiệu, theo thứ tự tin cậy:
       1. `_num` — Word đánh số tự động. Chắc, vì nằm trong cấu trúc file.
-      2. Chữ "Câu n" đầu đoạn — chỉ dùng khi file không đánh số tự động.
+      2. Chữ "Câu n" đầu đoạn — dùng khi file không đánh số tự động.
+      3. "PHẦN I/II/III" — **không** phải câu, mà là mốc đổi phần. Cần nó vì đề
+         chuẩn hóa đánh số câu **lại từ 1** ở mỗi phần, nên chỉ số câu thôi thì
+         không tra được bảng đáp án.
 
-    Đây vẫn là phần **đoán**, khác hẳn `.tex` có `\\begin{ex}` rõ ràng. Tách
+    Đây vẫn là phần **đoán**, khác hẳn `.tex` có `\begin{ex}` rõ ràng. Tách
     xong phải cho người xem lại trước khi lưu.
     """
     blocks = tree["content"]
     by_num = any("_num" in b for b in blocks)
 
-    qs, cur = [], None
+    qs, cur, phan = [], None, "I"
     for raw in blocks:
         b = {k: v for k, v in raw.items() if k != "_num"}
+        text = plain(b.get("content", []))[0] if b["type"] == "paragraph" else ""
+
+        if RE_HET.match(text.strip()):
+            break
+
+        mp = RE_PHAN.match(text)
+        if mp:
+            if cur:                     # đóng nốt câu cuối của phần trước
+                qs.append(cur)
+                cur = None
+            phan = mp.group(1).upper()
+            continue
 
         if by_num:
-            head = "_num" in raw
+            head, so = "_num" in raw, None
         else:
-            m = (RE_CAU.match(plain(b.get("content", []))[0])
-                 if b["type"] == "paragraph" else None)
+            m = RE_CAU.match(text)
             head = bool(m)
+            so = int(m.group(1)) if m else None
             if m:
                 b = strip_prefix(b, m.end()) or {"type": "paragraph", "content": []}
 
         if head:
             if cur:
                 qs.append(cur)
-            cur = {"so": len(qs) + 1, "content": [b], "options": []}
+            cur = {"so": so if so is not None else len(qs) + 1,
+                   "phan": phan, "content": [b], "options": []}
             continue
         if cur is None:
             continue
 
-        opts = split_options(b) if b["type"] == "paragraph" else None
+        # Phần II là câu đúng/sai, mệnh đề viết "a) …"; phần khác là "A. …"
+        opts = None
+        if b["type"] == "paragraph":
+            opts = split_options(b, tf=(phan == "II")) or split_options(b)
         if opts:
             cur["options"] += opts
         else:

@@ -26,7 +26,7 @@ if ENGINE_PATH not in sys.path:
     sys.path.insert(0, ENGINE_PATH)
 
 from ai.ai_engine import call_ai_normalization, normalize_pages_parallel, call_ai_chat
-from parsers.parse_docx import convert_docx_to_tex
+from doctree import doc_to_text, read_docx
 
 load_dotenv(dotenv_path=os.path.join(os.path.dirname(__file__), "..", ".env"))
 
@@ -76,7 +76,7 @@ def _rewrite_figure_paths(latex: str, fig_map: dict) -> str:
         return m.group(0)
     return _INCLUDEGRAPHICS_RE.sub(repl, latex)
 
-# ── Async job store ───────────────────────────────────────────────────────────
+# Async job store
 # Normalizing a multi-page PDF (YOLO layout + several Gemini calls) can take tens of
 # seconds, which would time out a synchronous request. So the work runs in a daemon
 # thread and the client polls GET /ai/normalize/job/{job_id} for progress + result.
@@ -114,10 +114,10 @@ def _process_normalize(raw_files, text, api_key, model, report, ai_provider='gem
                 with open(docx_path, "wb") as out_f:
                     out_f.write(contents)
 
-                tex_path = convert_docx_to_tex(docx_path, media_dir)
-
-                with open(tex_path, "r", encoding="utf-8") as tex_f:
-                    final_text += "\n" + tex_f.read()
+                # Đọc thẳng .docx: AI chỉ cần chữ, mà đi qua pandoc thì chữ dính
+                # đầy \textbackslash, \{ \} và \pandocbounded{...}.
+                tree, _figs = read_docx(docx_path, media_dir=media_dir)
+                final_text += "\n" + doc_to_text(tree)
 
                 persist_dir = os.path.join(AI_FIGURE_DIR, uuid.uuid4().hex)
                 os.makedirs(persist_dir, exist_ok=True)

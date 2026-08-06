@@ -114,6 +114,11 @@ def extract_figures(text, figs):
         return keep(figs.add("graphic", storage_path=m.group(2), width=width))
 
     text = re.sub(r"\\includegraphics(\[[^\]]*\])?\{([^}]*)\}", on_graphic, text)
+
+    # Thẻ `![](url)` do `utils/parse_visuals.py` đặt vào sau khi đã dựng TikZ ra
+    # `.svg` và cất ảnh vào `storage/`. Tra ngược `url` ra hình đã có trong kho.
+    text = re.sub(r"!\[[^\]]*\]\(([^)]+)\)",
+                  lambda m: keep(figs.id_of(m.group(1))), text)
     return text, holes
 
 
