@@ -17,7 +17,7 @@ import threading
 import traceback
 from dotenv import load_dotenv
 
-# The engine modules use top-level imports (e.g. `from utils...`, `from parsers...`),
+# The engine modules use top-level imports (e.g. `from utils...`, `from doctree...`),
 # so the engine root must be on sys.path — mirror the scheme used by upload.py.
 # Importing via `backend.src.engine...` instead breaks those internal imports
 # (ModuleNotFoundError: No module named 'utils') and surfaces as a "normalization error".
