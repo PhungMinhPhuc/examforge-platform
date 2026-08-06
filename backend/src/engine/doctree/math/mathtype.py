@@ -7,14 +7,16 @@ Chặng đầu phải chạy bằng Ruby: phần đọc định dạng MTEF nằ
 chưa có bản Python nào. Đây là **phụ thuộc tạm** — khi nào rảnh thì chuyển phần
 đọc nhị phân sang Python, còn bộ XSLT vốn là XSLT 1.0 nên `lxml` chạy được.
 
-Cần có sẵn trên máy chủ:
+Mã Ruby và bộ XSLT đã **chép hẳn vào `vendor/`** (giấy phép MIT, xem
+`vendor/LICENSE.txt`), nên không phải clone repo ngoài. Chỉ còn hai gem là phụ
+thuộc hệ thống, vì chúng có phần biên dịch sẵn:
 
     gem install mathtype nokogiri
-    git clone https://github.com/jure/mathtype_to_mathml
 
-rồi trỏ biến môi trường `MATHTYPE_GEM_PATH` vào thư mục `lib` của repo đó.
-Thiếu bất cứ thứ gì thì `convert_docx_equations()` trả về `{}` và bộ đọc `.docx`
-lui về giữ công thức dưới dạng ảnh, đúng như đường cũ — mất chữ nhưng không vỡ.
+Thiếu Ruby hoặc thiếu gem thì `convert_docx_equations()` trả về `{}`, và bộ đọc
+`.docx` lui về giữ công thức dưới dạng ảnh đúng như đường cũ — mất chữ nhưng
+không vỡ. Đặt `MATHTYPE_GEM_PATH` nếu muốn dùng một bản `mathtype_to_mathml`
+khác thay cho bản trong `vendor/`.
 """
 import json
 import os
@@ -26,7 +28,8 @@ import zipfile
 from .mathml import mathml_to_tex
 
 HERE = os.path.dirname(os.path.abspath(__file__))
-RUBY_SCRIPT = os.path.join(HERE, "mathtype_to_mathml.rb")
+RUBY_SCRIPT = os.path.join(HERE, "mathtype.rb")
+VENDOR = os.path.join(HERE, "vendor")
 
 _warned = set()
 
@@ -37,14 +40,18 @@ def _warn_once(msg):
         print(f"[mathtype] {msg}")
 
 
+def gem_path():
+    """Thư mục chứa `mathtype_to_mathml.rb` — bản vendor, trừ khi có biến môi trường."""
+    return os.getenv("MATHTYPE_GEM_PATH") or VENDOR
+
+
 def available():
     """Đủ điều kiện chạy chặng Ruby chưa?"""
     if not shutil.which("ruby"):
         _warn_once("không tìm thấy ruby trong PATH — công thức MathType sẽ giữ dạng ảnh")
         return False
-    gem = os.getenv("MATHTYPE_GEM_PATH", "")
-    if not gem or not os.path.isdir(gem):
-        _warn_once("chưa đặt MATHTYPE_GEM_PATH — công thức MathType sẽ giữ dạng ảnh")
+    if not os.path.isfile(os.path.join(gem_path(), "mathtype_to_mathml.rb")):
+        _warn_once(f"không thấy mathtype_to_mathml.rb trong {gem_path()}")
         return False
     return True
 
@@ -74,7 +81,7 @@ def convert_docx_equations(docx_path, timeout=600):
             r = subprocess.run(
                 ["ruby", RUBY_SCRIPT, tmp.replace("\\", "/"),
                  out_json.replace("\\", "/")],
-                env={**os.environ, "MATHTYPE_GEM_PATH": os.getenv("MATHTYPE_GEM_PATH", "")},
+                env={**os.environ, "MATHTYPE_GEM_PATH": gem_path().replace("\\", "/")},
                 capture_output=True, text=True, timeout=timeout)
             if r.returncode != 0 or not os.path.exists(out_json):
                 _warn_once(f"chặng Ruby lỗi: {(r.stderr or '')[-200:]}")

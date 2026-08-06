@@ -79,7 +79,7 @@ def block_tex(nodes, figures=None, indent=""):
     return "\n\n".join(out)
 
 
-def doc_to_latex(doc, figures=None):
+def doc_to_tex(doc, figures=None):
     """Chỉ ruột một trường, chưa bọc `\\immini` — dùng khi cần chuỗi trần."""
     return block_tex(doc.get("content", []), figures)
 
@@ -151,7 +151,7 @@ def question_tex(rec, figures=None):
     return "\n".join(ln.rstrip() for ln in lines)
 
 
-def to_latex(recs, figures=None):
+def to_tex(recs, figures=None):
     """Một câu hoặc một chùm câu -> khối `\\begin{ex}`.
 
     Chùm câu (`\\sochc`) là **một** khối `ex` chứa câu cha và các câu con, nên

@@ -14,8 +14,8 @@ import zipfile
 from xml.etree import ElementTree as ET
 
 from ..figures import FigureStore
-from . import mathtype
-from .omml import omml_to_tex
+from ..math import mathtype
+from ..math.omml import omml_to_tex
 
 NS = {
     "w": "http://schemas.openxmlformats.org/wordprocessingml/2006/main",

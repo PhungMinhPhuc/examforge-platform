@@ -23,9 +23,9 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, os.path.dirname(HERE))
 
 from doctree import validate                       # noqa: E402
-from doctree.readers import tex as R               # noqa: E402
+from doctree.read import tex as R               # noqa: E402
 from doctree.schema import check_layout_consistency  # noqa: E402
-from doctree.writers import latex as W             # noqa: E402
+from doctree.write import tex as W             # noqa: E402
 
 DEFAULT_DIR = os.path.join(HERE, "..", "..", "..", "..", "Sample")
 
@@ -89,7 +89,7 @@ def run(folder):
             stats["khớp cột"] += 1
 
             try:
-                tex2 = W.to_latex(group, figs.by_id())
+                tex2 = W.to_tex(group, figs.by_id())
                 inner = R.RE_EX.findall(tex2)
                 if not inner:
                     raise ValueError("bộ ghi không sinh ra \\begin{ex}")
