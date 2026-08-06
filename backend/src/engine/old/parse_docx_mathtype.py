@@ -23,7 +23,7 @@ _WMF_ALDUS_MAGIC = 0x9AC6CDD7
 _RENDER_DPI = 200   # fast render; sufficient for visual inspection
 
 
-# ── Pandoc image-reference patterns ───────────────────────────────────────────
+# Pandoc image-reference patterns
 
 _IMG_PANDOCBOUNDED = re.compile(
     r'\\pandocbounded\{\\includegraphics\[keepaspectratio\]\{([^}]+\.(?:wmf|emf))\}\}'
@@ -49,7 +49,7 @@ def has_mathtype_equations(docx_path: str) -> bool:
         return False
 
 
-# ── WMF renderer ──────────────────────────────────────────────────────────────
+# WMF renderer
 
 def render_wmf_to_pil(wmf_bytes: bytes, dpi: int = _RENDER_DPI) -> Image.Image:
     """Render a Placeable WMF to a padded white PIL Image."""
@@ -85,7 +85,7 @@ def render_emf_to_pil(emf_bytes: bytes, dpi: int = _RENDER_DPI) -> Image.Image:
         out.paste(img, (p, p))
         return out
 
-    # ── wand (ImageMagick Python bindings) ────────────────────────────────────
+    # wand (ImageMagick Python bindings)
     try:
         from wand.image import Image as _WandImage
         from wand.color import Color as _WandColor
@@ -98,7 +98,7 @@ def render_emf_to_pil(emf_bytes: bytes, dpi: int = _RENDER_DPI) -> Image.Image:
     except Exception:
         pass
 
-    # ── magick subprocess with explicit timeout ───────────────────────────────
+    # magick subprocess with explicit timeout
     tmp_emf = tmp_png = None
     try:
         with tempfile.NamedTemporaryFile(suffix='.emf', delete=False) as f:
@@ -125,7 +125,7 @@ def render_emf_to_pil(emf_bytes: bytes, dpi: int = _RENDER_DPI) -> Image.Image:
     raise ValueError("EMF rendering failed: install wand or ImageMagick (magick)")
 
 
-# ── Main conversion entry point ───────────────────────────────────────────────
+# Main conversion entry point
 
 def replace_wmf_with_latex(content: str, media_dir: str,
                             progress_cb=None) -> str:

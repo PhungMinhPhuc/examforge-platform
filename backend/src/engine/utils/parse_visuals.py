@@ -181,12 +181,12 @@ def parse_visuals(block, source_file_path, target_dir, question_public_id):
                 converted = False
                 try:
                     if file_extension.lower() == '.emf':
-                        from parse_docx_mathtype import render_emf_to_pil
+                        from utils.wmf_render import render_emf_to_pil
                         with open(actual_src, 'rb') as _f:
                             _data = _f.read()
                         render_emf_to_pil(_data).save(png_path)
                     else:
-                        from parse_docx_mathtype import render_wmf_to_pil
+                        from utils.wmf_render import render_wmf_to_pil
                         with open(actual_src, 'rb') as _f:
                             _data = _f.read()
                         render_wmf_to_pil(_data).save(png_path)

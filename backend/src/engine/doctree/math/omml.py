@@ -7,7 +7,7 @@ thức ở hai dạng:
     File mẫu `01. ĐỀ 001...docx` có 525 công thức loại này.
   * **MathType OLE** (`oleObject*.bin`) — dạng cũ, là đối tượng nhị phân đóng
     kín. Không dịch được; đường hiện tại chỉ dựng nó thành ảnh WMF
-    (`parse_docx_mathtype.py`). Bộ đọc này giữ nguyên cách đó, đánh dấu là hình.
+    (`utils/wmf_render.py`). Xem `mathtype.py` cho đường dịch thẳng sang TeX.
 
 Cách làm: đi đệ quy theo cây OMML. Mỗi phần tử `m:*` là một cấu trúc toán đã rõ
 nghĩa, nên dịch thẳng, không phải đoán như khi bóc chuỗi LaTeX.
