@@ -2,7 +2,7 @@
 -- PostgreSQL database dump
 --
 
-\restrict lBFuBeD61QK6eMuFuVfPI2yUeZuqNW456dbjEwBORvLhB6p952uId4b0fkM2Ak6
+\restrict 5hxn45kwvZHgTWZLuDm4bpXM71T5YRqFNIyEOgeUTZO7WKovSIM1RzKQVw8hZcm
 
 -- Dumped from database version 18.3
 -- Dumped by pg_dump version 18.3
@@ -425,10 +425,10 @@ CREATE TABLE public.q_images (
     question_id bigint,
     storage_path text,
     img_type character varying,
-    width numeric(4,3) DEFAULT 0.45,
+    width numeric(4,3),
     raw_code text,
     CONSTRAINT q_images_type CHECK (((img_type)::text = ANY ((ARRAY['tikz'::character varying, 'graphic'::character varying])::text[]))),
-    CONSTRAINT q_images_width_range CHECK (((width IS NULL) OR ((width > (0)::numeric) AND (width <= (1)::numeric))))
+    CONSTRAINT q_images_width_range CHECK (((width IS NULL) OR ((width > (0)::numeric) AND (width <= (3)::numeric))))
 );
 
 
@@ -1533,5 +1533,5 @@ ALTER TABLE ONLY public.student_coding_submissions
 -- PostgreSQL database dump complete
 --
 
-\unrestrict lBFuBeD61QK6eMuFuVfPI2yUeZuqNW456dbjEwBORvLhB6p952uId4b0fkM2Ak6
+\unrestrict 5hxn45kwvZHgTWZLuDm4bpXM71T5YRqFNIyEOgeUTZO7WKovSIM1RzKQVw8hZcm
 
