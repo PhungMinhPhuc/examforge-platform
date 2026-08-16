@@ -41,7 +41,7 @@ RESPONSE_SCHEMA = {
     "required": ["questions"]
 }
 
-# ── System prompt ─────────────────────────────────────────────────────────────
+# System prompt
 # Loaded from prompts/latex_rules.txt so the rules can be edited without touching
 # code. Falls back to a minimal inline rule if the file is missing.
 _PROMPT_PATH = Path(__file__).resolve().parent / "prompts" / "latex_rules.txt"

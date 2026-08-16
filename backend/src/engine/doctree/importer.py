@@ -21,7 +21,7 @@ from utils.utils import replace_math_macros
 
 from .figures import FigureStore
 from .read.tex import RE_EX, RE_SOCHC, read_tex_block
-from .write.text import doc_to_text
+from .write.text import doc_to_text, normalize_short_answer
 
 DETAILS_TABLE = {
     "mc": "q_choice_details",
@@ -84,7 +84,11 @@ def _question_record(rec, figs, ctx, public_id, parent_public_id=None):
 
     used = _figure_ids(rec)
     images = [
-        {"storage_path": r["storage_path"], "img_type": r["img_type"],
+        # "id" ở đây là id TẠM của FigureStore (bắt đầu từ 1 mỗi lần đọc), khác
+        # với id thật Postgres cấp sau khi INSERT. Giữ lại để nơi ghi vào CSDL
+        # ánh xạ ngược lại và sửa `figure_id` trong cây — xem
+        # doctree.adapt.remap_figure_ids().
+        {"id": r["id"], "storage_path": r["storage_path"], "img_type": r["img_type"],
          "width": r["width"], "raw_code": r["raw_code"]}
         for r in figs.rows if r["id"] in used
     ]
@@ -95,7 +99,7 @@ def _question_record(rec, figs, ctx, public_id, parent_public_id=None):
         if rec["question_type"] == "sa":
             # q_shortans_details.content vẫn là `text` — đáp án ngắn là số thuần,
             # không có đoạn, bảng hay ảnh để mà cần cây.
-            row["content"] = doc_to_text(o["content_doc"])
+            row["content"] = normalize_short_answer(doc_to_text(o["content_doc"]))
         else:
             row["content"] = o["content_doc"]
             row["is_correct"] = o["is_correct"]
@@ -116,13 +120,15 @@ def _figure_ids(rec, node=None, acc=None):
     acc = set() if acc is None else acc
     if node is None:
         for tree in [rec["content_doc"], rec["solution_doc"]] + \
-                    [o["content_doc"] for o in rec["options"]]:
+                    [o["content_doc"] for o in rec["options"]] + \
+                    [o["explaination_doc"] for o in rec["options"]
+                     if o.get("explaination_doc")]:
             _figure_ids(rec, tree, acc)
         return acc
     if isinstance(node, dict):
         if node.get("type") in ("image", "image_inline"):
             acc.add(node["figure_id"])
-        for k in ("content", "items", "rows"):
+        for k in ("content", "items", "rows", "columns"):
             for c in node.get(k, []) or []:
                 _figure_ids(rec, c, acc)
     elif isinstance(node, list):
@@ -225,18 +231,6 @@ def import_tex(file_path, teacher_id, subject, grade, chapter, lesson,
 
     content = clean_source(read_source(file_path))
     blocks = RE_EX.findall(content)
-
-    # Khởi tạo mô hình OCR ở luồng chính trước khi chia luồng — khởi tạo PyTorch
-    # bên trong ThreadPoolExecutor thì bị treo.
-    try:
-        import cv2
-        import torch
-        torch.set_num_threads(1)
-        cv2.setNumThreads(0)
-        from utils.parse_visuals import init_latex_ocr
-        init_latex_ocr()
-    except Exception:
-        pass
 
     out = []
     with concurrent.futures.ThreadPoolExecutor(max_workers=max_workers) as pool:

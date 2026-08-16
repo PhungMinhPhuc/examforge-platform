@@ -32,9 +32,10 @@ KNOWN = {
     "textbf", "textit", "underline", "hline", "item", "itemize", "enumerate",
     "tabular", "multicolumn", "includegraphics", "tikzpicture", "linewidth",
     # trình bày thuần — cố ý bỏ, xem "CSDL không chứa mẹo căn dòng"
-    "vspace", "hspace", "centering", "noindent", "center", "pandocbounded",
+    "vspace", "hspace", "centering", "raggedleft", "raggedright", "noindent", "center", "pandocbounded",
     "textcolor", "smallskip", "medskip", "bigskip", "par",
     "table", "multicols", "columnbreak",
+    "minipage",
 }
 
 
@@ -107,7 +108,7 @@ def extract_figures(text, figs):
                   text, flags=re.S)
 
     def on_graphic(m):
-        width = 0.45
+        width = None
         ms = re.search(r"width\s*=\s*([\d.]+)\\linewidth", m.group(1) or "")
         if ms:
             width = float(ms.group(1))
@@ -227,17 +228,176 @@ def parse_tabular(body, math, holes):
     return node
 
 
+ENV_TOKEN_RE = re.compile(
+    r"\\(?P<action>begin|end)\{(?P<kind>tabular|itemize|enumerate|minipage)\}"
+)
+
+
+def _top_level_items(body):
+    """Tách `\\item` ở đúng cấp của list hiện tại.
+
+    Regex `re.split(r"\\item")` cũ tách luôn item của list con, làm sót
+    nguyên văn `\\begin{itemize}`/`\\end{itemize}` vào node text. Scanner này
+    theo dõi stack môi trường nên chỉ nhận `\\item` khi stack đang rỗng.
+    """
+    token_re = re.compile(
+        r"\\(?:(?P<action>begin|end)\{(?P<kind>tabular|itemize|enumerate)\}|(?P<item>item)\b)"
+    )
+    stack = []
+    starts = []
+    for m in token_re.finditer(body):
+        if m.group("item"):
+            if not stack:
+                starts.append((m.start(), m.end()))
+            continue
+        if m.group("action") == "begin":
+            stack.append(m.group("kind"))
+        elif stack and stack[-1] == m.group("kind"):
+            stack.pop()
+    items = []
+    for i, (_start, end) in enumerate(starts):
+        stop = starts[i + 1][0] if i + 1 < len(starts) else len(body)
+        item = body[end:stop].strip()
+        if item:
+            items.append(item)
+    return items
+
+
 def parse_list(body, ordered, math, holes):
-    items = [x.strip() for x in re.split(r"\\item\b", body) if x.strip()]
+    items = _top_level_items(body)
     return {
         "type": "list",
         "ordered": ordered,
-        "items": [[{"type": "paragraph", "content": inline_nodes(it, math, holes)}]
-                  for it in items],
+        "items": [_parse_blocks(it, math, holes) for it in items],
     }
 
 
-RE_BLOCK_ENV = re.compile(r"\\begin\{(tabular|itemize|enumerate)\}(.*?)\\end\{\1\}", re.S)
+def _split_top_level_envs(text):
+    """Trả các đoạn `(kind, body)`; hỗ trợ begin/end lồng nhau cân bằng."""
+    out = []
+    pos = 0
+    tokens = list(ENV_TOKEN_RE.finditer(text))
+    i = 0
+    while i < len(tokens):
+        opening = tokens[i]
+        if opening.group("action") != "begin":
+            i += 1
+            continue
+        out.append(("text", text[pos:opening.start()]))
+        stack = [opening.group("kind")]
+        j = i + 1
+        while j < len(tokens):
+            tok = tokens[j]
+            kind = tok.group("kind")
+            if tok.group("action") == "begin":
+                stack.append(kind)
+            elif stack and stack[-1] == kind:
+                stack.pop()
+                if not stack:
+                    out.append((opening.group("kind"), text[opening.end():tok.start()]))
+                    pos = tok.end()
+                    i = j + 1
+                    break
+            j += 1
+        else:
+            # Môi trường không đóng: giữ nguyên để validation phát hiện lệnh
+            # cấu trúc còn sót, không âm thầm nuốt phần cuối trường.
+            out.append(("text", text[opening.start():]))
+            pos = len(text)
+            i = len(tokens)
+    out.append(("text", text[pos:]))
+    return out
+
+
+def _parse_text_blocks(body, math, holes):
+    content = []
+    body = re.sub(r"\\(?:centering|raggedleft|raggedright)\b", "", body)
+    # Một hình chiếm trọn dòng nguồn là một khối riêng, kể cả khi tác giả
+    # không chèn dòng trống trước/sau nó. Nếu không tách tại đây, quy tắc
+    # chuẩn hóa ``\n`` đơn trong ``inline_nodes`` sẽ ghép ``chữ / hình /
+    # chữ`` thành một paragraph và biến hình thành ``image_inline``.
+    # Hình thực sự nằm giữa chữ trên cùng một dòng vẫn giữ nguyên dạng inline.
+    body = re.sub(
+        r"(?m)^[ \t]*((?:\x00FIG\d+\x00[ \t]*)+)$",
+        r"\n\n\1\n\n",
+        body,
+    )
+    for para in re.split(r"\n[ \t]*\n", body):
+        para = para.strip()
+        if not para:
+            continue
+        if re.fullmatch(r"(\x00FIG\d+\x00\s*)+", para):
+            for k in re.findall(r"\x00FIG\d+\x00", para):
+                content.append({"type": "image", "figure_id": holes[k]})
+            continue
+        if para in math and math[para]["display"]:
+            content.append({"type": "math_block", "tex": math[para]["tex"]})
+            continue
+        nodes = inline_nodes(para, math, holes)
+        if nodes:
+            content.append({"type": "paragraph", "content": nodes})
+    return content
+
+
+def _parse_blocks(text, math, holes):
+    content = []
+    parts = _split_top_level_envs(text)
+    i = 0
+    while i < len(parts):
+        kind, body = parts[i]
+        if kind == "minipage":
+            columns = []
+            while i < len(parts):
+                current_kind, current_body = parts[i]
+                if current_kind == "text" and not current_body.strip():
+                    i += 1
+                    continue
+                if current_kind != "minipage":
+                    break
+                columns.append(_parse_minipage(current_body, math, holes))
+                i += 1
+            content.append({"type": "columns", "columns": columns})
+            continue
+        if kind == "tabular":
+            content.append(parse_tabular(body, math, holes))
+        elif kind in ("itemize", "enumerate"):
+            content.append(parse_list(body, kind == "enumerate", math, holes))
+        else:
+            content.extend(_parse_text_blocks(body, math, holes))
+        i += 1
+    return content
+
+
+def _parse_minipage(body, math, holes):
+    """Một ``minipage`` -> một cột chuẩn hóa, không giữ mẹo LaTeX thô."""
+    option_re = r"\s*(?:\[([^]]*)\])?\s*(?:\[([^]]*)\])?\s*\{([^}]*)\}"
+    match = re.match(option_re, body)
+    if not match:
+        raise BadSource("minipage thiếu đối số chiều rộng")
+    width_tex = match.group(3).strip()
+    width_match = re.fullmatch(r"([0-9]*\.?[0-9]+)\s*\\(?:line|text)width", width_tex)
+    if width_match:
+        width = float(width_match.group(1))
+    elif width_tex in (r"\linewidth", r"\textwidth"):
+        width = 1.0
+    else:
+        raise BadSource(f"chiều rộng minipage chưa hỗ trợ: {width_tex}")
+
+    inner = body[match.end():]
+    if re.search(r"\\centering\b", inner):
+        align = "center"
+    elif re.search(r"\\raggedleft\b", inner):
+        align = "right"
+    else:
+        align = "left"
+    inner = re.sub(r"\\(?:centering|raggedleft|raggedright)\b", "", inner)
+    valign = next((value for value in match.groups()[:2] if value in ("t", "c", "b")), "t")
+    return {
+        "width": width,
+        "align": align,
+        "valign": {"t": "top", "c": "center", "b": "bottom"}[valign],
+        "content": _parse_blocks(inner, math, holes),
+    }
 
 
 def to_doc(text, holes=None, side="center"):
@@ -245,7 +405,7 @@ def to_doc(text, holes=None, side="center"):
     holes = holes or {}
     text = text.replace("\r\n", "\n").replace("\r", "\n")
     text = re.sub(r"(?<!\\)%.*", "", text)                               # chú thích
-    text = re.sub(r"\\vspace\{[^}]*\}|\\centering|\\noindent", "", text)  # mẹo căn dòng
+    text = re.sub(r"\\vspace\{[^}]*\}|\\noindent", "", text)  # mẹo căn dòng
 
     # Vỏ bọc trình bày: gỡ vỏ, giữ ruột. `center` vì các nút khối vốn đã căn
     # giữa; `table` vì nó chỉ bọc ngoài `tabular`; `multicols` vì chia cột là
@@ -257,35 +417,11 @@ def to_doc(text, holes=None, side="center"):
 
     text, math = protect_math(text)
 
-    blocks, pos = [], 0
-    for m in RE_BLOCK_ENV.finditer(text):
-        blocks.append(("text", text[pos:m.start()]))
-        blocks.append((m.group(1), m.group(2)))
-        pos = m.end()
-    blocks.append(("text", text[pos:]))
+    # `\centering` trong minipage được `_parse_minipage` đổi thành thuộc tính
+    # cột. Lệnh còn lại ngoài minipage chưa mang ý nghĩa dữ liệu nên bỏ.
+    # Không bỏ sớm hơn, nếu không sẽ mất căn giữa riêng của từng cột.
 
-    content = []
-    for kind, body in blocks:
-        if kind == "tabular":
-            content.append(parse_tabular(body, math, holes))
-        elif kind in ("itemize", "enumerate"):
-            content.append(parse_list(body, kind == "enumerate", math, holes))
-            continue
-        else:
-            for para in re.split(r"\n[ \t]*\n", body):
-                para = para.strip()
-                if not para:
-                    continue
-                if re.fullmatch(r"(\x00FIG\d+\x00\s*)+", para):
-                    for k in re.findall(r"\x00FIG\d+\x00", para):
-                        content.append({"type": "image", "figure_id": holes[k]})
-                    continue
-                if para in math and math[para]["display"]:
-                    content.append({"type": "math_block", "tex": math[para]["tex"]})
-                    continue
-                nodes = inline_nodes(para, math, holes)
-                if nodes:
-                    content.append({"type": "paragraph", "content": nodes})
+    content = _parse_blocks(text, math, holes)
 
     doc = {"type": "doc"}
     if side != "center":

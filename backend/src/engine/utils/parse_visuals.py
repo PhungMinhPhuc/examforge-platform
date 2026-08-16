@@ -3,51 +3,44 @@ import shutil
 import re
 from datetime import datetime
 from utils.tikz_converter import tikz_to_svg
+from doctree.figures import svg_width_fraction
 
 import threading
 
-try:
-    import warnings
-    import os
-    os.environ["NO_ALBUMENTATIONS_UPDATE"] = "1"
-    os.environ["KMP_DUPLICATE_LIB_OK"] = "True"
-    warnings.filterwarnings("ignore", category=UserWarning)
-    
-    from PIL import Image
-    from pix2tex.cli import LatexOCR
-    _LATEX_OCR_MODEL = None
-    _LATEX_OCR_LOCK = threading.Lock()
-except ImportError:
-    Image = None
-    LatexOCR = None
-    _LATEX_OCR_MODEL = None
-    _LATEX_OCR_LOCK = None
+TIKZ_MAX_CONCURRENT_PROCESSES = 3
+_TIKZ_SEMAPHORE = threading.BoundedSemaphore(TIKZ_MAX_CONCURRENT_PROCESSES)
+
+# Pix2TeX kéo theo PyTorch gần 1 GB RAM. Tuyệt đối không import ở cấp module:
+# phần lớn file `.tex` chỉ có TikZ/ảnh thường và không hề cần OCR công thức.
+_LATEX_OCR_MODEL = None
+_LATEX_OCR_IMAGE = None
+_LATEX_OCR_LOCK = threading.Lock()
 
 def init_latex_ocr():
-    global _LATEX_OCR_MODEL
-    if LatexOCR is None:
-        return
+    """Lazy-load Pix2TeX đúng lần đầu có ảnh thật sự cần OCR."""
+    global _LATEX_OCR_MODEL, _LATEX_OCR_IMAGE
     if _LATEX_OCR_MODEL is None:
         with _LATEX_OCR_LOCK:
             if _LATEX_OCR_MODEL is None:
+                import warnings
+                os.environ["NO_ALBUMENTATIONS_UPDATE"] = "1"
+                os.environ["KMP_DUPLICATE_LIB_OK"] = "True"
+                from PIL import Image
+                from pix2tex.cli import LatexOCR
                 with warnings.catch_warnings():
                     warnings.simplefilter("ignore")
                     _LATEX_OCR_MODEL = LatexOCR()
+                _LATEX_OCR_IMAGE = Image
+    return _LATEX_OCR_MODEL
 
 def get_latex_from_image(img_path):
-    global _LATEX_OCR_MODEL
-    if LatexOCR is None or Image is None:
-        return None
-        
+    global _LATEX_OCR_MODEL, _LATEX_OCR_IMAGE
     try:
-        img = Image.open(img_path).convert('RGB')
+        init_latex_ocr()
+        img = _LATEX_OCR_IMAGE.open(img_path).convert('RGB')
         if img.width < 10 or img.height < 10:
             return None
-        
-        # Đảm bảo model đã được khởi tạo
-        if _LATEX_OCR_MODEL is None:
-            init_latex_ocr()
-            
+
         # Chạy inference song song không cần lock vì PyTorch CPU inference là thread-safe
         latex = _LATEX_OCR_MODEL(img)
             
@@ -63,10 +56,12 @@ def is_graphic_content(block):
     return False
 
 def extract_graphic_scale(tex_code):
+    """`width=X\\linewidth` -> X thật; không có thì trả `None` — nghĩa là
+    "chưa biết", để chỗ dùng lấy kích thước gốc của ảnh thay vì đoán bừa."""
     width_match = re.search(r'width\s*=\s*([0-9.]+)', tex_code)
     if width_match:
         return float(width_match.group(1))
-    return 1.0
+    return None
 
 def parse_visuals(block, source_file_path, target_dir, question_public_id):
     """Parse and replace all TikZ/includegraphics in block with markdown image tags.
@@ -95,7 +90,10 @@ def parse_visuals(block, source_file_path, target_dir, question_public_id):
         visual_id = f"{question_public_id}_tikz_{idx}"
         svg_file_name = f"{visual_id}.svg"
         svg_dest_path = os.path.join(final_dir, svg_file_name)
-        success = tikz_to_svg(tikz_code, svg_dest_path)
+        # Parser câu vẫn có thể chạy 8 worker, nhưng XeLaTeX/TikZ là tiến
+        # trình nặng. Giới hạn chung đúng 3 tiến trình để tránh cộng dồn RAM.
+        with _TIKZ_SEMAPHORE:
+            success = tikz_to_svg(tikz_code, svg_dest_path)
         if success:
             # Chuẩn hoá path để web hiểu (map target_dir thành /static/images/)
             try:
@@ -116,7 +114,9 @@ def parse_visuals(block, source_file_path, target_dir, question_public_id):
                 "question_id": None,
                 "storage_path": url_path,
                 "img_type": "tikz",
-                "img_scale": 1.0,
+                # SVG đã có kích thước gốc chính xác do pdftocairo ghi theo pt;
+                # lưu luôn tỉ lệ so với vùng chữ A4 để web/PDF/DOCX dùng chung.
+                "img_scale": svg_width_fraction(svg_dest_path),
                 "raw_code": tikz_code
             })
 
@@ -208,8 +208,8 @@ def parse_visuals(block, source_file_path, target_dir, question_public_id):
                     modified_block = modified_block.replace(full_cmd, md_tag, 1)
                     q_images.append({
                         "id": None, "question_id": None,
-                        "storage_path": dest_path,
-                        "img_type": "formula", "img_scale": 1.0, "raw_code": None,
+                        "storage_path": url_path,
+                        "img_type": "formula", "img_scale": None, "raw_code": None,
                     })
                     img_count += 1
                     continue

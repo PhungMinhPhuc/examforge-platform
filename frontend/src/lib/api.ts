@@ -18,7 +18,25 @@ async function apiFetch(path: string, options: RequestInit = {}) {
 
   if (!res.ok) {
     const err = await res.json().catch(() => ({ detail: res.statusText }));
-    throw new Error(err.detail || "Request failed");
+    const detail = err.detail;
+    const message = typeof detail === "string"
+      ? detail
+      : detail && typeof detail === "object"
+        ? [
+            detail.message,
+            ...(Array.isArray(detail.errors) ? detail.errors : []),
+            ...(detail.code === "missing_images" && Array.isArray(detail.images)
+              ? detail.images.map((image: {
+                  question_id?: number;
+                  image_id?: number;
+                  filename?: string;
+                  storage_path?: string;
+                }) =>
+                  `Câu ${image.question_id}, ảnh ${image.image_id}: ${image.filename || image.storage_path}`)
+              : []),
+          ].filter(Boolean).join("\n")
+        : "Request failed";
+    throw new Error(message || "Request failed");
   }
   return res.json();
 }
@@ -63,6 +81,42 @@ export const api = {
 
   deleteAllQuestions: () => apiFetch("/questions/all", { method: "DELETE" }),
 
+  // Cỡ hiển thị của một ảnh (width, tỉ lệ 0-1) — endpoint nhận multipart/
+  // form-data (không phải JSON) nên KHÔNG đi qua apiFetch chung.
+  updateImageWidth: async (storagePath: string, width: number) => {
+    const fd = new FormData();
+    fd.append("img_path", storagePath);
+    fd.append("scale", String(width));
+    const res = await fetch(`${API_URL}/questions/images/scale`, {
+      method: "POST",
+      headers: getAuthHeaders(),
+      body: fd,
+    });
+    if (!res.ok) throw new Error("Lỗi lưu cỡ ảnh");
+  },
+
+  // Chèn ảnh MỚI vào một câu hỏi (nút "Chèn ảnh" / Ctrl+V dán ảnh trong ô
+  // soạn) — lưu file ngay, trả về q_images row luôn (figure_id dùng gắn vào
+  // cây ngay, không cần tải lại trang).
+  uploadQuestionImage: async (
+    questionId: number,
+    file: File | Blob,
+  ): Promise<{ id: number; storage_path: string; img_type: string; width: number | null }> => {
+    const fd = new FormData();
+    fd.append("question_id", String(questionId));
+    fd.append("file", file, file instanceof File ? file.name : "pasted.png");
+    const res = await fetch(`${API_URL}/questions/images/upload`, {
+      method: "POST",
+      headers: getAuthHeaders(),
+      body: fd,
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({ detail: res.statusText }));
+      throw new Error(err.detail || "Lỗi chèn ảnh");
+    }
+    return res.json();
+  },
+
   getSubjects: () => apiFetch("/questions/subjects/list"),
 
   getMetadataFilters: () => apiFetch("/questions/metadata/filters"),
@@ -82,6 +136,26 @@ export const api = {
       }
       return res.json();
     });
+  },
+
+  getUploadJob: (jobId: string) => apiFetch(`/upload/job/${jobId}`),
+
+  cancelUploadJob: (jobId: string) =>
+    apiFetch(`/upload/job/${jobId}`, { method: "DELETE" }),
+
+  uploadStagedImage: async (jobId: string, file: File | Blob) => {
+    const fd = new FormData();
+    fd.append("file", file, file instanceof File ? file.name : "pasted.png");
+    const res = await fetch(`${API_URL}/upload/job/${jobId}/image`, {
+      method: "POST",
+      headers: getAuthHeaders(),
+      body: fd,
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({ detail: res.statusText }));
+      throw new Error(err.detail || "Lỗi chèn ảnh tạm");
+    }
+    return res.json();
   },
 
   confirmUpload: (data: object) =>
@@ -116,6 +190,16 @@ export const api = {
         assignment_id: assignmentId,
       }),
     }),
+
+  unassignFromClass: (
+    classId: number,
+    assignmentType: "contest" | "coding",
+    assignmentId: number,
+  ) =>
+    apiFetch(
+      `/classes/${classId}/assignments/${assignmentType}/${assignmentId}`,
+      { method: "DELETE" },
+    ),
 
   deleteClass: (id: number) => apiFetch(`/classes/${id}`, { method: "DELETE" }),
 
@@ -158,8 +242,18 @@ export const api = {
   updateContest: (id: number, data: object) =>
     apiFetch(`/contests/${id}`, { method: "PUT", body: JSON.stringify(data) }),
 
-  getContestSubmissions: (id: number) =>
-    apiFetch(`/contests/${id}/submissions`),
+  getContestSubmissions: (id: number, classId?: number) =>
+    apiFetch(
+      `/contests/${id}/submissions${classId ? `?class_id=${classId}` : ""}`,
+    ),
+
+  getContestClasses: (id: number) => apiFetch(`/contests/${id}/classes`),
+
+  setContestClasses: (id: number, classIds: number[]) =>
+    apiFetch(`/contests/${id}/classes`, {
+      method: "PUT",
+      body: JSON.stringify({ class_ids: classIds }),
+    }),
 
   deleteResult: (id: number) =>
     apiFetch(`/contests/results/${id}`, { method: "DELETE" }),
@@ -167,6 +261,12 @@ export const api = {
   startContest: (id: number, data: object) =>
     apiFetch(`/contests/${id}/start`, {
       method: "POST",
+      body: JSON.stringify(data),
+    }),
+
+  initializeContestLayout: (id: number, data: object) =>
+    apiFetch(`/contests/${id}/layout`, {
+      method: "PUT",
       body: JSON.stringify(data),
     }),
 
@@ -184,7 +284,19 @@ export const api = {
   // Coding module (independent from timed contests)
   getCodingQuestions: () => apiFetch("/coding/questions"),
   getCodingAssignments: () => apiFetch("/coding/assignments"),
-  getCodingAssignment: (id: number) => apiFetch(`/coding/assignments/${id}`),
+  getCodingAssignment: (id: number, classId?: number) =>
+    apiFetch(
+      `/coding/assignments/${id}${classId ? `?class_id=${classId}` : ""}`,
+    ),
+
+  getCodingClasses: (id: number) =>
+    apiFetch(`/coding/assignments/${id}/classes`),
+
+  setCodingClasses: (id: number, classIds: number[]) =>
+    apiFetch(`/coding/assignments/${id}/classes`, {
+      method: "PUT",
+      body: JSON.stringify({ class_ids: classIds }),
+    }),
   resolvePublicCodingAssignment: (publicId: string) =>
     apiFetch(`/coding/public/${publicId}`),
   updateCodingAssignment: (id: number, data: object) =>
@@ -222,6 +334,14 @@ export const api = {
     apiFetch(
       `/coding/assignments/${assignmentId}/questions/${questionId}/submissions`,
     ),
+  getQuestionSubmissions: (assignmentId: number, questionId: number) =>
+    apiFetch(
+      `/coding/assignments/${assignmentId}/questions/${questionId}/submissions`,
+    ),
+
+  getCodingSubmissionDetail: (assignmentId: number, submissionId: number) =>
+    apiFetch(`/coding/assignments/${assignmentId}/submissions/${submissionId}`),
+
   getCodingStudentSubmissions: (assignmentId: number, studentId: number) =>
     apiFetch(
       `/coding/assignments/${assignmentId}/students/${studentId}/submissions`,
@@ -233,6 +353,8 @@ export const api = {
       body: JSON.stringify(data),
     }),
 
+  getExportCapabilities: () => apiFetch("/export/capabilities"),
+
   getContestPreviewHTML: (id: number, data: object) =>
     apiFetch(`/export/exam/${id}/preview`, {
       method: "POST",
@@ -240,6 +362,17 @@ export const api = {
     }),
 
   getExportStatus: (taskId: string) => apiFetch(`/export/status/${taskId}`),
+
+  downloadExport: async (taskId: string): Promise<Blob> => {
+    const res = await fetch(`${API_URL}/export/download/${taskId}`, {
+      headers: getAuthHeaders(),
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({ detail: res.statusText }));
+      throw new Error(typeof err.detail === "string" ? err.detail : "Không tải được file xuất");
+    }
+    return res.blob();
+  },
 };
 
 export default api;

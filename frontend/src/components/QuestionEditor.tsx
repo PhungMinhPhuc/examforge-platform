@@ -2,6 +2,7 @@ import React from "react";
 import Combobox from "@/components/Combobox";
 import RichLatexEditor from "@/components/RichLatexEditor";
 import CodingSettingsPanel from "./CodingSettingsPanel";
+import { TreeDoc, emptyDoc } from "@/lib/docTree";
 
 export type QuestionDetail = {
   id?: number;
@@ -11,15 +12,18 @@ export type QuestionDetail = {
   lesson?: string;
   question_type: string;
   complexity?: number;
-  content: string;
-  solution?: string;
+  layout_type?: string; // normal | immini_content — cụm "Bố cục" ảnh trôi ở Nội dung đề bài
+  // Luôn là cây tài liệu (TreeDoc), kể cả câu "sa" — chỉ ĐÁP ÁN sa
+  // (details[].content) mới là chuỗi thường (xem q_shortans_details.content).
+  content: TreeDoc;
+  solution?: TreeDoc;
   teacher_name?: string;
-  images?: { storage_path: string; img_scale?: number; img_type?: string }[];
+  images?: { id?: number | string; storage_path: string; url?: string; width?: number | null; img_type?: string; asset_exists?: boolean; pendingFile?: File | Blob }[];
   details?: {
     id?: number;
-    content: string;
+    content: any; // TreeDoc (mc/tf) hoặc string (sa)
     is_correct?: boolean;
-    explaination?: string;
+    explaination?: TreeDoc;
   }[];
   children?: QuestionDetail[];
   coding_details?: {
@@ -36,11 +40,37 @@ export type QuestionDetail = {
     input_data: string;
     output_data: string;
     point_weight: number;
-    is_public: boolean;
+    is_public: boolean; // cho xem chi tiết sau khi nộp
+    is_sample?: boolean; // hiện làm ví dụ trên đề
     description?: string;
     order_index?: number;
   }[];
 };
+
+// Bộ phương án mặc định khi tạo câu mới / đổi loại câu — mc/tf luôn là cây
+// (emptyDoc), riêng đáp án "sa" vẫn là chuỗi thường (xem q_shortans_details).
+export function defaultDetailsFor(type: string): QuestionDetail["details"] {
+  if (type === "mc") {
+    return [
+      { content: emptyDoc(), is_correct: true },
+      { content: emptyDoc(), is_correct: false },
+      { content: emptyDoc(), is_correct: false },
+      { content: emptyDoc(), is_correct: false },
+    ];
+  }
+  if (type === "tf") {
+    return [
+      { content: emptyDoc(), is_correct: true, explaination: emptyDoc() },
+      { content: emptyDoc(), is_correct: true, explaination: emptyDoc() },
+      { content: emptyDoc(), is_correct: true, explaination: emptyDoc() },
+      { content: emptyDoc(), is_correct: true, explaination: emptyDoc() },
+    ];
+  }
+  if (type === "sa") {
+    return [{ content: "" }];
+  }
+  return [];
+}
 
 const TYPE_LABELS: Record<string, string> = {
   mc: "Trắc nghiệm",
@@ -66,6 +96,7 @@ export const QuestionEditor = ({
   curriculum = {},
   metadata = { chapters: [], lessons: [] },
   imageEditable = false,
+  importJobId,
 }: {
   qData: QuestionDetail;
   onChange: (q: QuestionDetail) => void;
@@ -75,45 +106,69 @@ export const QuestionEditor = ({
   curriculum?: any;
   metadata?: { chapters: string[]; lessons: string[] };
   imageEditable?: boolean;
+  importJobId?: string;
 }) => {
   const [newChildType, setNewChildType] = React.useState("mc");
 
   const handleAddChild = () => {
-    let newDetails: any[] = [];
-    if (newChildType === "mc") {
-      newDetails = [
-        { content: "", is_correct: true },
-        { content: "", is_correct: false },
-        { content: "", is_correct: false },
-        { content: "", is_correct: false },
-      ];
-    } else if (newChildType === "tf") {
-      newDetails = [
-        { content: "", is_correct: true, explaination: "" },
-        { content: "", is_correct: true, explaination: "" },
-        { content: "", is_correct: true, explaination: "" },
-        { content: "", is_correct: true, explaination: "" },
-      ];
-    } else if (newChildType === "sa") {
-      newDetails = [{ content: "" }];
-    }
-    const newChild = {
+    const newDetails = defaultDetailsFor(newChildType);
+    const newChild: QuestionDetail = {
       question_type: newChildType,
-      content: "",
+      content: emptyDoc(),
       details: newDetails,
     };
     const newChildren = [...(qData.children || []), newChild];
     onChange({ ...qData, children: newChildren });
   };
 
-  const handleChange = (field: keyof QuestionDetail, value: any) => {
-    onChange({ ...qData, [field]: value });
+  // `newImage` chỉ có khi RichLatexEditor vừa chèn ảnh MỚI (nút/dán) — PHẢI
+  // gộp vào qData.images trong CÙNG một lần cập nhật với content/layout_type.
+  // Từng tách content và ảnh-mới thành 2 lần onChange riêng gọi liền nhau
+  // (giống layout_type trước đây) — cả 2 cùng spread {...qData,...} trên
+  // CÙNG một qData cũ (React chưa kịp re-render giữa 2 lần gọi), lần sau đè
+  // mất lần trước, ảnh vừa chèn "biến mất" khỏi qData.images dù vẫn thấy
+  // trên màn hình (chỉ là DOM thao tác tay) — bấm +/− sau đó không tìm thấy
+  // ảnh trong `images` prop nữa nên im re không phản ứng.
+  const handleChange = (field: keyof QuestionDetail, value: any, newImage?: { id?: number | string; storage_path: string; width?: number | null; img_type?: string; pendingFile?: File | Blob }) => {
+    if (field === "content" && value && typeof value === "object") {
+      onChange({
+        ...qData,
+        content: value,
+        layout_type: value.side === "right" ? "immini_content" : "normal",
+        ...(newImage ? { images: [...(qData.images || []), newImage] } : {}),
+      });
+      return;
+    }
+    onChange({
+      ...qData,
+      [field]: value,
+      ...(newImage ? { images: [...(qData.images || []), newImage] } : {}),
+    });
   };
 
-  const handleDetailChange = (idx: number, field: string, value: any) => {
+  const handleDetailChange = (
+    idx: number,
+    field: string,
+    value: any,
+    newImage?: { id?: number | string; storage_path: string; width?: number | null; img_type?: string; pendingFile?: File | Blob },
+  ) => {
     const newDetails = [...(qData.details || [])];
     newDetails[idx] = { ...newDetails[idx], [field]: value };
-    onChange({ ...qData, details: newDetails });
+    onChange({
+      ...qData,
+      details: newDetails,
+      ...(newImage ? { images: [...(qData.images || []), newImage] } : {}),
+    });
+  };
+
+  // Đổi cỡ ảnh (cụm nút −/%/+ trong RichLatexEditor) — CHỈ giữ tạm ở form,
+  // KHÔNG gọi API ở đây. Gộp lưu chung một lượt khi bấm "Lưu" câu hỏi (xem
+  // questions/page.tsx::saveDetail, đọc lại qData.images lúc đó).
+  const handleImageWidthChange = (storagePath: string, width: number) => {
+    const newImages = (qData.images || []).map((img) =>
+      img.storage_path === storagePath ? { ...img, width } : img,
+    );
+    onChange({ ...qData, images: newImages });
   };
 
   const subjOptions = Array.from(new Set(Object.keys(curriculum || {})));
@@ -202,37 +257,25 @@ export const QuestionEditor = ({
           gap: "1rem",
         }}
       >
-        <div
-          style={{
-            background: "#f1f5f9",
-            borderRadius: "1rem",
-            padding: "1rem",
-            marginBottom: "1rem",
-          }}
-        >
-          <div
-            style={{
-              display: "grid",
-              gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))",
-              gap: "1.25rem 1rem",
-            }}
-          >
-            {!isChild ? (
+        <div className="meta-table" style={{ marginBottom: "0.25rem" }}>
+          {!isChild ? (
               <>
-                <div className="form-group">
-                  <label className="form-label">Môn học</label>
+                <div className="meta-row">
+                  <span className="meta-row-label">Môn học</span>
                   <Combobox
-                    className="select"
+                    className="meta-row-value"
+                    style={{ flex: 1 }}
                     value={qData.subject || ""}
                     onChange={(val) => handleChange("subject", val)}
                     options={subjOptions}
                     placeholder="Môn học"
                   />
                 </div>
-                <div className="form-group">
-                  <label className="form-label">Khối lớp</label>
+                <div className="meta-row">
+                  <span className="meta-row-label">Khối lớp</span>
                   <Combobox
-                    className="select"
+                    className="meta-row-value"
+                    style={{ flex: 1 }}
                     value={qData.grade || ""}
                     onChange={(val) =>
                       handleChange("grade", parseInt(val) || 0)
@@ -243,41 +286,18 @@ export const QuestionEditor = ({
                 </div>
               </>
             ) : (
-              <div className="form-group">
-                <label className="form-label">Loại câu hỏi</label>
+              <div className="meta-row">
+                <span className="meta-row-label">Loại câu hỏi</span>
                 <select
-                  className="select"
+                  className="meta-row-value"
                   value={qData.question_type}
                   onChange={(e) => {
                     const newType = e.target.value;
-                    let newDetails: any[] = [];
-                    if (newType === "mc") {
-                      newDetails = [
-                        { content: "", is_correct: true },
-                        { content: "", is_correct: false },
-                        { content: "", is_correct: false },
-                        { content: "", is_correct: false },
-                      ];
-                    } else if (newType === "tf") {
-                      newDetails = [
-                        { content: "", is_correct: true, explaination: "" },
-                        { content: "", is_correct: true, explaination: "" },
-                        { content: "", is_correct: true, explaination: "" },
-                        { content: "", is_correct: true, explaination: "" },
-                      ];
-                    } else if (newType === "sa") {
-                      newDetails = [{ content: "" }];
-                    }
                     onChange({
                       ...qData,
                       question_type: newType,
-                      details: newDetails,
+                      details: defaultDetailsFor(newType),
                     });
-                  }}
-                  style={{
-                    width: "100%",
-                    height: "38px",
-                    borderRadius: "var(--radius-md)",
                   }}
                 >
                   {Object.entries(TYPE_LABELS)
@@ -290,30 +310,33 @@ export const QuestionEditor = ({
                 </select>
               </div>
             )}
-            <div className="form-group">
-              <label className="form-label">Chương</label>
+            <div className="meta-row">
+              <span className="meta-row-label">Chương</span>
               <Combobox
-                className="select"
+                className="meta-row-value"
+                style={{ flex: 1 }}
                 value={qData.chapter || ""}
                 onChange={(val) => handleChange("chapter", val)}
                 options={chapterOptions}
                 placeholder="Chương"
               />
             </div>
-            <div className="form-group">
-              <label className="form-label">Bài học</label>
+            <div className="meta-row">
+              <span className="meta-row-label">Bài học</span>
               <Combobox
-                className="select"
+                className="meta-row-value"
+                style={{ flex: 1 }}
                 value={qData.lesson || ""}
                 onChange={(val) => handleChange("lesson", val)}
                 options={lessonOptions}
                 placeholder="Bài học"
               />
             </div>
-            <div className="form-group">
-              <label className="form-label">Mức độ</label>
+            <div className="meta-row">
+              <span className="meta-row-label">Mức độ</span>
               <Combobox
-                className="select"
+                className="meta-row-value"
+                style={{ flex: 1 }}
                 value={qData.complexity || 1}
                 onChange={(val) => handleChange("complexity", parseInt(val))}
                 options={Object.entries(COMPLEXITY_LABELS).map(([k, v]) => ({
@@ -323,16 +346,22 @@ export const QuestionEditor = ({
                 placeholder="Mức độ"
               />
             </div>
-          </div>
         </div>
 
         <div style={{ marginBottom: "0.5rem", marginTop: "0.5rem" }}>
-          <label className="form-label">Nội dung đề bài</label>
+          <label className="section-label">Nội dung đề bài</label>
           <RichLatexEditor
-            content={qData.content || ""}
-            onChange={(val) => handleChange("content", val)}
+            key={`content-${qData.id ?? "new"}`}
+            content={qData.content}
+            onChange={(val, newImage) => handleChange("content", val, newImage)}
             imageEditable={imageEditable}
             images={qData.images}
+            onImageWidthChange={handleImageWidthChange}
+            questionId={qData.id}
+            importJobId={importJobId}
+            allowPendingImage={imageEditable && !qData.id && !importJobId}
+            showLayoutControl
+            layoutType={qData.layout_type}
           />
         </div>
 
@@ -340,7 +369,7 @@ export const QuestionEditor = ({
           qData.details.length > 0 &&
           qData.question_type === "sa" && (
             <div>
-              <label className="form-label">Trả lời ngắn</label>
+              <label className="section-label">Trả lời ngắn</label>
               <div
                 style={{
                   display: "flex",
@@ -349,11 +378,22 @@ export const QuestionEditor = ({
                 }}
               >
                 {qData.details.map((det, idx) => (
-                  <RichLatexEditor
+                  // Đáp án "sa" luôn là số/chuỗi thường (q_shortans_details.content
+                  // vẫn là text) — không phải cây, nên dùng input thường, không
+                  // qua RichLatexEditor (chỉ soạn cây).
+                  <input
                     key={idx}
-                    content={det.content || ""}
-                    onChange={(val) => handleDetailChange(idx, "content", val)}
+                    type="text"
+                    className="input"
+                    value={det.content || ""}
+                    onChange={(e) => handleDetailChange(idx, "content", e.target.value)}
                     placeholder="Nhập đáp án..."
+                    style={{
+                      padding: "0.6rem 0.85rem",
+                      border: "1.5px solid var(--border-strong)",
+                      borderRadius: "8px",
+                      fontSize: "0.95rem",
+                    }}
                   />
                 ))}
               </div>
@@ -364,12 +404,13 @@ export const QuestionEditor = ({
           qData.details.length > 0 &&
           qData.question_type !== "sa" && (
             <div>
-              <label className="form-label">
+              <label className="section-label">
                 {qData.question_type === "tf"
                   ? "Các ý Đúng / Sai"
                   : "Phương án trả lời"}
               </label>
               <div
+                className="option-list-surface"
                 style={{
                   display: "flex",
                   flexDirection: "column",
@@ -414,8 +455,11 @@ export const QuestionEditor = ({
                           fontSize: "1.05rem",
                           cursor: isMC ? "pointer" : "default",
                           userSelect: "none",
-                          background: correct && isMC ? "#10b981" : "#f1f5f9",
-                          color: correct && isMC ? "#ffffff" : "#0f172a",
+                          background:
+                            correct && isMC
+                              ? "var(--accent-success)"
+                              : "var(--bg-hover)",
+                          color: correct && isMC ? "var(--text-on-accent)" : "var(--text-primary)",
                           border: "none",
                           transition: "all 0.2s",
                         }}
@@ -425,10 +469,22 @@ export const QuestionEditor = ({
 
                       <div style={{ flex: 1, minWidth: 0 }}>
                         <RichLatexEditor
-                          content={det.content || ""}
-                          onChange={(val) =>
-                            handleDetailChange(idx, "content", val)
+                          key={`${qData.question_type}-opt-${idx}-${det.id ?? "new"}`}
+                          content={det.content}
+                          onChange={(val, newImage) =>
+                            handleDetailChange(idx, "content", val, newImage)
                           }
+                          placeholder={
+                            isMC
+                              ? `Nhập nội dung phương án ${letter}...`
+                              : `Nhập nội dung ý ${letter}...`
+                          }
+                          imageEditable={imageEditable}
+                          images={qData.images}
+                          onImageWidthChange={handleImageWidthChange}
+                          questionId={qData.id}
+                          importJobId={importJobId}
+                          allowPendingImage={imageEditable && !qData.id && !importJobId}
                         />
                         {!isMC && (
                           <div style={{ marginTop: "0.6rem" }}>
@@ -444,11 +500,18 @@ export const QuestionEditor = ({
                               Giải thích cho ý {letter}
                             </label>
                             <RichLatexEditor
-                              content={det.explaination || ""}
-                              onChange={(val) =>
-                                handleDetailChange(idx, "explaination", val)
+                              key={`${qData.question_type}-expl-${idx}-${det.id ?? "new"}`}
+                              content={det.explaination}
+                              onChange={(val, newImage) =>
+                                handleDetailChange(idx, "explaination", val, newImage)
                               }
                               placeholder="Giải thích vì sao ý này đúng/sai (tùy chọn)"
+                              imageEditable={imageEditable}
+                              images={qData.images}
+                              onImageWidthChange={handleImageWidthChange}
+                              questionId={qData.id}
+                              importJobId={importJobId}
+                              allowPendingImage={imageEditable && !qData.id && !importJobId}
                             />
                           </div>
                         )}
@@ -496,7 +559,7 @@ export const QuestionEditor = ({
                             style={{
                               display: "inline-flex",
                               flexDirection: "column",
-                              background: "#f1f5f9",
+                              background: "var(--bg-hover)",
                               borderRadius: 8,
                               overflow: "hidden",
                               width: 64,
@@ -511,13 +574,15 @@ export const QuestionEditor = ({
                               style={{
                                 padding: "0.4rem 0",
                                 border: "none",
-                                borderBottom: "1px solid rgba(0,0,0,0.05)",
+                                borderBottom: "1px solid var(--border)",
                                 cursor: "pointer",
                                 fontSize: "0.85rem",
                                 background: correct
                                   ? "var(--accent-success)"
-                                  : "#fff",
-                                color: correct ? "#fff" : "var(--text-primary)",
+                                  : "var(--bg-surface)",
+                                color: correct
+                                  ? "var(--text-on-accent)"
+                                  : "var(--text-primary)",
                                 fontWeight: correct ? 700 : 500,
                               }}
                             >
@@ -535,9 +600,9 @@ export const QuestionEditor = ({
                                 fontSize: "0.85rem",
                                 background: !correct
                                   ? "var(--accent-danger)"
-                                  : "#fff",
+                                  : "var(--bg-surface)",
                                 color: !correct
-                                  ? "#fff"
+                                  ? "var(--text-on-accent)"
                                   : "var(--text-primary)",
                                 fontWeight: !correct ? 700 : 500,
                               }}
@@ -558,17 +623,24 @@ export const QuestionEditor = ({
           <CodingSettingsPanel qData={qData} onChange={onChange} />
         )}
 
-        {(qData.solution !== undefined || qData.question_type !== "st") &&
+        {qData.question_type !== "st" &&
           qData.question_type !== "cd" && (
             <div style={{ marginTop: "1rem" }}>
-              <label className="form-label">
+              <label className="section-label">
                 {qData.question_type === "tf"
                   ? "Lời giải chung"
                   : "Lời giải chi tiết"}
               </label>
               <RichLatexEditor
-                content={qData.solution || ""}
-                onChange={(val) => handleChange("solution", val)}
+                key={`solution-${qData.id ?? "new"}`}
+                content={qData.solution}
+                onChange={(val, newImage) => handleChange("solution", val, newImage)}
+                imageEditable={imageEditable}
+                images={qData.images}
+                onImageWidthChange={handleImageWidthChange}
+                questionId={qData.id}
+                importJobId={importJobId}
+                allowPendingImage={imageEditable && !qData.id && !importJobId}
               />
             </div>
           )}
@@ -607,28 +679,10 @@ export const QuestionEditor = ({
                     value={newChildType}
                     onChange={(val) => {
                       if (qData.children && qData.children.length > 0) {
-                        let newDetails: any[] = [];
-                        if (val === "mc") {
-                          newDetails = [
-                            { content: "", is_correct: true },
-                            { content: "", is_correct: false },
-                            { content: "", is_correct: false },
-                            { content: "", is_correct: false },
-                          ];
-                        } else if (val === "tf") {
-                          newDetails = [
-                            { content: "", is_correct: true, explaination: "" },
-                            { content: "", is_correct: true, explaination: "" },
-                            { content: "", is_correct: true, explaination: "" },
-                            { content: "", is_correct: true, explaination: "" },
-                          ];
-                        } else if (val === "sa") {
-                          newDetails = [{ content: "" }];
-                        }
-                        const newChild = {
+                        const newChild: QuestionDetail = {
                           question_type: val,
-                          content: "",
-                          details: newDetails,
+                          content: emptyDoc(),
+                          details: defaultDetailsFor(val),
                         };
                         onChange({ ...qData, children: [newChild] });
                       }

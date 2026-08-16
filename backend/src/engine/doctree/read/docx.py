@@ -8,12 +8,13 @@ bảng; ngắt mềm thành `\\\\`+`\\n` bị đếm hai lần; công thức Mat
 bảng là `<w:tbl>`, ngắt mềm là `<w:br/>`, công thức là `<m:oMath>`. Việc còn lại
 chỉ là ánh xạ sang đúng loại nút, không phải đoán ngược từ chuỗi trình bày.
 """
+import io
 import os
 import re
 import zipfile
 from xml.etree import ElementTree as ET
 
-from ..figures import FigureStore
+from ..figures import A4_REFERENCE_WIDTH_IN, FigureStore
 from ..math import mathtype
 from ..math.omml import omml_to_tex
 
@@ -24,7 +25,10 @@ NS = {
     "r": "http://schemas.openxmlformats.org/officeDocument/2006/relationships",
     "v": "urn:schemas-microsoft-com:vml",
     "o": "urn:schemas-microsoft-com:office:office",
+    "wp": "http://schemas.openxmlformats.org/drawingml/2006/wordprocessingDrawing",
 }
+
+EMU_PER_INCH = 914400.0
 
 
 def q(name):
@@ -44,6 +48,13 @@ def run_marks(r):
             and el.get(q("w:val")) not in ("0", "false", "none")]
 
 
+def run_color(r):
+    pr = r.find(q("w:rPr"))
+    color = pr.find(q("w:color")) if pr is not None else None
+    value = color.get(q("w:val"), "") if color is not None else ""
+    return f"#{value.upper()}" if re.fullmatch(r"[0-9A-Fa-f]{6}", value) else None
+
+
 class _Ctx:
     """Gói các thứ dùng chung khi đi qua một file, cho gọn chữ ký hàm."""
 
@@ -56,15 +67,17 @@ def para_inline(p, ctx):
     """Một `<w:p>` -> danh sách nút chữ, gộp các run cùng định dạng."""
     out = []
 
-    def push(text, marks):
+    def push(text, marks, color=None):
         if not text:
             return
-        if out and out[-1]["type"] == "text" and out[-1].get("marks", []) == marks:
+        if out and out[-1]["type"] == "text" and out[-1].get("marks", []) == marks and out[-1].get("color") == color:
             out[-1]["text"] += text
         else:
             node = {"type": "text", "text": text}
             if marks:
                 node["marks"] = marks
+            if color:
+                node["color"] = color
             out.append(node)
 
     for child in p.iter():
@@ -75,13 +88,14 @@ def para_inline(p, ctx):
 
         elif child.tag == q("w:r") and not _inside(p, child, q("m:oMath")):
             marks = run_marks(child)
+            color = run_color(child)
             for sub in child:
                 if sub.tag == q("w:t"):
-                    push(re.sub(r"\s+", " ", sub.text or ""), marks)
+                    push(re.sub(r"\s+", " ", sub.text or ""), marks, color)
                 elif sub.tag == q("w:br"):
                     out.append({"type": "hard_break"})
                 elif sub.tag == q("w:tab"):
-                    push(" ", marks)
+                    push(" ", marks, color)
                 elif sub.tag == q("w:object"):
                     # Ưu tiên đọc thành công thức; chỉ khi không dịch được mới
                     # lui về ảnh như đường cũ. Không được làm cả hai.
@@ -124,42 +138,164 @@ def grab_image(el, ctx):
     for blip in el.iter(q("a:blip")):
         rid = blip.get(q("r:embed"))
         if rid in ctx.rels:
-            return _store(ctx, ctx.rels[rid])
+            return _store(ctx, ctx.rels[rid], el)
     for shape in el.iter(q("v:imagedata")):
         rid = shape.get(q("r:id"))
         if rid in ctx.rels:
-            return _store(ctx, ctx.rels[rid])
+            return _store(ctx, ctx.rels[rid], el)
     return None
 
 
-def _store(ctx, name):
+def _drawing_geometry(el):
+    """Kích thước/crop/biến đổi mà Word áp lên media gốc.
+
+    `wp:extent` là kích thước cuối cùng trên trang (scale đã nằm trong đó),
+    còn `a:srcRect` và `a:xfrm` giữ crop/xoay/lật không phá hủy.
+    """
+    geometry = {
+        "cx": None, "cy": None,
+        "crop": (0.0, 0.0, 0.0, 0.0),
+        "rotation": 0.0, "flip_h": False, "flip_v": False,
+    }
+    extent = next(el.iter(q("wp:extent")), None)
+    if extent is not None:
+        try:
+            geometry["cx"] = int(extent.get("cx", "0")) or None
+            geometry["cy"] = int(extent.get("cy", "0")) or None
+        except (TypeError, ValueError):
+            pass
+
+    src_rect = next(el.iter(q("a:srcRect")), None)
+    if src_rect is not None:
+        def crop_value(side):
+            try:
+                return max(0.0, min(1.0, int(src_rect.get(side, "0")) / 100000.0))
+            except (TypeError, ValueError):
+                return 0.0
+        geometry["crop"] = tuple(crop_value(side) for side in ("l", "t", "r", "b"))
+
+    transform = next(el.iter(q("a:xfrm")), None)
+    if transform is not None:
+        try:
+            geometry["rotation"] = int(transform.get("rot", "0")) / 60000.0
+        except (TypeError, ValueError):
+            pass
+        geometry["flip_h"] = transform.get("flipH") in ("1", "true")
+        geometry["flip_v"] = transform.get("flipV") in ("1", "true")
+    return geometry
+
+
+def _display_width_fraction(geometry):
+    cx = geometry.get("cx")
+    if not cx:
+        return None
+    return (cx / EMU_PER_INCH) / A4_REFERENCE_WIDTH_IN
+
+
+def _apply_word_image_geometry(data, name, geometry):
+    """Bake crop/xoay/lật/kéo giãn của Word vào ảnh raster được lưu.
+
+    Nếu Pillow không đọc được loại media (WMF/EMF/SVG...), giữ nguyên file;
+    `width` từ wp:extent vẫn được bảo toàn độc lập.
+    """
+    crop = geometry["crop"]
+    rotation = geometry["rotation"]
+    flip_h, flip_v = geometry["flip_h"], geometry["flip_v"]
+    cx, cy = geometry["cx"], geometry["cy"]
+    has_crop = any(value > 0 for value in crop)
+    has_transform = has_crop or rotation or flip_h or flip_v
+
+    try:
+        from PIL import Image, ImageOps
+        with Image.open(io.BytesIO(data)) as source:
+            image = ImageOps.exif_transpose(source).convert("RGBA")
+            left, top, right, bottom = crop
+            if has_crop:
+                x0 = round(image.width * left)
+                y0 = round(image.height * top)
+                x1 = round(image.width * (1.0 - right))
+                y1 = round(image.height * (1.0 - bottom))
+                if x1 > x0 and y1 > y0:
+                    image = image.crop((x0, y0, x1, y1))
+            if flip_h:
+                image = ImageOps.mirror(image)
+            if flip_v:
+                image = ImageOps.flip(image)
+            if rotation:
+                # DrawingML dương là chiều kim đồng hồ; Pillow dương là ngược.
+                image = image.rotate(-rotation, expand=True, resample=Image.Resampling.BICUBIC)
+
+            # q_images chỉ lưu width. Bake tỷ lệ cx/cy vào pixel aspect để khi
+            # dựng theo width, chiều cao cũng khớp khung người dùng thấy ở Word.
+            if cx and cy and image.width and image.height:
+                target_aspect = cx / cy
+                current_aspect = image.width / image.height
+                if target_aspect > 0 and abs(current_aspect / target_aspect - 1.0) > 0.002:
+                    target_height = max(1, round(image.width / target_aspect))
+                    image = image.resize((image.width, target_height), Image.Resampling.LANCZOS)
+                    has_transform = True
+
+            if not has_transform:
+                return data, name
+            output = io.BytesIO()
+            image.save(output, format="PNG")
+            return output.getvalue(), os.path.splitext(name)[0] + "_word.png"
+    except Exception:
+        return data, name
+
+
+def _store(ctx, name, drawing_el=None):
     try:
         data = ctx.z.read("word/" + name)
     except KeyError:
         return None
-    return ctx.figs.add("graphic", data=data, media_dir=ctx.media_dir, name=name)
+    geometry = _drawing_geometry(drawing_el) if drawing_el is not None else _drawing_geometry(ET.Element("empty"))
+    data, stored_name = _apply_word_image_geometry(data, name, geometry)
+    return ctx.figs.add(
+        "graphic",
+        data=data,
+        media_dir=ctx.media_dir,
+        name=stored_name,
+        width=_display_width_fraction(geometry),
+    )
 
 
 # --------------------------------------------------------------- nút khối ---
 
 def table_node(tbl, ctx):
     rows = []
+    vertical = {}
     for tr in tbl.findall(q("w:tr")):
         cells = []
+        next_vertical = {}
+        logical_col = 0
         for tc in tr.findall(q("w:tc")):
             span = 1
             pr = tc.find(q("w:tcPr"))
             if pr is not None and (g := pr.find(q("w:gridSpan"))) is not None:
                 span = int(g.get(q("w:val"), 1))
+            vmerge = pr.find(q("w:vMerge")) if pr is not None else None
+            is_continue = vmerge is not None and vmerge.get(q("w:val")) != "restart"
+            if is_continue and logical_col in vertical:
+                origin = vertical[logical_col]
+                origin["rowspan"] = origin.get("rowspan", 1) + 1
+                for col in range(logical_col, logical_col + span):
+                    next_vertical[col] = origin
+                logical_col += span
+                continue
             content = []
             for p in tc.findall(q("w:p")):
                 content += para_inline(p, ctx)
             cell = {"content": content}
             if span > 1:
                 cell["colspan"] = span
+            if vmerge is not None and not is_continue:
+                for col in range(logical_col, logical_col + span):
+                    next_vertical[col] = cell
             cells.append(cell)
-        if cells:
-            rows.append(cells)
+            logical_col += span
+        rows.append(cells)
+        vertical = next_vertical
     return {"type": "table", "rows": rows} if rows else None
 
 
@@ -181,6 +317,18 @@ def numbering(p):
             int(lvl.get(q("w:val"), 0)) if lvl is not None else 0)
 
 
+def paragraph_alignment(p):
+    pr = p.find(q("w:pPr"))
+    jc = pr.find(q("w:jc")) if pr is not None else None
+    value = jc.get(q("w:val")) if jc is not None else "left"
+    return {
+        "center": "center",
+        "right": "right",
+        "both": "justify",
+        "distribute": "justify",
+    }.get(value, "left")
+
+
 def body_blocks(body, ctx):
     out = []
     for el in body:
@@ -192,6 +340,9 @@ def body_blocks(body, ctx):
                 blk = {"type": "image", "figure_id": nodes[0]["figure_id"]}
             else:
                 blk = {"type": "paragraph", "content": nodes}
+                align = paragraph_alignment(el)
+                if align != "left":
+                    blk["align"] = align
             if numbering(el):
                 blk["_num"] = True      # khóa tạm, bộ tách câu dùng xong sẽ gỡ
             out.append(blk)
@@ -308,7 +459,12 @@ def strip_prefix(block, n):
         else:
             nodes[0] = {**nodes[0], "text": t[n:].lstrip()}
             n = 0
-    return {"type": "paragraph", "content": nodes} if nodes else None
+    if not nodes:
+        return None
+    result = {"type": "paragraph", "content": nodes}
+    if block.get("align"):
+        result["align"] = block["align"]
+    return result
 
 
 def split_questions(tree):

@@ -6,28 +6,47 @@ import { useAuth } from "@/lib/auth-context";
 import Sidebar from "@/components/Sidebar";
 import LatexRenderer from "@/components/LatexRenderer";
 import AdaptiveOptionGrid from "@/components/AdaptiveOptionGrid";
+import TrueFalseOptionList from "@/components/TrueFalseOptionList";
 import Combobox from "@/components/Combobox";
 import { QuestionEditor, QuestionDetail } from "@/components/QuestionEditor";
 import api from "@/lib/api";
+import { mcCorrectLabel } from "@/lib/docTree";
+import { toast } from "@/lib/toastStore";
 
 const TYPE_COLORS: Record<string, string> = {
-  mc: "#255BA7",
-  tf: "#B45309",
-  sa: "#047857",
-  oe: "#1D4ED8",
-  st: "#7E22CE",
-  cd: "#0E7490",
+  mc: "var(--type-mc)",
+  tf: "var(--type-tf)",
+  sa: "var(--type-sa)",
+  oe: "var(--type-oe)",
+  st: "var(--tone-purple-text)",
+  cd: "var(--type-cd)",
+};
+const TYPE_SOFT: Record<string, string> = {
+  mc: "var(--type-mc-soft)",
+  tf: "var(--type-tf-soft)",
+  sa: "var(--type-sa-soft)",
+  oe: "var(--type-oe-soft)",
+  cd: "var(--type-cd-soft)",
+};
+const TYPE_BORDER: Record<string, string> = {
+  mc: "var(--type-mc-border)",
+  tf: "var(--type-tf-border)",
+  sa: "var(--type-sa-border)",
+  oe: "var(--type-oe-border)",
+  cd: "var(--type-cd-border)",
 };
 
 const typeBackground = (type: string) =>
-  type === "st" ? "#FAF5FF" : `${TYPE_COLORS[type] || "#64748b"}14`;
+  type === "st" ? "var(--tone-purple-bg)" : TYPE_SOFT[type] || "var(--type-mc-soft)";
 const typeBorder = (type: string) =>
-  type === "st" ? "#E9D5FF" : `${TYPE_COLORS[type] || "#64748b"}33`;
+  type === "st"
+    ? "var(--tone-purple-border)"
+    : TYPE_BORDER[type] || "var(--type-mc-border)";
 
 type ParsedItem = {
   table_question: Record<string, unknown>;
   table_details: { target_table: string; records: Record<string, unknown>[] };
-  table_images: { storage_path?: string; url?: string }[];
+  table_images: { id?: number | string; storage_path: string; url?: string; img_type?: string; width?: number | null; raw_code?: string | null }[];
 };
 
 const TYPE_LABELS: Record<string, string> = {
@@ -65,11 +84,12 @@ export default function UploadPage() {
     return {
       id: 0,
       subject: subject,
-      grade: Number(grade),
+      grade: Number(item.table_question.grade || grade),
       chapter: item.table_question.chapter || "",
       lesson: item.table_question.lesson || "",
       question_type: item.table_question.question_type,
       complexity: item.table_question.complexity || 1,
+      layout_type: item.table_question.layout_type || "normal",
       content: item.table_question.content || "",
       solution: item.table_question.solution || "",
       images: item.table_images || [],
@@ -93,7 +113,10 @@ export default function UploadPage() {
         chapter: qData.chapter,
         lesson: qData.lesson,
         complexity: qData.complexity,
+        grade: qData.grade,
+        layout_type: qData.layout_type || "normal",
       },
+      table_images: qData.images || oldItem.table_images || [],
       table_details: oldItem.table_details
         ? {
             ...oldItem.table_details,
@@ -127,6 +150,7 @@ export default function UploadPage() {
 
   const [success, setSuccess] = useState("");
   const [preview, setPreview] = useState<ParsedItem[]>([]);
+  const [uploadJobId, setUploadJobId] = useState<string | null>(null);
   const [subjects, setSubjects] = useState<Record<string, unknown>>({});
 
   const [subject, setSubject] = useState("Toán");
@@ -189,6 +213,10 @@ export default function UploadPage() {
     if (!targetFile || !user) return;
     setLoading(true);
     setError("");
+    if (uploadJobId) {
+      api.cancelUploadJob(uploadJobId).catch(() => undefined);
+      setUploadJobId(null);
+    }
     setPreview([]);
     const fd = new FormData();
     fd.append("file", targetFile);
@@ -199,15 +227,23 @@ export default function UploadPage() {
     fd.append("complexity", String(complexity));
     try {
       const res = await api.uploadTex(fd);
-      if (res.data && res.data.length > 0) {
-        setPreview(res.data);
+      setUploadJobId(res.job_id || null);
+      let completed = res;
+      while (completed.status === "processing") {
+        await new Promise((resolve) => setTimeout(resolve, 1000));
+        completed = await api.getUploadJob(completed.job_id);
+      }
+      if (completed.data && completed.data.length > 0) {
+        setPreview(completed.data);
       } else {
-        setError(
-          "Không tìm thấy câu hỏi nào trong file (định dạng chưa chuẩn). Vui lòng đảm bảo các câu hỏi bắt đầu bằng chữ 'Câu 1.', 'Câu 2:',...",
-        );
+        const msg =
+          "Không tìm thấy câu hỏi nào trong file (định dạng chưa chuẩn). Vui lòng đảm bảo các câu hỏi bắt đầu bằng chữ 'Câu 1.', 'Câu 2:',...";
+        setError(msg);
+        toast.error(msg);
       }
     } catch (e: unknown) {
       setError(e instanceof Error ? e.message : "Lỗi parse file");
+      toast.error(e instanceof Error ? e.message : "Lỗi parse file");
     } finally {
       setLoading(false);
     }
@@ -235,9 +271,11 @@ export default function UploadPage() {
               handleParse(aiFile);
             } else {
               setError("Không tìm thấy câu hỏi từ dữ liệu AI.");
+              toast.error("Không tìm thấy câu hỏi từ dữ liệu AI.");
             }
           } catch (e) {
             setError("Lỗi khi đọc dữ liệu từ AI.");
+            toast.error("Lỗi khi đọc dữ liệu từ AI.");
           }
           localStorage.removeItem("ai_normalized_questions");
         }
@@ -267,6 +305,31 @@ export default function UploadPage() {
   const removeItem = (idx: number) =>
     setPreview((prev) => prev.filter((_, i) => i !== idx));
 
+  const discardPreview = () => {
+    if (uploadJobId) api.cancelUploadJob(uploadJobId).catch(() => undefined);
+    setUploadJobId(null);
+    setPreview([]);
+  };
+
+  const updatePreviewImageWidth = (
+    idx: number,
+    storagePath: string,
+    width: number,
+  ) => {
+    setPreview((current) =>
+      current.map((item, itemIndex) =>
+        itemIndex !== idx
+          ? item
+          : {
+              ...item,
+              table_images: (item.table_images || []).map((image) =>
+                image.storage_path === storagePath ? { ...image, width } : image,
+              ),
+            },
+      ),
+    );
+  };
+
   const stCount = preview.filter(
     (q: any) => q.table_question?.question_type === "st",
   ).length;
@@ -286,12 +349,16 @@ export default function UploadPage() {
         subject,
         grade: parseInt(grade),
         data: preview,
+        job_id: uploadJobId,
       });
-      setSuccess(` Đã lưu ${countText} vào database!`);
+      setSuccess(` Đã lưu ${countText} vào CSDL!`);
+      toast.success(`Đã lưu ${countText} vào CSDL!`);
       setPreview([]);
+      setUploadJobId(null);
       setFile(null);
     } catch (e: unknown) {
-      setError(e instanceof Error ? e.message : "Lỗi lưu database");
+      setError(e instanceof Error ? e.message : "Lỗi lưu dữ liệu");
+      toast.error(e instanceof Error ? e.message : "Lỗi lưu dữ liệu");
     } finally {
       setLoading(false);
     }
@@ -321,17 +388,21 @@ export default function UploadPage() {
         subject,
         grade: parseInt(grade),
         data: preview,
+        job_id: uploadJobId,
         title,
         time_limit: 45,
         scoring_config: { mc: 0.25, tf: 1.0, sa: 0.25, oe: 2.0 },
         status: "inactive",
       });
       setPreview([]);
+      setUploadJobId(null);
       setFile(null);
       setSuccess(`Đã lưu ${res.saved} câu và tạo đề thi! Đang chuyển...`);
+      toast.success(`Đã lưu ${res.saved} câu và tạo đề thi!`);
       setTimeout(() => router.push(`/contests/${res.contest_id}`), 1200);
     } catch (e: unknown) {
       setError(e instanceof Error ? e.message : "Lỗi tạo đề thi");
+      toast.error(e instanceof Error ? e.message : "Lỗi tạo đề thi");
     } finally {
       setLoading(false);
     }
@@ -343,10 +414,9 @@ export default function UploadPage() {
       <main className="main-content">
         <div className="page-header">
           <div>
-            <h1 className="page-title">Upload câu hỏi LaTeX</h1>
+            <h1 className="page-title">Nhập câu hỏi từ tài liệu</h1>
             <p className="page-sub">
-              Upload file .tex, .txt hoặc .zip chứa câu hỏi định dạng LaTeX
-              chuẩn
+              Hỗ trợ: .tex, .txt, .zip, .docx đã được chuẩn hóa
             </p>
           </div>
         </div>
@@ -370,7 +440,7 @@ export default function UploadPage() {
               >
                 <div className="upload-icon"></div>
                 <div className="upload-text">
-                  Kéo thả hoặc click để chọn file
+                  Kéo thả hoặc nhấn để chọn tài liệu
                 </div>
                 <div className="upload-sub">
                   Hỗ trợ: .tex, .txt, .zip, .docx
@@ -405,10 +475,10 @@ export default function UploadPage() {
             >
               {loading ? (
                 <>
-                  <span className="spinner" /> Đang parse...
+                  <span className="spinner" /> Đang trích xuất...
                 </>
               ) : (
-                " Parse & Xem trước"
+                " Trích xuất và Xem trước"
               )}
             </button>
             <p
@@ -420,7 +490,7 @@ export default function UploadPage() {
               }}
             >
               Môn, khối, chương/bài và mức độ sẽ điền chung cho tất cả câu sau
-              khi parse.
+              khi trích xuất.
             </p>
           </div>
         ) : (
@@ -436,21 +506,21 @@ export default function UploadPage() {
             >
               <div>
                 <h2 style={{ marginBottom: "0.25rem" }}>
-                  Xem trước — {countText}
+                  Xem trước - {countText}
                 </h2>
                 <p
                   style={{
                     color: "var(--text-secondary)",
-                    fontSize: "0.875rem",
+                    fontSize: "var(--font-size-base)",
                   }}
                 >
-                  Kiểm tra và chỉnh sửa trước khi lưu vào database
+                  Kiểm tra và chỉnh sửa trước khi lưu vào CSDL
                 </p>
               </div>
               <div style={{ display: "flex", gap: "0.75rem" }}>
                 <button
                   className="btn btn-secondary"
-                  onClick={() => setPreview([])}
+                  onClick={discardPreview}
                 >
                   Hủy
                 </button>
@@ -472,7 +542,7 @@ export default function UploadPage() {
                       <span className="spinner" /> Đang lưu...
                     </>
                   ) : (
-                    ` Lưu ${countText}`
+                    ` Lưu `
                   )}
                 </button>
               </div>
@@ -500,12 +570,11 @@ export default function UploadPage() {
                   alignItems: "center",
                 }}
               >
-                <select
+                <Combobox
                   className="select"
                   style={{ width: "auto" }}
                   value={subject}
-                  onChange={(e) => {
-                    const s = e.target.value;
+                  onChange={(s) => {
                     setSubject(s);
                     const gs = Object.keys(
                       (subjects as Record<string, Record<string, unknown>>)[
@@ -516,31 +585,24 @@ export default function UploadPage() {
                     setChapter("");
                     setLesson("");
                   }}
-                >
-                  {subjectList.map((s) => (
-                    <option key={s} value={s}>
-                      {s}
-                    </option>
-                  ))}
-                </select>
-                <select
+                  options={subjectList}
+                />
+                <Combobox
                   className="select"
                   style={{ width: "auto" }}
                   value={grade}
-                  onChange={(e) => {
-                    const g = e.target.value;
-                    setGrade(g);
+                  onChange={(g) => {
+                    const gradeValue = String(g);
+                    setGrade(gradeValue);
                     setChapter("");
                     setLesson("");
-                    applyToAll("grade", +g);
+                    applyToAll("grade", +gradeValue);
                   }}
-                >
-                  {gradeList.map((g) => (
-                    <option key={g} value={g}>
-                      Lớp {g}
-                    </option>
-                  ))}
-                </select>
+                  options={gradeList.map((g) => ({
+                    value: g,
+                    label: `Lớp ${g}`,
+                  }))}
+                />
                 <Combobox
                   className="select"
                   style={{ flex: 1, minWidth: "180px" }}
@@ -564,25 +626,25 @@ export default function UploadPage() {
                   options={lessonList}
                   placeholder="Bài (áp dụng tất cả)"
                 />
-                <select
+                <Combobox
                   className="select"
                   style={{ width: "auto" }}
                   value={complexity}
-                  onChange={(e) => {
-                    setComplexity(+e.target.value);
-                    applyToAll("complexity", +e.target.value);
+                  onChange={(value) => {
+                    setComplexity(+value);
+                    applyToAll("complexity", +value);
                   }}
-                >
-                  {Object.entries(COMPLEXITY_LABELS).map(([k, v]) => (
-                    <option key={k} value={k}>
-                      {v}
-                    </option>
-                  ))}
-                </select>
+                  options={Object.entries(COMPLEXITY_LABELS).map(
+                    ([value, label]) => ({
+                      value,
+                      label,
+                    }),
+                  )}
+                />
               </div>
               <div
                 style={{
-                  fontSize: "0.75rem",
+                  fontSize: "var(--font-size-xs)",
                   color: "var(--text-muted)",
                   marginTop: "0.6rem",
                 }}
@@ -652,7 +714,7 @@ export default function UploadPage() {
                           alignItems: "flex-start",
                           gap: "1rem",
                           padding: "1.5rem",
-                          background: "rgba(78,205,196,0.05)",
+                          background: "var(--bg-surface)",
                           borderBottom: "2px dashed var(--border)",
                           borderLeft: "4px solid var(--accent-primary)",
                         }}
@@ -681,7 +743,7 @@ export default function UploadPage() {
                           >
                             <span
                               style={{
-                                fontSize: "0.75rem",
+                                fontSize: "var(--font-size-xs)",
                                 fontWeight: 600,
                                 padding: "0.2rem 0.5rem",
                                 borderRadius: 99,
@@ -789,9 +851,13 @@ export default function UploadPage() {
                             />
                           </div>
                           <LatexRenderer
-                            content={String(q.content || "")}
+                            content={q.content}
                             layoutType={String(q.layout_type || "normal")}
-                            images={q.image || q.images}
+                            images={item.table_images || []}
+                            imageZoomable
+                            onImageWidthChange={(path, width) =>
+                              updatePreviewImageWidth(originalIdx, path, width)
+                            }
                             className="question-content"
                           />
                         </div>
@@ -893,7 +959,7 @@ export default function UploadPage() {
                             >
                               <span
                                 style={{
-                                  fontSize: "0.75rem",
+                                  fontSize: "var(--font-size-xs)",
                                   fontWeight: 600,
                                   padding: "0.2rem 0.6rem",
                                   borderRadius: 99,
@@ -1005,24 +1071,29 @@ export default function UploadPage() {
                         </div>
 
                         <LatexRenderer
-                          content={String(q.content || "")}
+                          content={q.content}
                           layoutType={String(q.layout_type || "normal")}
-                          images={q.image || q.images}
+                          images={item.table_images || []}
+                          imageZoomable
+                          onImageWidthChange={(path, width) =>
+                            updatePreviewImageWidth(originalIdx, path, width)
+                          }
                           className="question-content"
+                          preserveLineBreaks={qtype === "cd"}
                         />
 
                         {qtype === "mc" && options.length > 0 && (
                           <AdaptiveOptionGrid
                             count={options.length}
-                            style={{ marginLeft: "1rem", marginTop: "1rem" }}
+                            style={{ marginTop: "0.75rem" }}
                           >
                             {options.map((opt: any, oi: number) => {
                               let bg = "var(--bg-elevated)";
                               let border = "transparent";
                               let textColor = "var(--text-secondary)";
                               if (opt.is_correct) {
-                                bg = "rgba(107,203,119,0.1)";
-                                border = "var(--accent-success)";
+                                bg = "var(--answer-correct-bg)";
+                                border = "var(--answer-correct-border)";
                                 textColor = "var(--accent-success)";
                               }
                               return (
@@ -1034,7 +1105,7 @@ export default function UploadPage() {
                                     alignItems: "baseline",
                                     gap: "0.5rem",
                                     padding: "0.4rem 0.75rem",
-                                    borderRadius: "var(--radius-md)",
+                                    borderRadius: "var(--radius-sm)",
                                     background: bg,
                                     border: `1px solid ${border}`,
                                   }}
@@ -1049,8 +1120,12 @@ export default function UploadPage() {
                                   </div>
                                   <div style={{ flex: 1, minWidth: 0 }}>
                                     <LatexRenderer
-                                      content={String(opt.content || "")}
-                                      images={q.image || q.images}
+                                      content={opt.content}
+                                      images={item.table_images || []}
+                                      imageZoomable
+                                      onImageWidthChange={(path, width) =>
+                                        updatePreviewImageWidth(originalIdx, path, width)
+                                      }
                                     />
                                   </div>
                                 </div>
@@ -1060,28 +1135,20 @@ export default function UploadPage() {
                         )}
 
                         {qtype === "tf" && options.length > 0 && (
-                          <div
-                            style={{
-                              marginLeft: "1rem",
-                              marginTop: "1rem",
-                              display: "flex",
-                              flexDirection: "column",
-                              gap: "0.5rem",
-                            }}
-                          >
+                          <TrueFalseOptionList>
                             {options.map((opt: any, oi: number) => (
                               <div
                                 key={oi}
                                 style={{
                                   display: "flex",
-                                  gap: "0.75rem",
+                                  gap: "0.5rem",
                                   alignItems: "center",
-                                  padding: "0.5rem 0.75rem",
-                                  borderRadius: "var(--radius-md)",
+                                  padding: "0.4rem 0.75rem",
+                                  borderRadius: "var(--radius-sm)",
                                   background: opt.is_correct
-                                    ? "rgba(107,203,119,0.1)"
-                                    : "rgba(255,107,107,0.1)",
-                                  border: `1px solid ${opt.is_correct ? "var(--accent-success)" : "var(--accent-danger)"}`,
+                                    ? "var(--answer-correct-bg)"
+                                    : "var(--answer-wrong-bg)",
+                                  border: `1px solid ${opt.is_correct ? "var(--answer-correct-border)" : "var(--answer-wrong-border)"}`,
                                 }}
                               >
                                 <div
@@ -1094,13 +1161,17 @@ export default function UploadPage() {
                                 </div>
                                 <div style={{ flex: 1, minWidth: 0 }}>
                                   <LatexRenderer
-                                    content={String(opt.content || "")}
-                                    images={q.image || q.images}
+                                    content={opt.content}
+                                    images={item.table_images || []}
+                                    imageZoomable
+                                    onImageWidthChange={(path, width) =>
+                                      updatePreviewImageWidth(originalIdx, path, width)
+                                    }
                                   />
                                 </div>
                               </div>
                             ))}
-                          </div>
+                          </TrueFalseOptionList>
                         )}
 
                         {qtype === "sa" &&
@@ -1120,8 +1191,9 @@ export default function UploadPage() {
                                 style={{
                                   marginTop: "0.75rem",
                                   padding: "0.5rem 0.75rem",
-                                  background: "rgba(255,217,61,0.1)",
-                                  border: "1px solid var(--accent-warning)",
+                                  background: "var(--accent-primary-soft)",
+                                  border:
+                                    "1px solid var(--accent-primary-border)",
                                   borderRadius: "var(--radius-md)",
                                   display: "inline-flex",
                                   alignItems: "center",
@@ -1131,7 +1203,7 @@ export default function UploadPage() {
                                 <span
                                   style={{
                                     fontWeight: 600,
-                                    color: "var(--accent-warning)",
+                                    color: "var(--accent-primary)",
                                   }}
                                 >
                                   Trả lời ngắn:
@@ -1146,13 +1218,13 @@ export default function UploadPage() {
                                         width: "25px",
                                         height: "27px",
                                         border:
-                                          "2px solid var(--accent-warning)",
+                                          "2px solid var(--accent-primary)",
                                         display: "flex",
                                         alignItems: "center",
                                         justifyContent: "center",
                                         fontWeight: 700,
                                         borderRadius: "4px",
-                                        background: "#fff",
+                                        background: "var(--bg-surface)",
                                         color: "var(--text-primary)",
                                       }}
                                     >
@@ -1165,15 +1237,21 @@ export default function UploadPage() {
                           })()}
 
                         {/* Solution */}
-                        {((q.solution && qtype !== "tf") ||
-                          (qtype === "tf" && options.length > 0)) && (
+                        {qtype !== "st" &&
+                          ((q.solution && qtype !== "tf") ||
+                            (qtype === "tf" && options.length > 0)) && (
                           <div
                             style={{
-                              marginTop: "1.5rem",
-                              marginLeft: "1rem",
+                              marginTop: "1rem",
                               padding: "1rem",
                               background: "var(--bg-surface)",
-                              borderLeft: "4px solid var(--accent-secondary)",
+                              borderLeft: "4px solid var(--accent-primary)",
+                              borderTop:
+                                "1px solid var(--accent-primary-border)",
+                              borderRight:
+                                "1px solid var(--accent-primary-border)",
+                              borderBottom:
+                                "1px solid var(--accent-primary-border)",
                               borderRadius:
                                 "0 var(--radius-sm) var(--radius-sm) 0",
                             }}
@@ -1182,7 +1260,7 @@ export default function UploadPage() {
                               style={{
                                 fontWeight: 700,
                                 marginBottom: "0.5rem",
-                                color: "var(--accent-secondary)",
+                                color: "var(--accent-primary)",
                               }}
                             >
                               Lời giải:
@@ -1212,8 +1290,12 @@ export default function UploadPage() {
                                     <div style={{ flex: 1, minWidth: 0 }}>
                                       {opt.explaination && (
                                         <LatexRenderer
-                                          content={String(opt.explaination)}
-                                          images={q.image || q.images}
+                                          content={opt.explaination}
+                                          images={item.table_images || []}
+                                          imageZoomable
+                                          onImageWidthChange={(path, width) =>
+                                            updatePreviewImageWidth(originalIdx, path, width)
+                                          }
                                         />
                                       )}
                                     </div>
@@ -1223,9 +1305,20 @@ export default function UploadPage() {
                             )}
                             {q.solution && (
                               <LatexRenderer
-                                content={String(q.solution)}
-                                images={q.image || q.images}
+                                content={q.solution}
+                                images={item.table_images || []}
+                                imageZoomable
+                                onImageWidthChange={(path, width) =>
+                                  updatePreviewImageWidth(originalIdx, path, width)
+                                }
                               />
+                            )}
+                            {qtype === "mc" && mcCorrectLabel(options) && (
+                              <div
+                                style={{ fontWeight: 700, marginTop: "0.5rem" }}
+                              >
+                                Chọn {mcCorrectLabel(options)}
+                              </div>
                             )}
                           </div>
                         )}
@@ -1287,7 +1380,7 @@ export default function UploadPage() {
             >
               <button
                 className="btn btn-secondary"
-                onClick={() => setPreview([])}
+                onClick={discardPreview}
               >
                 Hủy
               </button>
@@ -1309,7 +1402,7 @@ export default function UploadPage() {
                     <span className="spinner" /> Đang lưu...
                   </>
                 ) : (
-                  ` Lưu ${countText} vào database`
+                  ` Lưu `
                 )}
               </button>
             </div>
@@ -1455,6 +1548,7 @@ export default function UploadPage() {
                   isChild={editModal.isChild}
                   childIndex={editModal.childIndex}
                   imageEditable={true}
+                  importJobId={uploadJobId || undefined}
                 />
               </div>
 

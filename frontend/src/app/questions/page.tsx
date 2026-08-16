@@ -4,11 +4,15 @@ import { useEffect, useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/lib/auth-context";
 import Sidebar from "@/components/Sidebar";
+import useScrollRestoration from "@/lib/useScrollRestoration";
+import QuestionCreateDropdown from "@/components/QuestionCreateDropdown";
 import LatexRenderer from "@/components/LatexRenderer";
 import { QuestionEditor, QuestionDetail } from "@/components/QuestionEditor";
 import api from "@/lib/api";
-import Link from "next/link";
 import AdaptiveOptionGrid from "@/components/AdaptiveOptionGrid";
+import TrueFalseOptionList from "@/components/TrueFalseOptionList";
+import { mcCorrectLabel } from "@/lib/docTree";
+import { toast } from "@/lib/toastStore";
 
 type Question = {
   id: number;
@@ -18,7 +22,7 @@ type Question = {
   lesson: string;
   question_type: string;
   complexity: number;
-  content: string;
+  content: any; // cây tài liệu (jsonb) — xem frontend/src/lib/docTree.ts
   teacher_name: string;
   children?: any[];
 };
@@ -32,12 +36,26 @@ const TYPE_LABELS: Record<string, string> = {
   cd: "Lập trình",
 };
 const TYPE_COLORS: Record<string, string> = {
-  mc: "#255BA7",
-  tf: "#B45309",
-  sa: "#047857",
-  oe: "#1D4ED8",
-  st: "#7E22CE",
-  cd: "#0E7490",
+  mc: "var(--type-mc)",
+  tf: "var(--type-tf)",
+  sa: "var(--type-sa)",
+  oe: "var(--type-oe)",
+  st: "var(--tone-purple-text)",
+  cd: "var(--type-cd)",
+};
+const TYPE_SOFT: Record<string, string> = {
+  mc: "var(--type-mc-soft)",
+  tf: "var(--type-tf-soft)",
+  sa: "var(--type-sa-soft)",
+  oe: "var(--type-oe-soft)",
+  cd: "var(--type-cd-soft)",
+};
+const TYPE_BORDER: Record<string, string> = {
+  mc: "var(--type-mc-border)",
+  tf: "var(--type-tf-border)",
+  sa: "var(--type-sa-border)",
+  oe: "var(--type-oe-border)",
+  cd: "var(--type-cd-border)",
 };
 const COMPLEXITY_LABELS: Record<number, string> = {
   1: "Nhận biết",
@@ -47,11 +65,19 @@ const COMPLEXITY_LABELS: Record<number, string> = {
 };
 
 const typeBadgeStyle = (type: string) => {
-  const color = TYPE_COLORS[type] || "#255BA7";
+  const color = TYPE_COLORS[type] || "var(--type-mc)";
   if (type === "st") {
-    return { background: "#FAF5FF", color, border: "1px solid #E9D5FF" };
+    return {
+      background: "var(--tone-purple-bg)",
+      color,
+      border: "1px solid var(--tone-purple-border)",
+    };
   }
-  return { background: `${color}14`, color, border: `1px solid ${color}33` };
+  return {
+    background: TYPE_SOFT[type] || "var(--type-mc-soft)",
+    color,
+    border: `1px solid ${TYPE_BORDER[type] || "var(--type-mc-border)"}`,
+  };
 };
 
 export default function QuestionsPage() {
@@ -76,7 +102,10 @@ export default function QuestionsPage() {
 
   useEffect(() => {
     if (!isLoading && !user) router.replace("/");
+    if (!isLoading && user?.role !== "teacher") router.replace("/dashboard");
   }, [user, isLoading, router]);
+
+  useScrollRestoration(!loading);
 
   useEffect(() => {
     api
@@ -100,7 +129,7 @@ export default function QuestionsPage() {
   }, [filters, page]);
 
   useEffect(() => {
-    if (user) fetchQuestions();
+    if (user?.role === "teacher") fetchQuestions();
   }, [user, fetchQuestions]);
 
   const handleDelete = async (id: number) => {
@@ -112,7 +141,7 @@ export default function QuestionsPage() {
   const [deletingAll, setDeletingAll] = useState(false);
   const handleDeleteAll = async () => {
     if (total === 0) {
-      alert("Ngân hàng đang trống.");
+      toast.warning("Ngân hàng đang trống.");
       return;
     }
     if (
@@ -125,11 +154,11 @@ export default function QuestionsPage() {
     setDeletingAll(true);
     try {
       const res = await api.deleteAllQuestions();
-      alert(res.message || "Đã xóa toàn bộ câu hỏi");
+      toast.success(res.message || "Đã xóa toàn bộ câu hỏi");
       setPage(1);
       fetchQuestions();
     } catch (e: unknown) {
-      alert(e instanceof Error ? e.message : "Lỗi khi xóa toàn bộ câu hỏi");
+      toast.error(e instanceof Error ? e.message : "Lỗi khi xóa toàn bộ câu hỏi");
     } finally {
       setDeletingAll(false);
     }
@@ -155,12 +184,29 @@ export default function QuestionsPage() {
     setDetailModal((d) => (d ? { ...d, saving: true, error: "" } : d));
     try {
       const q = detailModal.question;
+
+      // Cỡ ảnh (width) gộp lưu chung lúc bấm "Lưu" — không lưu riêng từng
+      // ảnh lúc kéo/gõ số trong ô soạn thảo (xem
+      // RichLatexEditor.tsx::onImageWidthChange -> QuestionEditor.tsx).
+      const widthTasks: Promise<void>[] = [];
+      const queueWidths = (imgs?: QuestionDetail["images"]) => {
+        (imgs || []).forEach((img) => {
+          if (img.width != null) {
+            widthTasks.push(api.updateImageWidth(img.storage_path, img.width));
+          }
+        });
+      };
+      queueWidths(q.images);
+      (q.children || []).forEach((child) => queueWidths(child.images));
+      if (widthTasks.length) await Promise.all(widthTasks);
+
       await api.updateQuestion(q.id!, {
         subject: q.subject,
         grade: q.grade,
         chapter: q.chapter,
         lesson: q.lesson,
         complexity: q.complexity,
+        layout_type: q.layout_type,
         content: q.content,
         solution: q.solution,
         details: q.details?.map((d) => ({
@@ -170,12 +216,69 @@ export default function QuestionsPage() {
           explaination: d.explaination,
         })),
       });
+
+      if (q.question_type === "st" && q.children?.length) {
+        await Promise.all(
+          q.children.map((child) =>
+            api.updateQuestion(child.id!, {
+              subject: child.subject,
+              grade: child.grade,
+              chapter: child.chapter,
+              lesson: child.lesson,
+              complexity: child.complexity,
+              content: child.content,
+              solution: child.solution,
+              details: child.details?.map((d) => ({
+                id: d.id,
+                content: d.content,
+                is_correct: d.is_correct,
+                explaination: d.explaination,
+              })),
+            }),
+          ),
+        );
+      }
+
+      const mergeEditedQuestion = (current: any, edited: any): any => ({
+        ...current,
+        subject: edited.subject,
+        grade: edited.grade,
+        chapter: edited.chapter,
+        lesson: edited.lesson,
+        complexity: edited.complexity,
+        layout_type: edited.layout_type ?? current.layout_type,
+        content: edited.content,
+        solution: edited.solution,
+        // Ảnh MỚI chèn qua RichLatexEditor (nút/dán) chỉ có trong qData.images
+        // của modal — thiếu dòng này thì danh sách vẫn hiện content đã có
+        // figure_id mới nhưng KHÔNG tra được ảnh nào (images cũ không có id
+        // đó), ảnh không hiện cho tới khi tải lại trang.
+        images: edited.images ?? current.images,
+        options: edited.details
+          ? edited.details.map((detail: any) => ({ ...detail }))
+          : current.options,
+        children: edited.children
+          ? edited.children.map((child: any) => {
+              const currentChild = current.children?.find(
+                (item: any) => item.id === child.id,
+              );
+              return mergeEditedQuestion(currentChild || {}, child);
+            })
+          : current.children,
+      });
+
+      setQuestions((current) =>
+        current.map((item) =>
+          item.id === q.id ? mergeEditedQuestion(item, q) : item,
+        ),
+      );
       setDetailModal(null);
-      fetchQuestions();
+      toast.success("Đã lưu câu hỏi");
     } catch {
       setDetailModal((d) =>
         d ? { ...d, saving: false, error: "Lỗi lưu câu hỏi" } : d,
       );
+      toast.error("Lỗi lưu câu hỏi");
     }
   };
 
@@ -255,9 +358,7 @@ export default function QuestionsPage() {
           </div>
           {user?.role === "teacher" && (
             <div style={{ display: "flex", gap: "0.5rem" }}>
-              <Link href="/questions/create" className="btn btn-primary">
-                Tạo câu hỏi
-              </Link>
+              <QuestionCreateDropdown />
               <button
                 className="btn btn-danger"
                 onClick={handleDeleteAll}
@@ -265,9 +366,6 @@ export default function QuestionsPage() {
               >
                 {deletingAll ? "Đang xóa..." : "Xóa tất cả"}
               </button>
-              <Link href="/questions/upload" className="btn btn-secondary">
-                Upload
-              </Link>
             </div>
           )}
         </div>
@@ -444,7 +542,7 @@ export default function QuestionsPage() {
                           {node.subject && (
                             <span
                               style={{
-                                fontSize: "0.75rem",
+                                fontSize: "var(--font-size-xs)",
                                 color: "var(--text-muted)",
                               }}
                             >
@@ -454,7 +552,7 @@ export default function QuestionsPage() {
                           {node.chapter && (
                             <span
                               style={{
-                                fontSize: "0.75rem",
+                                fontSize: "var(--font-size-xs)",
                                 color: "var(--text-muted)",
                               }}
                               title={node.chapter}
@@ -470,6 +568,7 @@ export default function QuestionsPage() {
                         content={node.content}
                         layoutType={node.layout_type}
                         images={node.images}
+                        imageZoomable
                         className="question-content"
                         preserveLineBreaks={node.question_type === "cd"}
                       />
@@ -490,10 +589,10 @@ export default function QuestionsPage() {
                                 alignItems: "baseline",
                                 padding: "0.4rem 0.75rem",
                                 background: opt.is_correct
-                                  ? "rgba(107,203,119,0.1)"
+                                  ? "var(--answer-correct-bg)"
                                   : "var(--bg-elevated)",
                                 borderRadius: "var(--radius-sm)",
-                                border: `1px solid ${opt.is_correct ? "var(--accent-success)" : "transparent"}`,
+                                border: `1px solid ${opt.is_correct ? "var(--answer-correct-border)" : "transparent"}`,
                               }}
                             >
                               <div
@@ -509,6 +608,7 @@ export default function QuestionsPage() {
                               <LatexRenderer
                                 content={opt.content}
                                 images={node.images}
+                                imageZoomable
                               />
                             </div>
                           ))}
@@ -516,14 +616,7 @@ export default function QuestionsPage() {
                       )}
 
                       {node.question_type === "tf" && node.options && (
-                        <div
-                          style={{
-                            marginTop: "0.75rem",
-                            display: "flex",
-                            flexDirection: "column",
-                            gap: "0.5rem",
-                          }}
-                        >
+                        <TrueFalseOptionList>
                           {node.options.map((opt: any, oi: number) => (
                             <div
                               key={opt.id}
@@ -533,9 +626,9 @@ export default function QuestionsPage() {
                                 alignItems: "center",
                                 padding: "0.4rem 0.75rem",
                                 background: opt.is_correct
-                                  ? "rgba(107,203,119,0.1)"
-                                  : "rgba(255,107,107,0.1)",
-                                border: `1px solid ${opt.is_correct ? "var(--accent-success)" : "var(--accent-danger)"}`,
+                                  ? "var(--answer-correct-bg)"
+                                  : "var(--answer-wrong-bg)",
+                                border: `1px solid ${opt.is_correct ? "var(--answer-correct-border)" : "var(--answer-wrong-border)"}`,
                                 borderRadius: "var(--radius-sm)",
                               }}
                             >
@@ -551,11 +644,12 @@ export default function QuestionsPage() {
                                 <LatexRenderer
                                   content={opt.content}
                                   images={node.images}
+                                  imageZoomable
                                 />
                               </div>
                             </div>
                           ))}
-                        </div>
+                        </TrueFalseOptionList>
                       )}
 
                       {node.question_type === "sa" &&
@@ -576,8 +670,9 @@ export default function QuestionsPage() {
                               style={{
                                 marginTop: "0.75rem",
                                 padding: "0.5rem 0.75rem",
-                                background: "rgba(255,217,61,0.1)",
-                                border: "1px solid var(--accent-warning)",
+                                background: "var(--accent-primary-soft)",
+                                border:
+                                  "1px solid var(--accent-primary-border)",
                                 borderRadius: "var(--radius-sm)",
                                 display: "inline-flex",
                                 alignItems: "center",
@@ -587,7 +682,7 @@ export default function QuestionsPage() {
                               <span
                                 style={{
                                   fontWeight: 600,
-                                  color: "var(--accent-warning)",
+                                  color: "var(--accent-primary)",
                                 }}
                               >
                                 Trả lời ngắn:
@@ -599,13 +694,13 @@ export default function QuestionsPage() {
                                     style={{
                                       width: "25px",
                                       height: "27px",
-                                      border: "2px solid var(--accent-warning)",
+                                      border: "2px solid var(--accent-primary)",
                                       display: "flex",
                                       alignItems: "center",
                                       justifyContent: "center",
                                       fontWeight: 700,
                                       borderRadius: "4px",
-                                      background: "#fff",
+                                      background: "var(--bg-surface)",
                                       color: "var(--text-primary)",
                                     }}
                                   >
@@ -618,17 +713,20 @@ export default function QuestionsPage() {
                         })()}
 
                       {/* Solution */}
-                      {((node.solution && node.question_type !== "tf") ||
-                        (node.question_type === "tf" && node.options)) && (
+                      {node.question_type !== "st" &&
+                        ((node.solution && node.question_type !== "tf") ||
+                          (node.question_type === "tf" && node.options)) && (
                         <div
                           style={{
                             marginTop: "1rem",
                             padding: "1rem",
-                            background: "var(--accent-primary-soft)",
+                            background: "var(--bg-surface)",
                             borderLeft: "4px solid var(--accent-primary)",
                             borderTop: "1px solid var(--accent-primary-border)",
-                            borderRight: "1px solid var(--accent-primary-border)",
-                            borderBottom: "1px solid var(--accent-primary-border)",
+                            borderRight:
+                              "1px solid var(--accent-primary-border)",
+                            borderBottom:
+                              "1px solid var(--accent-primary-border)",
                             borderRadius:
                               "0 var(--radius-sm) var(--radius-sm) 0",
                           }}
@@ -669,6 +767,7 @@ export default function QuestionsPage() {
                                       <LatexRenderer
                                         content={opt.explaination}
                                         images={node.images}
+                                        imageZoomable
                                       />
                                     )}
                                   </div>
@@ -680,8 +779,15 @@ export default function QuestionsPage() {
                             <LatexRenderer
                               content={node.solution}
                               images={node.images}
+                              imageZoomable
                             />
                           )}
+                          {node.question_type === "mc" &&
+                            mcCorrectLabel(node.options) && (
+                              <div style={{ fontWeight: 700, marginTop: "0.5rem" }}>
+                                Chọn {mcCorrectLabel(node.options)}
+                              </div>
+                            )}
                         </div>
                       )}
                     </>
@@ -716,9 +822,9 @@ export default function QuestionsPage() {
                             display: "flex",
                             alignItems: "center",
                             justifyContent: "center",
-                            fontSize: "0.75rem",
+                            fontSize: "0.8rem",
                             fontWeight: 700,
-                            color: "#ffffff",
+                            color: "var(--text-on-accent)",
                           }}
                         >
                           {childIndex}
@@ -801,7 +907,7 @@ export default function QuestionsPage() {
                           {q.subject && (
                             <span
                               style={{
-                                fontSize: "0.75rem",
+                                fontSize: "var(--font-size-xs)",
                                 color: "var(--text-muted)",
                               }}
                             >
@@ -811,7 +917,7 @@ export default function QuestionsPage() {
                           {q.chapter && (
                             <span
                               style={{
-                                fontSize: "0.75rem",
+                                fontSize: "var(--font-size-xs)",
                                 color: "var(--text-muted)",
                               }}
                               title={q.chapter}
@@ -961,6 +1067,7 @@ export default function QuestionsPage() {
                   <LatexRenderer
                     content={detailModal.question.content}
                     images={detailModal.question.images}
+                    imageZoomable
                     preserveLineBreaks={
                       detailModal.question.question_type === "cd"
                     }
@@ -972,7 +1079,7 @@ export default function QuestionsPage() {
                   style={{
                     padding: "0 1.5rem 1rem",
                     color: "var(--accent-danger)",
-                    fontSize: "0.875rem",
+                    fontSize: "var(--font-size-base)",
                   }}
                 >
                   {detailModal.error}

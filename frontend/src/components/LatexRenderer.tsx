@@ -2,23 +2,202 @@
 
 import { useEffect, useRef, useState, useCallback } from "react";
 import ImageEditorModal, { ImageEditResult } from "./ImageEditorModal";
+import { A4_REFERENCE_WIDTH_PX, TreeDoc, isTreeDoc, imagesById, treeToHtml, resolveImgSrc } from "@/lib/docTree";
+import { queueTypeset } from "@/lib/mathjax";
 
 interface Props {
-  content: string;
+  content: string | TreeDoc | null | undefined;
   className?: string;
   layoutType?: string;
-  images?: { storage_path: string; img_scale?: number; img_type?: string }[];
+  images?: { id?: number | string; storage_path: string; url?: string; width?: number | null; img_type?: string }[];
   editable?: boolean;
   preserveLineBreaks?: boolean;
+  imageZoomable?: boolean;
+  onImageWidthChange?: (storagePath: string, width: number) => void;
 }
 
-declare global {
-  interface Window {
-    MathJax?: {
-      typesetPromise: (elements?: HTMLElement[]) => Promise<void>;
-      typesetClear: (elements?: HTMLElement[]) => void;
+/** Ảnh SVG (TikZ) chưa đặt `width` (kích thước gốc) — đánh dấu
+ * `data-native-scale` ở docTree.ts::imgHtml / immersedFigureHtml — phóng lên
+ * x1.5 so với `naturalWidth` đọc được SAU khi ảnh load xong (chỉ lúc đó mới
+ * biết đúng kích thước gốc thật). Chỉ đổi cách HIỂN THỊ trên web, không đụng
+ * `width` lưu CSDL — gọi TRƯỚC wireLocalZoom để cụm zoom (nếu có) nhận đúng
+ * kích thước đã phóng làm mốc 100%. */
+function applyNativeSvgScale(container: HTMLElement) {
+  container.querySelectorAll<HTMLImageElement>("img[data-native-scale]").forEach((img) => {
+    const scale = parseFloat(img.dataset.nativeScale || "1") || 1;
+    const apply = () => {
+      const w = img.naturalWidth;
+      if (w) img.style.width = Math.round(w * scale) + "px";
     };
-  }
+    if (img.complete) apply();
+    else img.addEventListener("load", apply, { once: true });
+  });
+}
+
+/** Zoom CỤC BỘ (người xem, không riêng gì giáo viên) — chỉ đổi cách hiển thị
+ * trên máy đang xem, KHÔNG gọi API, KHÔNG đổi `width` thật trong CSDL. Nhớ
+ * lại qua localStorage theo đúng ảnh (khoá theo src) để lần sau mở lại
+ * không phải chỉnh lại, nhưng không đồng bộ giữa các máy/tài khoản. */
+function wireLocalZoom(container: HTMLElement) {
+  container.querySelectorAll<HTMLElement>(".lr-side-fig").forEach((fig) => {
+    const imgRaw = fig.querySelector("img");
+    const inputRaw = fig.querySelector<HTMLInputElement>(".lr-zoom-input");
+    if (!imgRaw || !inputRaw) return;
+    const imgEl: HTMLImageElement = imgRaw;
+    const inputEl: HTMLInputElement = inputRaw;
+
+    function setup(basePx: number) {
+      if (!basePx) return;
+      const key = "lr_zoom_" + imgEl.getAttribute("data-img-key");
+      let zoom = parseFloat(localStorage.getItem(key) || "") || 1;
+      const clamp = (v: number) => Math.max(0.01, v);
+
+      function render() {
+        zoom = clamp(zoom);
+        inputEl.value = String(Math.round(zoom * 100));
+        imgEl.style.width = Math.round(basePx * zoom) + "px";
+      }
+      function setZoom(v: number) {
+        zoom = clamp(v);
+        localStorage.setItem(key, String(zoom));
+        render();
+      }
+      fig.querySelectorAll<HTMLButtonElement>(".lr-zoom-btn").forEach((btn) => {
+        btn.addEventListener("click", () => {
+          setZoom(zoom + (btn.dataset.dir === "1" ? 0.1 : -0.1));
+        });
+      });
+      // Gõ số: áp trực tiếp lên ảnh để xem trước, KHÔNG viết đè inputEl.value
+      // (đang gõ dở) và KHÔNG áp min/max — ghi đè input lúc đang gõ làm mất
+      // ký tự vừa gõ / con trỏ nhảy lung tung (gõ "50" thành "450"...). Chốt
+      // + áp giới hạn tối thiểu + lưu localStorage khi rời khỏi ô (blur);
+      // để trống thì trở về kích thước gốc 100%.
+      inputEl.addEventListener("input", () => {
+        const raw = parseInt(inputEl.value, 10);
+        if (!isNaN(raw) && raw > 0) {
+          imgEl.style.width = Math.round(basePx * (raw / 100)) + "px";
+        }
+      });
+      inputEl.addEventListener("blur", () => {
+        const raw = parseInt(inputEl.value, 10);
+        setZoom(isNaN(raw) ? 1 : raw / 100);
+      });
+      render();
+    }
+
+    const declaredBasePx = parseInt(fig.dataset.basePx || "", 10);
+    if (declaredBasePx) {
+      setup(declaredBasePx);
+      return;
+    }
+    // Ảnh gốc (không có width lưu, vd TikZ SVG) — không có mốc % nào từ CSDL,
+    // lấy kích thước ĐÃ HIỂN THỊ sau khi ảnh load
+    // làm mốc 100%, giống cách editor suy baseline cho ảnh chưa từng chỉnh.
+    const deriveFromRendered = () => {
+      const w = imgEl.getBoundingClientRect().width || imgEl.naturalWidth;
+      if (w) setup(Math.round(w));
+    };
+    if (imgEl.complete) deriveFromRendered();
+    else imgEl.addEventListener("load", deriveFromRendered, { once: true });
+  });
+}
+
+function wirePreviewImageZoom(
+  container: HTMLElement,
+  images: Props["images"],
+  onWidthChange?: Props["onImageWidthChange"],
+  includeBlockImages = false,
+) {
+  const rows = imagesById(images || []);
+  container.querySelectorAll<HTMLImageElement>("img[data-figure-id]").forEach((img) => {
+    const figureId = img.dataset.figureId || "";
+    const row = rows[figureId];
+    if (!row || img.closest(".lr-side-fig")) return;
+    const inline = img.classList.contains("doc-figure-inline");
+    // Ảnh inline luôn có zoom trên mọi trang dùng LatexRenderer. Ảnh block
+    // giữa trang chỉ có khi caller chủ động bật `imageZoomable`, giữ giao
+    // diện các trang đọc không bị thêm điều khiển ngoài yêu cầu.
+    if (!inline && !includeBlockImages) return;
+    const controls = document.createElement("span");
+    controls.className = `lr-preview-zoom${inline ? " is-inline" : ""}`;
+    const localOnly = !onWidthChange;
+    controls.innerHTML = `<button type="button" data-dir="-1">−</button><input type="number" min="1"><span>%</span><button type="button" data-dir="1">+</button>`;
+    const input = controls.querySelector("input") as HTMLInputElement;
+    const renderedWidth = img.getBoundingClientRect().width;
+    const baseWidthPx = renderedWidth || Math.round((row.width ?? 0.15) * A4_REFERENCE_WIDTH_PX);
+
+    const localKey = `lr_inline_width_${row.storage_path || row.url || figureId}`;
+    const apply = (pct: number, notify = true) => {
+      pct = Math.max(1, Math.round(pct));
+      input.value = String(pct);
+      img.style.maxHeight = "none";
+      img.style.width = localOnly
+        ? Math.round((pct / 100) * baseWidthPx) + "px"
+        : Math.round((pct / 100) * A4_REFERENCE_WIDTH_PX) + "px";
+      if (notify) {
+        if (onWidthChange) onWidthChange(row.storage_path, pct / 100);
+        else localStorage.setItem(localKey, String(pct));
+      }
+    };
+    const storedPct = !onWidthChange
+      ? Number(localStorage.getItem(localKey) || "")
+      : 0;
+    const initialPct = Number.isFinite(storedPct) && storedPct >= 1
+      ? storedPct
+      : localOnly ? 100 : Math.round((row.width ?? 0.15) * 100);
+    input.value = String(initialPct);
+    if (storedPct >= 5) apply(initialPct, false);
+    controls.querySelectorAll<HTMLButtonElement>("button").forEach((button) => {
+      button.addEventListener("click", (event) => {
+        event.preventDefault();
+        const current = parseInt(input.value, 10) || (localOnly ? 100 : Math.round((row.width ?? 0.15) * 100));
+        apply(current + (button.dataset.dir === "1" ? 1 : -1));
+      });
+    });
+    input.addEventListener("input", () => {
+      const value = parseInt(input.value, 10);
+      if (!Number.isNaN(value)) apply(value, false);
+    });
+    input.addEventListener("blur", () => apply(parseInt(input.value, 10) || (localOnly ? 100 : 1)));
+
+    if (inline) {
+      const wrapper = document.createElement("span");
+      wrapper.className = "lr-preview-inline-image";
+      img.parentNode?.insertBefore(wrapper, img);
+      wrapper.appendChild(img);
+      wrapper.appendChild(controls);
+    } else {
+      img.parentNode?.insertBefore(controls, img);
+    }
+  });
+}
+
+/** Cụm ảnh trôi (layout immini) — vẫn dựng tay ở đây (không qua treeToHtml,
+ * hàm đó chỉ lo phần dựng HTML dùng chung với PDF) vì cần gắn thêm cụm nút
+ * zoom cục bộ (−/%/+, chỉ có ở web). Ảnh KHÔNG có `width` lưu (kích thước
+ * gốc, vd TikZ SVG) vẫn có cụm nút — `wireLocalZoom` tự suy mốc 100% từ
+ * kích thước đã render sau khi ảnh load (xem `deriveFromRendered`). */
+function immersedFigureHtml(figureId: number | string, images: ReturnType<typeof imagesById>): string {
+  const row = images[String(figureId)];
+  if (!row) return "";
+  const imgSrc = resolveImgSrc(row.url || row.storage_path);
+  const widthPx = row.width != null ? Math.round(row.width * A4_REFERENCE_WIDTH_PX) : null;
+  const sizeCss = widthPx ? `width:${widthPx}px; height:auto;` : `width:auto; height:auto;`;
+  const zoomCluster = `<span class="lr-local-zoom">
+        <button type="button" class="lr-zoom-btn" data-dir="-1" title="Thu nhỏ (chỉ mình bạn thấy)">−</button>
+        <input type="number" class="lr-zoom-input" value="100" min="1" title="Gõ thẳng % (chỉ mình bạn thấy)">
+        <span class="lr-zoom-sign">%</span>
+        <button type="button" class="lr-zoom-btn" data-dir="1" title="Phóng to (chỉ mình bạn thấy)">+</button>
+      </span>`;
+  // Ảnh gốc SVG (TikZ) — đánh dấu để applyNativeSvgScale phóng x1.5 lên
+  // naturalWidth NGAY khi ảnh load, TRƯỚC khi wireLocalZoom đo kích thước đã
+  // render làm mốc 100% — nhờ vậy cụm zoom tự nhận đúng cỡ đã phóng làm gốc,
+  // không cần sửa gì thêm ở wireLocalZoom.
+  const scaleAttr = !widthPx && row.img_type === "tikz" ? ` data-native-scale="1.5"` : "";
+  return `<span class="lr-side-fig" data-base-px="${widthPx ?? ""}">
+    ${zoomCluster}
+    <img src="${imgSrc}" alt="Hình vẽ" data-img-key="${imgSrc}"${scaleAttr} style="${sizeCss} display:block; border-radius: var(--radius-sm); border: 1px solid var(--border); object-fit: contain; background-color: #fff;"/>
+  </span>`;
 }
 
 export default function LatexRenderer({
@@ -28,6 +207,8 @@ export default function LatexRenderer({
   images = [],
   editable = false,
   preserveLineBreaks = false,
+  imageZoomable = false,
+  onImageWidthChange,
 }: Props) {
   const ref = useRef<HTMLDivElement>(null);
   const editableRef = useRef(editable);
@@ -64,23 +245,8 @@ export default function LatexRenderer({
       const token =
         typeof window !== "undefined" ? localStorage.getItem("token") : null;
 
-      if (result.kind === "scale") {
-        // SVG: chỉ lưu tỉ lệ vào DB, không sửa file.
-        const fd = new FormData();
-        fd.append("img_path", imgPath);
-        fd.append("scale", String(result.scale));
-        const res = await fetch("/api/questions/images/scale", {
-          method: "POST",
-          headers: token ? { Authorization: `Bearer ${token}` } : {},
-          body: fd,
-        });
-        if (!res.ok) throw new Error("Save failed");
-        editingEl.style.zoom = String(result.scale * 1.5);
-        setEditingSrc(null);
-        setEditingEl(null);
-        return;
-      }
-
+      // Modal giờ chỉ còn cắt ảnh raster (SVG không mở modal này — xem
+      // RichLatexEditor.tsx); cỡ hiển thị đổi qua cụm nút −/%/+ riêng.
       const formData = new FormData();
       formData.append("img_path", imgPath);
       formData.append("file", result.blob, "edited.png");
@@ -103,260 +269,34 @@ export default function LatexRenderer({
   useEffect(() => {
     if (!ref.current || !content) return;
 
-    let extractedImages: string[] = [];
+    let cleaned: string;
 
-    // Khắc phục nội dung bị pandoc escape khi import từ Word (\textbackslash, \{, \}...).
-    // Chỉ chạy khi có dấu hiệu lỗi để KHÔNG ảnh hưởng nội dung đúng (vd \{ \} hợp lệ).
-    let source = content;
-    if (
-      source.includes("\\textbackslash") ||
-      source.includes("\\textbraceleft")
-    ) {
-      source = source
-        .replace(/\\textbackslash\\textbackslash(?:\{\})?/g, "\\\\")
-        .replace(/\\textbackslash\s?/g, "\\")
-        .replace(/\\textbraceleft\s?/g, "{")
-        .replace(/\\textbraceright\s?/g, "}")
-        .replace(/\\textbar(?:\{\})?\s?/g, "\\vert ")
-        .replace(/\\\{/g, "{")
-        .replace(/\\\}/g, "}")
-        .replace(/\\\^\{\}/g, "^");
-    }
-
-    // Convert markdown image syntax ![alt](src) to HTML <img> tags
-    let cleaned = source.replace(
-      /!\[([^\]]*)\]\(([^)]+)\)/g,
-      (match, alt, src) => {
-        // Normalize path: ensure it starts with / for API serving
-        let imgSrc = src.replace(/\\\\/g, "/");
-        if (!imgSrc.startsWith("http")) {
-          const apiUrl = process.env.NEXT_PUBLIC_API_URL || "/api";
-          if (apiUrl.endsWith("/") && imgSrc.startsWith("/")) {
-            imgSrc = apiUrl + imgSrc.slice(1);
-          } else if (!apiUrl.endsWith("/") && !imgSrc.startsWith("/")) {
-            imgSrc = apiUrl + "/" + imgSrc;
-          } else {
-            imgSrc = apiUrl + imgSrc;
-          }
-        }
-
-        let scale = 1;
-        if (images && images.length > 0) {
-          const matchName = imgSrc.split("/").pop();
-          if (matchName) {
-            const imgInfo = images.find(
-              (img) =>
-                img.storage_path &&
-                img.storage_path.replace(/\\\\/g, "/").endsWith(matchName),
-            );
-            if (imgInfo && imgInfo.img_scale) {
-              scale = imgInfo.img_scale;
-            }
-          }
-        }
-
-        if ((layoutType || "").startsWith("immini")) {
-          const imgHtml = `<img src="${imgSrc}" alt="${alt || "Hình vẽ"}" style="max-width:100%; width:auto; height:auto; zoom:${scale}; border-radius: var(--radius-sm); border: 1px solid var(--border); object-fit: contain; background-color: #fff;"/>`;
-          extractedImages.push(imgHtml);
-          return "";
-        }
-        return `<img src="${imgSrc}" alt="${alt || "Hình vẽ"}" style="max-width:100%; width:auto; height:auto; zoom:${scale}; display:block; margin: 10px auto; object-fit: contain; background-color: #fff;"/>`;
-      },
-    );
-
-    // [Backwards compat] Remove TikZ blocks from old DB records
-    cleaned = cleaned
-      .replace(/\\begin\{tikzpicture\}[\s\S]*?\\end\{tikzpicture\}/g, "")
-      .replace(/\\tikz\s*\[[^\]]*\]\s*\{[\s\S]*?\}/g, "")
-      .replace(/\\tikz\s*\{[\s\S]*?\}/g, "");
-
-    // Remove other visual-only LaTeX environments
-    cleaned = cleaned
-      .replace(/\\begin\{center\}|\\end\{center\}/g, "")
-      .replace(/\\begin\{figure\*?\}[\s\S]*?\\end\{figure\*?\}/g, "")
-      .replace(/\\begin\{table\*?\}(?:\[[^\]]*\])?/g, "")
-      .replace(/\\end\{table\*?\}/g, "")
-      .replace(
-        /\\caption\{([^}]*)\}/g,
-        '<div style="text-align: center; font-style: italic; font-size: 0.9em; margin-top: 0.5rem; color: var(--text-secondary);">$1</div>',
-      )
-      .replace(/\\centering/g, "")
-      .replace(/\\includegraphics\s*(?:\[[^\]]*\])?\s*\{[^}]*\}/g, "");
-
-    // Convert tabular to HTML table
-    cleaned = cleaned.replace(
-      /\\begin\{(tabular|tabularx|longtable)\}(?:\[[^\]]*\])?(?:\{[^}]*\})*([\s\S]*?)\\end\{\1\}/g,
-      (match, envName, tableContent) => {
-        let html =
-          '<div style="overflow-x: auto; margin: 1rem 0;"><table style="border-collapse: collapse; width: 100%; font-size: 0.9em;">';
-        const rows = tableContent.split(/\\\\/);
-        rows.forEach((row: string) => {
-          let r = row
-            .replace(/\\hline/g, "")
-            .replace(/\\cline\{[^}]*\}/g, "")
-            .trim();
-          if (!r) return;
-          html += "<tr>";
-          const cells = r.split(/(?<!\\)&/);
-          cells.forEach((cell: string) => {
-            let cellContent = cell.trim();
-            let colspan = 1;
-
-            const multiMatch = cellContent.match(
-              /^\\multicolumn\{(\d+)\}\{[^}]*\}\{([\s\S]*)\}$/,
-            );
-            if (multiMatch) {
-              colspan = parseInt(multiMatch[1], 10);
-              cellContent = multiMatch[2];
-            }
-
-            html += `<td colspan="${colspan}" style="border: 1px solid var(--border); padding: 0.5rem; text-align: center;">${cellContent}</td>`;
-          });
-          html += "</tr>";
-        });
-        html += "</table></div>";
-        // Temporarily encode to avoid <br/> conversion later
-        return html.replace(/\\\\/g, "");
-      },
-    );
-
-    // Convert itemize to HTML lists
-    cleaned = cleaned.replace(
-      /\\begin\{itemize\}([\s\S]*?)\\end\{itemize\}/g,
-      (match, listContent) => {
-        let html =
-          '<ul style="margin-left: 1.5rem; margin-top: 0.5rem; list-style-type: disc;">';
-        const items = listContent
-          .split(/\\item\s*/)
-          .filter((i: string) => i.trim());
-        items.forEach((item: string) => {
-          html += `<li style="margin-bottom: 0.25rem;">${item.trim()}</li>`;
-        });
-        html += "</ul>";
-        return html;
-      },
-    );
-
-    // Convert enumerate to HTML lists
-    cleaned = cleaned.replace(
-      /\\begin\{enumerate\}([\s\S]*?)\\end\{enumerate\}/g,
-      (match, listContent) => {
-        let html = '<ol style="margin-left: 1.5rem; margin-top: 0.5rem;">';
-        const items = listContent
-          .split(/\\item\s*/)
-          .filter((i: string) => i.trim());
-        items.forEach((item: string) => {
-          html += `<li style="margin-bottom: 0.25rem;">${item.trim()}</li>`;
-        });
-        html += "</ol>";
-        return html;
-      },
-    );
-
-    // Remove excessive blank lines around block math to prevent huge gaps
-    cleaned = cleaned.replace(/\n{2,}(\$\$|\\\[)/g, "\n$1");
-    cleaned = cleaned.replace(/(\$\$|\\\])\n{2,}/g, "$1\n");
-
-    const parts = cleaned.split(
-      /(\$\$[\s\S]*?\$\$|\$[\s\S]*?\$|\\\[[\s\S]*?\\\]|\\\([\s\S]*?\\\))/g,
-    );
-
-    cleaned = parts
-      .map((part) => {
-        // Nếu là display math
-        if (
-          (part.startsWith("$$") && part.endsWith("$$")) ||
-          (part.startsWith("\\[") && part.endsWith("\\]"))
-        )
-          return part;
-
-        // Nếu là inline math
-        if (
-          (part.startsWith("$") && part.endsWith("$")) ||
-          (part.startsWith("\\(") && part.endsWith("\\)"))
-        ) {
-          const isParen = part.startsWith("\\(");
-          const inner = isParen ? part.slice(2, -2) : part.slice(1, -1);
-          if (!inner.includes("\\displaystyle")) {
-            return isParen
-              ? `\\(\\displaystyle ${inner}\\)`
-              : `$\\displaystyle ${inner}$`;
-          }
-          return part;
-        }
-
-        // Nếu là text thường, áp dụng các regex format HTML
-        let textPart = part.replace(
-          /^#{1,6}\s+(.+)$/gm,
-          '<strong style="display:block; margin:.45rem 0 .2rem;">$1</strong>',
-        );
-        textPart = preserveLineBreaks
-          ? textPart.replace(/\n/g, "<br/>")
-          : textPart
-              .replace(/\n\n/g, "<br/><br/>")
-              .replace(/(?<!\n)\n(?!\n)/g, " ");
-        return (
-          textPart
-            .replace(/\\newline/g, "<br/>")
-            .replace(/\\\\/g, "<br/>")
-            .replace(
-              /\\subsubsection\*?\{([^}]+)\}/g,
-              "<br/><strong>$1</strong><br/>",
-            )
-            .replace(
-              /\\subsection\*?\{([^}]+)\}/g,
-              '<br/><strong style="font-size: 1.1em;">$1</strong><br/>',
-            )
-            .replace(
-              /\\section\*?\{([^}]+)\}/g,
-              '<br/><strong style="font-size: 1.2em;">$1</strong><br/>',
-            )
-            .replace(/\\textbf\{([^}]+)\}/g, "<strong>$1</strong>")
-            .replace(/\*\*([^*]+)\*\*/g, "<strong>$1</strong>")
-            .replace(/\\textit\{([^}]+)\}/g, "<em>$1</em>")
-            .replace(/\\underline\{([^}]+)\}/g, "<u>$1</u>")
-            .replace(/\\ul\{([^}]+)\}/g, "<u>$1</u>")
-            .replace(
-              /\\hl\{([^}]+)\}/g,
-              '<mark style="background:#fff3a3; padding:0 .15em; border-radius:2px;">$1</mark>',
-            )
-            .replace(/\\text\{([^}]+)\}/g, "$1")
-            .replace(/\n- (.*?)(?=\n|$)/g, "<br/>• $1")
-            // \vert is a math command; in plain text (an option ending with "|") it would
-            // show up literally as "\vert" — render it as the vertical bar it stands for.
-            .replace(/\\vert\b\s?/g, "|")
-            // Ký tự LaTeX bị pandoc escape — hiện lại dạng thường (\% là phổ biến nhất)
-            .replace(/\\%/g, "%")
-            .replace(/\\#/g, "#")
-            .replace(/\\&/g, "&amp;")
-            .replace(/\\_/g, "_")
-            .replace(/\\hspace\*?\{[^}]*\}/g, " ")
-            .replace(/\\vspace\*?\{[^}]*\}/g, "")
-            .replace(/\\noindent/g, "")
-            .replace(/\\medskip|\\bigskip|\\smallskip/g, "<br/>")
-            .replace(/\\displaystyle\s*/g, "")
-            .replace(/\\quad/g, "&nbsp;&nbsp;&nbsp;&nbsp;")
-            .replace(
-              /\\qquad/g,
-              "&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;",
-            )
-            .replace(/\\hfil/g, "&nbsp;&nbsp;")
-            .replace(/\\hfill/g, "&nbsp;&nbsp;")
-        );
-      })
-      .join("");
-
-    if ((layoutType || "").startsWith("immini") && extractedImages.length > 0) {
-      cleaned = `
-        <div style="display: flex; flex-wrap: wrap; gap: 1.5rem; align-items: flex-start; justify-content: space-between;">
-          <div style="flex: 1 1 300px; min-width: 0;">
-            ${cleaned}
-          </div>
-          <div style="flex: 0 1 auto; max-width: 55%; display: flex; flex-direction: column; gap: 1rem; align-items: flex-end;">
-            ${extractedImages.join("")}
-          </div>
-        </div>
-      `;
+    if (typeof content === "string") {
+      // Chỉ còn xảy ra với đáp án `sa` (q_shortans_details.content vẫn là
+      // text thường, luôn là số) — hiển thị tối giản, không cần dựng cây.
+      const escaped = content
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;");
+      cleaned = preserveLineBreaks
+        ? escaped.replace(/\n/g, "<br/>")
+        : escaped.replace(/\n\n/g, "<br/><br/>").replace(/(?<!\n)\n(?!\n)/g, " ");
+    } else if (isTreeDoc(content)) {
+      const imgMap = imagesById(images);
+      const immini = (layoutType || "").startsWith("immini");
+      if (immini) {
+        // Ảnh nổi (immini): tách nút ảnh ra dựng riêng (kèm cụm zoom cục bộ),
+        // xuất TRƯỚC chữ (bất kể vị trí gốc) để float neo đúng hàng đầu.
+        const figNode = content.content.find((n) => n.type === "image");
+        const restNodes = content.content.filter((n) => n !== figNode);
+        const figHtml = figNode && figNode.type === "image" ? immersedFigureHtml(figNode.figure_id, imgMap) : "";
+        const restHtml = treeToHtml({ ...content, content: restNodes }, imgMap);
+        cleaned = figHtml ? `<div class="lr-side">${figHtml}${restHtml}</div>` : restHtml;
+      } else {
+        cleaned = treeToHtml(content, imgMap);
+      }
+    } else {
+      return;
     }
 
     ref.current.innerHTML = cleaned;
@@ -367,12 +307,18 @@ export default function LatexRenderer({
       });
     }
 
-    // Trigger MathJax to re-render
-    if (window.MathJax?.typesetPromise) {
-      window.MathJax.typesetClear([ref.current]);
-      window.MathJax.typesetPromise([ref.current]).catch(console.error);
-    }
-  }, [content, layoutType, editable, preserveLineBreaks]);
+    applyNativeSvgScale(ref.current);
+    wireLocalZoom(ref.current);
+    wirePreviewImageZoom(
+      ref.current,
+      images,
+      onImageWidthChange,
+      imageZoomable,
+    );
+
+    // Trigger MathJax to re-render (xếp hàng tuần tự, xem queueTypeset ở trên)
+    queueTypeset();
+  }, [content, layoutType, images, editable, preserveLineBreaks, imageZoomable, onImageWidthChange]);
 
   if (!content) return null;
 

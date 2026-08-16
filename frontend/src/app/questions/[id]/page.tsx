@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState, use } from "react";
+import { useRouter } from "next/navigation";
 import { useAuth } from "@/lib/auth-context";
 import Sidebar from "@/components/Sidebar";
 import LatexRenderer from "@/components/LatexRenderer";
@@ -9,6 +10,7 @@ import Combobox from "@/components/Combobox";
 import api from "@/lib/api";
 import { QuestionEditor, QuestionDetail } from "@/components/QuestionEditor";
 import Link from "next/link";
+import { toast } from "@/lib/toastStore";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
 
@@ -18,6 +20,7 @@ export default function QuestionDetailPage({
   params: Promise<{ id: string }>;
 }) {
   const { user, isLoading } = useAuth();
+  const router = useRouter();
   const { id } = params instanceof Promise ? use(params) : (params as any);
   const [question, setQuestion] = useState<QuestionDetail | null>(null);
   const [loading, setLoading] = useState(true);
@@ -31,6 +34,12 @@ export default function QuestionDetailPage({
   const [curriculum, setCurriculum] = useState<any>({});
 
   useEffect(() => {
+    if (!isLoading && !user) router.replace("/");
+    if (!isLoading && user?.role !== "teacher") router.replace("/dashboard");
+  }, [isLoading, user, router]);
+
+  useEffect(() => {
+    if (isLoading || user?.role !== "teacher") return;
     Promise.all([
       api.getQuestion(parseInt(id)),
       api.getMetadataFilters().catch(() => ({ chapters: [], lessons: [] })),
@@ -43,7 +52,7 @@ export default function QuestionDetailPage({
       })
       .catch((err) => setError(err.message || "Lỗi khi tải câu hỏi"))
       .finally(() => setLoading(false));
-  }, [id]);
+  }, [id, isLoading, user?.role]);
 
   // Hủy bỏ các thay đổi văn bản chưa lưu: tải lại câu hỏi từ máy chủ.
   // (Ảnh được lưu ngay khi xác nhận trong hộp chỉnh ảnh, nên không bị ảnh hưởng.)
@@ -57,8 +66,10 @@ export default function QuestionDetailPage({
       setQuestion(fresh);
       setSuccessMsg("Đã hủy các thay đổi chưa lưu.");
       setTimeout(() => setSuccessMsg(""), 2000);
+      toast.success("Đã hủy các thay đổi chưa lưu.");
     } catch (err: any) {
       setError(err.message || "Không thể tải lại câu hỏi");
+      toast.error(err.message || "Không thể tải lại câu hỏi");
     }
   };
 
@@ -106,8 +117,10 @@ export default function QuestionDetailPage({
 
       setSuccessMsg("Đã lưu tất cả thay đổi thành công!");
       setTimeout(() => setSuccessMsg(""), 3000);
+      toast.success("Đã lưu tất cả thay đổi thành công!");
     } catch (err: any) {
       setError(err.message || "Lỗi khi lưu câu hỏi");
+      toast.error(err.message || "Lỗi khi lưu câu hỏi");
     } finally {
       setSaving(false);
     }
@@ -202,7 +215,7 @@ export default function QuestionDetailPage({
             className="alert alert-success"
             style={{
               marginBottom: "1rem",
-              background: "rgba(107,203,119,0.1)",
+              background: "var(--answer-correct-bg)",
               color: "var(--accent-success)",
               padding: "1rem",
               borderRadius: "var(--radius-md)",

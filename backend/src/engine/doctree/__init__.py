@@ -37,6 +37,7 @@ Dùng nhanh:
     cauhoi, _ = read_tex_block(khoi_ex, figs)  # -> danh sách câu, mỗi câu có cây
     tex = to_tex(cauhoi, figs.by_id())         # dựng lại .tex đúng mẫu ex_test
 """
+from .adapt import content_len, figures_by_id, has_image, question_to_rec
 from .figures import FigureStore
 from .read.docx import read_docx, split_questions
 from .read.tex import BadSource, UnknownCommand, read_field, read_tex_block, read_tex_file
@@ -54,4 +55,6 @@ __all__ = [
     "split_questions", "UnknownCommand", "BadSource",
     # ghi
     "to_tex", "doc_to_tex", "to_html", "doc_to_html", "to_docx", "doc_to_text",
+    # chuyển đổi từ dòng CSDL
+    "question_to_rec", "figures_by_id", "content_len", "has_image",
 ]

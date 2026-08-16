@@ -35,7 +35,7 @@ export default function MathLiveEditor({
 
   useEffect(() => {
     import("mathlive").then((ml) => {
-      ml.MathfieldElement.fontsDirectory = "/mathlive-fonts";
+      ml.MathfieldElement.fontsDirectory = "/api/static/fonts/web/mathlive";
       ml.MathfieldElement.soundsDirectory = "/mathlive-sounds";
       setMounted(true);
     });
@@ -92,7 +92,7 @@ export default function MathLiveEditor({
       <div
         style={{
           padding: "0.5rem",
-          background: "#f8f9fa",
+          background: "var(--bg-hover)",
           borderRadius: "4px",
         }}
       >

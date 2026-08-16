@@ -4,10 +4,12 @@ import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/lib/auth-context";
 import Sidebar from "@/components/Sidebar";
-import { QuestionEditor, QuestionDetail } from "@/components/QuestionEditor";
+import { QuestionEditor, QuestionDetail, defaultDetailsFor } from "@/components/QuestionEditor";
 import Combobox from "@/components/Combobox";
 import api from "@/lib/api";
 import Link from "next/link";
+import { emptyDoc } from "@/lib/docTree";
+import { toast } from "@/lib/toastStore";
 
 export default function CreateQuestionPage() {
   const { user, isLoading } = useAuth();
@@ -28,14 +30,9 @@ export default function CreateQuestionPage() {
     chapter: "",
     lesson: "",
     complexity: 1,
-    content: "",
-    solution: "",
-    details: [
-      { content: "", is_correct: true },
-      { content: "", is_correct: false },
-      { content: "", is_correct: false },
-      { content: "", is_correct: false },
-    ],
+    content: emptyDoc(),
+    solution: emptyDoc(),
+    details: defaultDetailsFor("mc"),
     coding_details: {
       time_limit_c_cpp: 1.0,
       time_limit_java: 2.0,
@@ -82,9 +79,10 @@ export default function CreateQuestionPage() {
       !qData.question_type ||
       !qData.content
     ) {
-      setError(
-        "Vui lòng điền đầy đủ môn học, lớp, loại câu hỏi và nội dung đề bài.",
-      );
+      const msg =
+        "Vui lòng điền đầy đủ môn học, lớp, loại câu hỏi và nội dung đề bài.";
+      setError(msg);
+      toast.error(msg);
       return;
     }
     if (qData.question_type === "cd") {
@@ -92,18 +90,22 @@ export default function CreateQuestionPage() {
         !qData.coding_details ||
         (qData.coding_details.max_submissions || 0) < 1
       ) {
-        setError("Câu lập trình phải có giới hạn lượt nộp lớn hơn 0.");
+        const msg = "Câu lập trình phải có giới hạn lượt nộp lớn hơn 0.";
+        setError(msg);
+        toast.error(msg);
         return;
       }
       if (!qData.coding_testcases?.length) {
-        setError("Câu lập trình phải có ít nhất một testcase.");
+        const msg = "Câu lập trình phải có ít nhất một testcase.";
+        setError(msg);
+        toast.error(msg);
         return;
       }
     }
     setSaving(true);
     setError("");
     try {
-      await api.createQuestion({
+      const created = await api.createQuestion({
         subject: qData.subject,
         grade: qData.grade,
         chapter: qData.chapter,
@@ -116,13 +118,55 @@ export default function CreateQuestionPage() {
         coding_details: qData.coding_details,
         coding_testcases: qData.coding_testcases,
       });
-      alert("Tạo câu hỏi thành công!");
+      const pendingImages = (qData.images || []).filter(
+        (image: any) => image.pendingFile,
+      );
+      if (pendingImages.length) {
+        const uploadedImages = await Promise.all(
+          pendingImages.map((image: any) =>
+            api.uploadQuestionImage(created.id, image.pendingFile),
+          ),
+        );
+        const uploadedIdByPendingId = new Map(
+          pendingImages.map((image: any, index: number) => [
+            image.id,
+            uploadedImages[index].id,
+          ]),
+        );
+        const replaceFigureId = (value: any): any => {
+          if (Array.isArray(value)) return value.map(replaceFigureId);
+          if (!value || typeof value !== "object") return value;
+          return Object.fromEntries(
+            Object.entries(value).map(([key, child]) => [
+              key,
+              key === "figure_id" && uploadedIdByPendingId.has(child)
+                ? uploadedIdByPendingId.get(child)
+                : replaceFigureId(child),
+            ]),
+          );
+        };
+        // Sau khi tạo, lấy ID thật của từng detail để cập nhật cả ảnh trong
+        // phương án/giải thích; endpoint update chỉ sửa detail theo ID.
+        const savedQuestion = await api.getQuestion(created.id);
+        await api.updateQuestion(created.id, {
+          content: replaceFigureId(qData.content),
+          solution: replaceFigureId(qData.solution),
+          details: qData.details?.map((detail: any, index: number) => ({
+            ...detail,
+            id: savedQuestion.details?.[index]?.id,
+            content: replaceFigureId(detail.content),
+            explaination: replaceFigureId(detail.explaination),
+          })),
+        });
+      }
+      toast.success("Tạo câu hỏi thành công!");
       const returnTo = new URLSearchParams(window.location.search).get(
         "returnTo",
       );
       router.push(returnTo === "/coding" ? "/coding" : "/questions");
     } catch (err: any) {
       setError(err.message || "Lỗi khi tạo câu hỏi");
+      toast.error(err.message || "Lỗi khi tạo câu hỏi");
     } finally {
       setSaving(false);
     }
@@ -134,40 +178,15 @@ export default function CreateQuestionPage() {
     );
 
   return (
-    <div
-      style={{
-        display: "flex",
-        minHeight: "100vh",
-        background: "var(--bg-base)",
-      }}
-    >
+    <div className="page-wrapper">
       <Sidebar />
-      <main
-        style={{
-          flex: 1,
-          display: "flex",
-          flexDirection: "column",
-          height: "100vh",
-          overflow: "hidden",
-        }}
-      >
-        <header
-          style={{
-            padding: "1rem 2rem",
-            background: "var(--bg-surface)",
-            borderBottom: "1px solid var(--border)",
-            display: "flex",
-            justifyContent: "space-between",
-            alignItems: "center",
-          }}
-        >
+      <main className="main-content">
+        <div className="page-header">
           <div>
-            <h1 style={{ margin: 0, fontSize: "1.25rem" }}>Tạo Câu hỏi</h1>
-            <div
-              style={{ fontSize: "0.85rem", color: "var(--text-secondary)" }}
-            >
+            <h1 className="page-title">Tạo câu hỏi</h1>
+            <p className="page-sub">
               Nhập câu hỏi Trắc nghiệm, Tự luận hoặc Lập trình
-            </div>
+            </p>
           </div>
           <div style={{ display: "flex", gap: "1rem" }}>
             <Link href="/questions" className="btn btn-secondary">
@@ -181,9 +200,9 @@ export default function CreateQuestionPage() {
               {saving ? "Đang lưu..." : "Lưu câu hỏi"}
             </button>
           </div>
-        </header>
+        </div>
 
-        <div style={{ flex: 1, overflowY: "auto", padding: "1rem" }}>
+        <div>
           {error && (
             <div
               className="alert alert-error"
@@ -207,7 +226,6 @@ export default function CreateQuestionPage() {
                 margin: 0,
                 fontWeight: 700,
                 fontSize: "0.9rem",
-                textTransform: "none",
               }}
             >
               Loại câu hỏi:
@@ -263,6 +281,7 @@ export default function CreateQuestionPage() {
             onChange={setQData}
             curriculum={subjects || {}}
             metadata={metadata}
+            imageEditable={true}
           />
         </div>
       </main>
