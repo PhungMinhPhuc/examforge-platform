@@ -11,6 +11,7 @@ interface Props {
   placeholder?: string;
   className?: string;
   style?: React.CSSProperties;
+  id?: string;
 }
 
 export default function Combobox({
@@ -20,6 +21,7 @@ export default function Combobox({
   placeholder,
   className,
   style,
+  id,
 }: Props) {
   const [open, setOpen] = useState(false);
   const [search, setSearch] = useState("");
@@ -73,6 +75,7 @@ export default function Combobox({
         style={{ position: "relative", display: "flex", alignItems: "center" }}
       >
         <input
+          id={id}
           className={className || "form-input"}
           value={search}
           onChange={(e) => {
