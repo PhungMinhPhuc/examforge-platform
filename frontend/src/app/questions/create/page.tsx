@@ -4,7 +4,11 @@ import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/lib/auth-context";
 import Sidebar from "@/components/Sidebar";
-import { QuestionEditor, QuestionDetail, defaultDetailsFor } from "@/components/QuestionEditor";
+import {
+  QuestionEditor,
+  QuestionDetail,
+  defaultDetailsFor,
+} from "@/components/QuestionEditor";
 import Combobox from "@/components/Combobox";
 import api from "@/lib/api";
 import Link from "next/link";

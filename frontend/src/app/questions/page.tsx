@@ -158,7 +158,9 @@ export default function QuestionsPage() {
       setPage(1);
       fetchQuestions();
     } catch (e: unknown) {
-      toast.error(e instanceof Error ? e.message : "Lỗi khi xóa toàn bộ câu hỏi");
+      toast.error(
+        e instanceof Error ? e.message : "Lỗi khi xóa toàn bộ câu hỏi",
+      );
     } finally {
       setDeletingAll(false);
     }
@@ -716,80 +718,86 @@ export default function QuestionsPage() {
                       {node.question_type !== "st" &&
                         ((node.solution && node.question_type !== "tf") ||
                           (node.question_type === "tf" && node.options)) && (
-                        <div
-                          style={{
-                            marginTop: "1rem",
-                            padding: "1rem",
-                            background: "var(--bg-surface)",
-                            borderLeft: "4px solid var(--accent-primary)",
-                            borderTop: "1px solid var(--accent-primary-border)",
-                            borderRight:
-                              "1px solid var(--accent-primary-border)",
-                            borderBottom:
-                              "1px solid var(--accent-primary-border)",
-                            borderRadius:
-                              "0 var(--radius-sm) var(--radius-sm) 0",
-                          }}
-                        >
                           <div
                             style={{
-                              fontWeight: 700,
-                              marginBottom: "0.5rem",
-                              color: "var(--accent-primary)",
+                              marginTop: "1rem",
+                              padding: "1rem",
+                              background: "var(--bg-surface)",
+                              borderLeft: "4px solid var(--accent-primary)",
+                              borderTop:
+                                "1px solid var(--accent-primary-border)",
+                              borderRight:
+                                "1px solid var(--accent-primary-border)",
+                              borderBottom:
+                                "1px solid var(--accent-primary-border)",
+                              borderRadius:
+                                "0 var(--radius-sm) var(--radius-sm) 0",
                             }}
                           >
-                            Lời giải:
-                          </div>
-                          {node.question_type === "tf" && node.options && (
                             <div
                               style={{
-                                display: "flex",
-                                flexDirection: "column",
-                                gap: "0.5rem",
-                                marginBottom: node.solution ? "1rem" : "0",
+                                fontWeight: 700,
+                                marginBottom: "0.5rem",
+                                color: "var(--accent-primary)",
                               }}
                             >
-                              {node.options.map((opt: any, oi: number) => (
-                                <div
-                                  key={opt.id}
-                                  style={{
-                                    display: "flex",
-                                    gap: "0.5rem",
-                                    alignItems: "baseline",
-                                  }}
-                                >
-                                  <strong style={{ flexShrink: 0 }}>
-                                    {String.fromCharCode(97 + oi)}){" "}
-                                    {opt.is_correct ? "Đúng." : "Sai."}
-                                  </strong>
-                                  <div style={{ flex: 1, minWidth: 0 }}>
-                                    {opt.explaination && (
-                                      <LatexRenderer
-                                        content={opt.explaination}
-                                        images={node.images}
-                                        imageZoomable
-                                      />
-                                    )}
-                                  </div>
-                                </div>
-                              ))}
+                              Lời giải:
                             </div>
-                          )}
-                          {node.solution && (
-                            <LatexRenderer
-                              content={node.solution}
-                              images={node.images}
-                              imageZoomable
-                            />
-                          )}
-                          {node.question_type === "mc" &&
-                            mcCorrectLabel(node.options) && (
-                              <div style={{ fontWeight: 700, marginTop: "0.5rem" }}>
-                                Chọn {mcCorrectLabel(node.options)}
+                            {node.question_type === "tf" && node.options && (
+                              <div
+                                style={{
+                                  display: "flex",
+                                  flexDirection: "column",
+                                  gap: "0.5rem",
+                                  marginBottom: node.solution ? "1rem" : "0",
+                                }}
+                              >
+                                {node.options.map((opt: any, oi: number) => (
+                                  <div
+                                    key={opt.id}
+                                    style={{
+                                      display: "flex",
+                                      gap: "0.5rem",
+                                      alignItems: "baseline",
+                                    }}
+                                  >
+                                    <strong style={{ flexShrink: 0 }}>
+                                      {String.fromCharCode(97 + oi)}){" "}
+                                      {opt.is_correct ? "Đúng." : "Sai."}
+                                    </strong>
+                                    <div style={{ flex: 1, minWidth: 0 }}>
+                                      {opt.explaination && (
+                                        <LatexRenderer
+                                          content={opt.explaination}
+                                          images={node.images}
+                                          imageZoomable
+                                        />
+                                      )}
+                                    </div>
+                                  </div>
+                                ))}
                               </div>
                             )}
-                        </div>
-                      )}
+                            {node.solution && (
+                              <LatexRenderer
+                                content={node.solution}
+                                images={node.images}
+                                imageZoomable
+                              />
+                            )}
+                            {node.question_type === "mc" &&
+                              mcCorrectLabel(node.options) && (
+                                <div
+                                  style={{
+                                    fontWeight: 700,
+                                    marginTop: "0.5rem",
+                                  }}
+                                >
+                                  Chọn {mcCorrectLabel(node.options)}
+                                </div>
+                              )}
+                          </div>
+                        )}
                     </>
                   );
 

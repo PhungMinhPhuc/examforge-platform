@@ -37,7 +37,9 @@ const TYPE_BORDER: Record<string, string> = {
 };
 
 const typeBackground = (type: string) =>
-  type === "st" ? "var(--tone-purple-bg)" : TYPE_SOFT[type] || "var(--type-mc-soft)";
+  type === "st"
+    ? "var(--tone-purple-bg)"
+    : TYPE_SOFT[type] || "var(--type-mc-soft)";
 const typeBorder = (type: string) =>
   type === "st"
     ? "var(--tone-purple-border)"
@@ -46,7 +48,14 @@ const typeBorder = (type: string) =>
 type ParsedItem = {
   table_question: Record<string, unknown>;
   table_details: { target_table: string; records: Record<string, unknown>[] };
-  table_images: { id?: number | string; storage_path: string; url?: string; img_type?: string; width?: number | null; raw_code?: string | null }[];
+  table_images: {
+    id?: number | string;
+    storage_path: string;
+    url?: string;
+    img_type?: string;
+    width?: number | null;
+    raw_code?: string | null;
+  }[];
 };
 
 const TYPE_LABELS: Record<string, string> = {
@@ -323,7 +332,9 @@ export default function UploadPage() {
           : {
               ...item,
               table_images: (item.table_images || []).map((image) =>
-                image.storage_path === storagePath ? { ...image, width } : image,
+                image.storage_path === storagePath
+                  ? { ...image, width }
+                  : image,
               ),
             },
       ),
@@ -518,10 +529,7 @@ export default function UploadPage() {
                 </p>
               </div>
               <div style={{ display: "flex", gap: "0.75rem" }}>
-                <button
-                  className="btn btn-secondary"
-                  onClick={discardPreview}
-                >
+                <button className="btn btn-secondary" onClick={discardPreview}>
                   Hủy
                 </button>
                 <button
@@ -1124,7 +1132,11 @@ export default function UploadPage() {
                                       images={item.table_images || []}
                                       imageZoomable
                                       onImageWidthChange={(path, width) =>
-                                        updatePreviewImageWidth(originalIdx, path, width)
+                                        updatePreviewImageWidth(
+                                          originalIdx,
+                                          path,
+                                          width,
+                                        )
                                       }
                                     />
                                   </div>
@@ -1165,7 +1177,11 @@ export default function UploadPage() {
                                     images={item.table_images || []}
                                     imageZoomable
                                     onImageWidthChange={(path, width) =>
-                                      updatePreviewImageWidth(originalIdx, path, width)
+                                      updatePreviewImageWidth(
+                                        originalIdx,
+                                        path,
+                                        width,
+                                      )
                                     }
                                   />
                                 </div>
@@ -1240,88 +1256,99 @@ export default function UploadPage() {
                         {qtype !== "st" &&
                           ((q.solution && qtype !== "tf") ||
                             (qtype === "tf" && options.length > 0)) && (
-                          <div
-                            style={{
-                              marginTop: "1rem",
-                              padding: "1rem",
-                              background: "var(--bg-surface)",
-                              borderLeft: "4px solid var(--accent-primary)",
-                              borderTop:
-                                "1px solid var(--accent-primary-border)",
-                              borderRight:
-                                "1px solid var(--accent-primary-border)",
-                              borderBottom:
-                                "1px solid var(--accent-primary-border)",
-                              borderRadius:
-                                "0 var(--radius-sm) var(--radius-sm) 0",
-                            }}
-                          >
                             <div
                               style={{
-                                fontWeight: 700,
-                                marginBottom: "0.5rem",
-                                color: "var(--accent-primary)",
+                                marginTop: "1rem",
+                                padding: "1rem",
+                                background: "var(--bg-surface)",
+                                borderLeft: "4px solid var(--accent-primary)",
+                                borderTop:
+                                  "1px solid var(--accent-primary-border)",
+                                borderRight:
+                                  "1px solid var(--accent-primary-border)",
+                                borderBottom:
+                                  "1px solid var(--accent-primary-border)",
+                                borderRadius:
+                                  "0 var(--radius-sm) var(--radius-sm) 0",
                               }}
                             >
-                              Lời giải:
-                            </div>
-                            {qtype === "tf" && options.length > 0 && (
                               <div
                                 style={{
-                                  display: "flex",
-                                  flexDirection: "column",
-                                  gap: "0.5rem",
-                                  marginBottom: q.solution ? "1rem" : "0",
+                                  fontWeight: 700,
+                                  marginBottom: "0.5rem",
+                                  color: "var(--accent-primary)",
                                 }}
                               >
-                                {options.map((opt: any, oi: number) => (
-                                  <div
-                                    key={oi}
-                                    style={{
-                                      display: "flex",
-                                      gap: "0.5rem",
-                                      alignItems: "baseline",
-                                    }}
-                                  >
-                                    <strong style={{ flexShrink: 0 }}>
-                                      {String.fromCharCode(97 + oi)}){" "}
-                                      {opt.is_correct ? "Đúng." : "Sai."}
-                                    </strong>
-                                    <div style={{ flex: 1, minWidth: 0 }}>
-                                      {opt.explaination && (
-                                        <LatexRenderer
-                                          content={opt.explaination}
-                                          images={item.table_images || []}
-                                          imageZoomable
-                                          onImageWidthChange={(path, width) =>
-                                            updatePreviewImageWidth(originalIdx, path, width)
-                                          }
-                                        />
-                                      )}
+                                Lời giải:
+                              </div>
+                              {qtype === "tf" && options.length > 0 && (
+                                <div
+                                  style={{
+                                    display: "flex",
+                                    flexDirection: "column",
+                                    gap: "0.5rem",
+                                    marginBottom: q.solution ? "1rem" : "0",
+                                  }}
+                                >
+                                  {options.map((opt: any, oi: number) => (
+                                    <div
+                                      key={oi}
+                                      style={{
+                                        display: "flex",
+                                        gap: "0.5rem",
+                                        alignItems: "baseline",
+                                      }}
+                                    >
+                                      <strong style={{ flexShrink: 0 }}>
+                                        {String.fromCharCode(97 + oi)}){" "}
+                                        {opt.is_correct ? "Đúng." : "Sai."}
+                                      </strong>
+                                      <div style={{ flex: 1, minWidth: 0 }}>
+                                        {opt.explaination && (
+                                          <LatexRenderer
+                                            content={opt.explaination}
+                                            images={item.table_images || []}
+                                            imageZoomable
+                                            onImageWidthChange={(path, width) =>
+                                              updatePreviewImageWidth(
+                                                originalIdx,
+                                                path,
+                                                width,
+                                              )
+                                            }
+                                          />
+                                        )}
+                                      </div>
                                     </div>
-                                  </div>
-                                ))}
-                              </div>
-                            )}
-                            {q.solution && (
-                              <LatexRenderer
-                                content={q.solution}
-                                images={item.table_images || []}
-                                imageZoomable
-                                onImageWidthChange={(path, width) =>
-                                  updatePreviewImageWidth(originalIdx, path, width)
-                                }
-                              />
-                            )}
-                            {qtype === "mc" && mcCorrectLabel(options) && (
-                              <div
-                                style={{ fontWeight: 700, marginTop: "0.5rem" }}
-                              >
-                                Chọn {mcCorrectLabel(options)}
-                              </div>
-                            )}
-                          </div>
-                        )}
+                                  ))}
+                                </div>
+                              )}
+                              {q.solution && (
+                                <LatexRenderer
+                                  content={q.solution}
+                                  images={item.table_images || []}
+                                  imageZoomable
+                                  onImageWidthChange={(path, width) =>
+                                    updatePreviewImageWidth(
+                                      originalIdx,
+                                      path,
+                                      width,
+                                    )
+                                  }
+                                />
+                              )}
+                              {qtype === "mc" && mcCorrectLabel(options) && (
+                                <div
+                                  style={{
+                                    fontWeight: 700,
+                                    marginTop: "0.5rem",
+                                  }}
+                                >
+                                  Chọn {mcCorrectLabel(options)}
+                                </div>
+                              )}
+                            </div>
+                          )}
                       </div>
                       {/* end flex-1 content */}
                       <div
@@ -1378,10 +1405,7 @@ export default function UploadPage() {
                 marginTop: "1.5rem",
               }}
             >
-              <button
-                className="btn btn-secondary"
-                onClick={discardPreview}
-              >
+              <button className="btn btn-secondary" onClick={discardPreview}>
                 Hủy
               </button>
               <button
