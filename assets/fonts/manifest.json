@@ -1,0 +1,250 @@
+{
+  "version": 1,
+  "files": [
+    {
+      "path": "document/Cambria.ttf",
+      "size": 1167636,
+      "sha256": "fd8952f5b59b9d2072ac54824f2d7d93e3630e8b5174b73d01bcaa2dd9287217"
+    },
+    {
+      "path": "document/CambriaMath.ttf",
+      "size": 1426844,
+      "sha256": "529635d0238cf192137664910463d95fd5d38974bca632c1149fa84933aaba72"
+    },
+    {
+      "path": "document/times.ttf",
+      "size": 1190736,
+      "sha256": "931c5de5c70401d9324d5014c123802b4fb753000360ceb2f56c589403cd58c5"
+    },
+    {
+      "path": "document/timesbd.ttf",
+      "size": 1170096,
+      "sha256": "54fbe2c70af7c85a97bed0573227e3ccc4b2486012e3ca2a40c6bc77065846f5"
+    },
+    {
+      "path": "document/timesbi.ttf",
+      "size": 904204,
+      "sha256": "3a29d114cb5229e8dbda5bef6c69be4a210a13b7277de4d66e9fc86963226f6c"
+    },
+    {
+      "path": "document/timesi.ttf",
+      "size": 962864,
+      "sha256": "e7f7a88b65188328aea58670f955022e23c712f55679524729da1e4e03c49d88"
+    },
+    {
+      "path": "math/CambriaMath.ttf",
+      "size": 1426844,
+      "sha256": "529635d0238cf192137664910463d95fd5d38974bca632c1149fa84933aaba72"
+    },
+    {
+      "path": "vector/DejaVuMathTeXGyre.ttf",
+      "size": 577708,
+      "sha256": "40da67c0b6b03076504fbda4bf3e7b4f20b35999c98063019a3392fe9b1294fe"
+    },
+    {
+      "path": "vector/DejaVuSerif.ttf",
+      "size": 380132,
+      "sha256": "42d1edeb7952f31b1f96d767ed7030b08a39e0c372b0071641518864e2bffb51"
+    },
+    {
+      "path": "vector/DejaVuSerif-Bold.ttf",
+      "size": 356088,
+      "sha256": "c47b5527bcdc8dcf9ea8c77054454c5a884beaca2f44851a2a823ee639cbf07f"
+    },
+    {
+      "path": "vector/DejaVuSerif-BoldItalic.ttf",
+      "size": 347460,
+      "sha256": "8d3dd3d31350309042ed226af82b34539bd773518e6107cb352712853ba80308"
+    },
+    {
+      "path": "vector/DejaVuSerif-Italic.ttf",
+      "size": 345996,
+      "sha256": "2e39b1d50f90b933b00c7bb54a96afd3f86419b3d717c7cf202e36f2d4973e47"
+    },
+    {
+      "path": "vector/LICENSE-DejaVu.txt",
+      "size": 9002,
+      "sha256": "c95e7142e1dc838e1fa669086a9aefca614853dd8889b7e5c1302841f25bed61"
+    },
+    {
+      "path": "vector/LICENSE-Noto-Serif-CJK.txt",
+      "size": 4393,
+      "sha256": "88f117575237307bdd86a17ef15e21790fc9a662fe4dfb103ca1ca077f0d9982"
+    },
+    {
+      "path": "vector/manifest.properties",
+      "size": 568,
+      "sha256": "f88d86b918e81da564f257f171be7a394c7ee64be76390b461be77615b96be09"
+    },
+    {
+      "path": "vector/NotoSerifSC-VF.ttf",
+      "size": 25129160,
+      "sha256": "a4aed9985a5916fbf6690456f8732a9fccd517938e353165d4142b4f11a39280"
+    },
+    {
+      "path": "web/mathlive/KaTeX_AMS-Regular.woff2",
+      "size": 28076,
+      "sha256": "0cdd387c9590a1a9f9794560022dbb59654a7d86f187aa0c81495ad42d3a7308"
+    },
+    {
+      "path": "web/mathlive/KaTeX_Caligraphic-Bold.woff2",
+      "size": 6912,
+      "sha256": "de7701e42cf1f4cf0b766c03fb27977207eee2f4fd5d76fa82188406da43ea4c"
+    },
+    {
+      "path": "web/mathlive/KaTeX_Caligraphic-Regular.woff2",
+      "size": 6908,
+      "sha256": "5d53e70ad607c2352162dec9e0923fb54ecdafaccbf604cd8dcf7d00facb989b"
+    },
+    {
+      "path": "web/mathlive/KaTeX_Fraktur-Bold.woff2",
+      "size": 11348,
+      "sha256": "74444efd593c005e3f4573b44524704c0af0a937fe911cca9e94068d0d140d3f"
+    },
+    {
+      "path": "web/mathlive/KaTeX_Fraktur-Regular.woff2",
+      "size": 11316,
+      "sha256": "51814d270d06ff0255dba0799994fa4d8c84d11f09951d47595f4abb1f3602dc"
+    },
+    {
+      "path": "web/mathlive/KaTeX_Main-Bold.woff2",
+      "size": 25324,
+      "sha256": "0f60d1b897938ec918c8ce073092411baf9438f6739465693ff18b0f9d20b021"
+    },
+    {
+      "path": "web/mathlive/KaTeX_Main-BoldItalic.woff2",
+      "size": 16780,
+      "sha256": "99cd42a3c072d918f2f44984a807cf7aa16e13545fd0875fc07c6c65f99e715b"
+    },
+    {
+      "path": "web/mathlive/KaTeX_Main-Italic.woff2",
+      "size": 16988,
+      "sha256": "97479ca6cce906abc961ecac96faa5f9ca2e61b8e7670d475826bcdee9a7c267"
+    },
+    {
+      "path": "web/mathlive/KaTeX_Main-Regular.woff2",
+      "size": 26272,
+      "sha256": "c2342cd8b869e01752a9321dc17213fc40d4d04c79688c1d43f2cf316abd7866"
+    },
+    {
+      "path": "web/mathlive/KaTeX_Math-BoldItalic.woff2",
+      "size": 16400,
+      "sha256": "dc47344dbb6cb5b655c8460d561f4df5f501b90c804ad3c6cec65fe322351ab1"
+    },
+    {
+      "path": "web/mathlive/KaTeX_Math-Italic.woff2",
+      "size": 16440,
+      "sha256": "7af58c5ec8f132a2ddde9027c6d7814decce4d3b822a11192a42a20e2e973264"
+    },
+    {
+      "path": "web/mathlive/KaTeX_SansSerif-Bold.woff2",
+      "size": 12216,
+      "sha256": "e99ae51144bf1232efcc1bfe5add36262c6866b0faab24fa75740e1b98577a62"
+    },
+    {
+      "path": "web/mathlive/KaTeX_SansSerif-Italic.woff2",
+      "size": 12028,
+      "sha256": "00b26ac825e2095056396e0553b8ac26d3f8ad158c3826e28b4c45b385c4714a"
+    },
+    {
+      "path": "web/mathlive/KaTeX_SansSerif-Regular.woff2",
+      "size": 10344,
+      "sha256": "68e8c73ef42afd3ccec58bf0fba302cce448938e7fc020a5e31f8a952eee1342"
+    },
+    {
+      "path": "web/mathlive/KaTeX_Script-Regular.woff2",
+      "size": 9644,
+      "sha256": "036d4e95149b69ff9bcc0cd55771efeb25ffa3947293e69acd78d5ac328c684b"
+    },
+    {
+      "path": "web/mathlive/KaTeX_Size1-Regular.woff2",
+      "size": 5468,
+      "sha256": "6b47c40166b6dbe21a5dfca7718413f2147fd2399be1ba605d8ad39cedf25dfe"
+    },
+    {
+      "path": "web/mathlive/KaTeX_Size2-Regular.woff2",
+      "size": 5208,
+      "sha256": "d04c54219f9eaec6d4d4fd42dfb28785975a4794d6b2fc71e566b9cd6db842dd"
+    },
+    {
+      "path": "web/mathlive/KaTeX_Size3-Regular.woff2",
+      "size": 3624,
+      "sha256": "73d591271b1604960cb10bb90fee021670af7297017e0e98480b332d11f51995"
+    },
+    {
+      "path": "web/mathlive/KaTeX_Size4-Regular.woff2",
+      "size": 4928,
+      "sha256": "a4af7d414440a1c1790825cfb700cf9cf43b0f2c4b04f0ebc523011ad9853ec0"
+    },
+    {
+      "path": "web/mathlive/KaTeX_Typewriter-Regular.woff2",
+      "size": 13568,
+      "sha256": "71d517d67827787cfabdf186914cc3358eda539e37931941f2b2fd4a21f68c0b"
+    },
+    {
+      "path": "web/Temml.woff2",
+      "size": 9404,
+      "sha256": "fc70501355ae6d38ff0b80f825af153557d5f2f474198d6b9b7dd2d3a291a0cc"
+    },
+    {
+      "path": "web/ui/NotoSans-Regular.ttf",
+      "size": 556328,
+      "sha256": "5be701a9511117e73603bdab95947feef4f18bd1851dbddc30659370b26c69f1"
+    },
+    {
+      "path": "web/ui/NotoSans-Medium.ttf",
+      "size": 558180,
+      "sha256": "94499fa8e77fbb927426767aa48e98f96e94dc4919d7bb7d98732ee985e2afe3"
+    },
+    {
+      "path": "web/ui/NotoSans-SemiBold.ttf",
+      "size": 558412,
+      "sha256": "d28e6da8972668eff5b2faacb865cab11195aba6b0683aee040d20a04928817b"
+    },
+    {
+      "path": "web/ui/NotoSans-Bold.ttf",
+      "size": 558012,
+      "sha256": "9f0ce911354e554bbac00c399dcea71c785962cebfd86e965656f0bd011dfca9"
+    },
+    {
+      "path": "web/ui/NotoSans-ExtraBold.ttf",
+      "size": 558324,
+      "sha256": "e8afb13f9dbbe99ee02775c71bdf1c4a37f72f14b99fb4fa57924071b3e91000"
+    },
+    {
+      "path": "web/ui/LICENSE-NotoSans.txt",
+      "size": 4396,
+      "sha256": "cee9892f9f0cc8fe882c9e9537ee6a89621d86ee7ceaf70b02e2b2b1c25c061a"
+    },
+    {
+      "path": "web/ui/NotoSansJP-Regular.ttf",
+      "size": 5324144,
+      "sha256": "4593dfcdc70ee68852606c90d75dfc6e022feda12780a55615239c53c54ef086"
+    },
+    {
+      "path": "web/ui/NotoSansJP-Bold.ttf",
+      "size": 5319680,
+      "sha256": "a3910e15eea0451ffbea62e894e951ea9f7c812c8b4b5e947593b6ecc2d4b057"
+    },
+    {
+      "path": "web/ui/LICENSE-NotoSansJP.txt",
+      "size": 4388,
+      "sha256": "1c05c68c34f9708415aada51f17e1b0092d2cea709bf4a94cd38114f9e73d7d9"
+    },
+    {
+      "path": "web/ui/NotoSansKR-Regular.ttf",
+      "size": 6163256,
+      "sha256": "c733940a7dc687142848b30a491e97138ed58dc58c4cae33c44e3ee52da411cb"
+    },
+    {
+      "path": "web/ui/NotoSansKR-Bold.ttf",
+      "size": 6159248,
+      "sha256": "5ebb0def0fe9e7c853253eca8ec9c1066adc479f2e248533b412ed0c6a663abc"
+    },
+    {
+      "path": "web/ui/LICENSE-NotoSansKR.txt",
+      "size": 4388,
+      "sha256": "1c05c68c34f9708415aada51f17e1b0092d2cea709bf4a94cd38114f9e73d7d9"
+    }
+  ]
+}
