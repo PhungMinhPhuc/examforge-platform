@@ -42,8 +42,11 @@ def _service_root() -> Path:
 
 def _default_converter_command() -> list[str]:
     jar = _service_root() / "target" / "mathtype-export-worker.jar"
+    mathjax_script = _service_root() / "tools" / "mathjax" / "render_mathjax_svg.cjs"
     return [
-        os.getenv("JAVA_COMMAND", "java"), "-cp", str(jar),
+        os.getenv("JAVA_COMMAND", "java"),
+        f"-Dpaperword.mathjax.script={mathjax_script}",
+        "-cp", str(jar),
         "com.lz.paperword.tools.DocxOmmlToMathTypeConverter",
     ]
 
@@ -78,7 +81,13 @@ def _write_converter_tex(path: Path, formulas: list[str]) -> None:
     path.write_text("\n".join(f"\\({formula}\\)" for formula in formulas), encoding="utf-8")
 
 
-def convert(input_docx: Path, manifest_path: Path, output_docx: Path) -> None:
+def convert(
+    input_docx: Path,
+    manifest_path: Path,
+    output_docx: Path,
+    *,
+    persistent_native: bool = False,
+) -> None:
     manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
     formulas = manifest.get("formulas")
     if manifest.get("version") != 1 or not isinstance(formulas, list) or not all(isinstance(x, str) for x in formulas):
@@ -112,16 +121,28 @@ def convert(input_docx: Path, manifest_path: Path, output_docx: Path) -> None:
             "MATHTYPE_FORMULA_CACHE_PATH",
             str(shared_cache / "formulas"),
         )
-        native_output = _run(
-            [
-                *native_command,
+        if persistent_native and native_command == _default_native_command():
+            os.environ["MATHTYPE_PERSISTENT_NATIVE"] = "1"
+            from native.export_docx_factory import main as render_native
+
+            render_native([
                 str(ole_docx),
                 str(rendered_docx),
                 "--fallback-omml",
                 str(input_docx),
-            ],
-            timeout,
-        )
+            ])
+            native_output = ""
+        else:
+            native_output = _run(
+                [
+                    *native_command,
+                    str(ole_docx),
+                    str(rendered_docx),
+                    "--fallback-omml",
+                    str(input_docx),
+                ],
+                timeout,
+            )
         if native_output:
             # Native renderer chỉ in số lượng/chỉ số, không in LaTeX đầy đủ.
             print(native_output.strip(), flush=True)

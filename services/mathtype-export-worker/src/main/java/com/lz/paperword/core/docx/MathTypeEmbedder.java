@@ -242,9 +242,6 @@ public class MathTypeEmbedder {
             }
             paragraph.getCTP().setRArray(runIndex, replacement);
 
-            XWPFRun spacerRun = paragraph.insertNewRun(runIndex + 1);
-            spacerRun.setText(" ");
-
         } catch (Exception e) {
             log.error("Failed to insert OLE XML into run", e);
         }
@@ -376,4 +373,3 @@ public class MathTypeEmbedder {
     private record PreviewBox(int widthPx, int heightPx) {
     }
 }
-

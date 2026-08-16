@@ -1,4 +1,5 @@
 import argparse
+import atexit
 import ctypes
 import hashlib
 import os
@@ -28,9 +29,27 @@ MTXFM_FILE = -4
 MTXFM_MTEF = 4
 MTXFM_PICT = 6
 MTXFM_PREF_MTDEFAULT = 2
-CACHE_VERSION = "mt6-factory-v1"
+CACHE_VERSION = "mt6-factory-v2-last-dimension"
 CACHE_HEADER = struct.Struct("<8siii")
 CACHE_MAGIC = b"MTCACHE1"
+_PERSISTENT_DLL = None
+_PERSISTENT_CONNECTED = False
+
+
+def _disconnect_persistent() -> None:
+    """Đóng đúng một Native API session khi tiến trình worker dừng."""
+    global _PERSISTENT_DLL, _PERSISTENT_CONNECTED
+    if _PERSISTENT_DLL is None or not _PERSISTENT_CONNECTED:
+        return
+    try:
+        _PERSISTENT_DLL.MTAPIDisconnect()
+    except OSError:
+        pass
+    finally:
+        _PERSISTENT_CONNECTED = False
+
+
+atexit.register(_disconnect_persistent)
 
 
 def extract_mtef(ole_path: Path) -> bytes:
@@ -101,7 +120,8 @@ def write_cached_render(cache_root: Path, key: str, image_path: Path, dimensions
     os.replace(temporary_path, cache_path)
 
 
-def main() -> None:
+def main(argv: list[str] | None = None) -> None:
+    global _PERSISTENT_DLL, _PERSISTENT_CONNECTED
     parser = argparse.ArgumentParser()
     parser.add_argument("input", type=Path)
     parser.add_argument("output", type=Path)
@@ -110,7 +130,7 @@ def main() -> None:
         type=Path,
         help="DOCX OMML gốc; công thức native lỗi sẽ được phục hồi riêng từ đây",
     )
-    args = parser.parse_args()
+    args = parser.parse_args(argv)
     source = args.input.resolve()
     output = args.output.resolve()
     output.parent.mkdir(parents=True, exist_ok=True)
@@ -125,7 +145,10 @@ def main() -> None:
         "MATHTYPE_MT6_DLL",
         r"C:\Program Files (x86)\MathType\System\64\MT6.dll",
     )
-    dll = ctypes.WinDLL(dll_path)
+    persistent = os.getenv("MATHTYPE_PERSISTENT_NATIVE", "0").strip().lower() in {"1", "true", "yes"}
+    dll = _PERSISTENT_DLL if persistent and _PERSISTENT_DLL is not None else ctypes.WinDLL(dll_path)
+    if persistent:
+        _PERSISTENT_DLL = dll
     dll.MTAPIConnect.argtypes = [ctypes.c_int16, ctypes.c_int16]
     dll.MTAPIConnect.restype = ctypes.c_int32
     dll.MTAPIDisconnect.restype = ctypes.c_int32
@@ -173,9 +196,15 @@ def main() -> None:
                     f"OMML fallback count={len(fallback_nodes)} không khớp MathType object count={len(objects)}"
                 )
 
-        connect = dll.MTAPIConnect(1, 30)
-        if connect != 0:
-            raise RuntimeError(f"MTAPIConnect failed: {connect}")
+        if not (persistent and _PERSISTENT_CONNECTED):
+            connect_option = int(os.getenv("MATHTYPE_CONNECT_OPTION", "0"))
+            if connect_option not in (0, 1):
+                raise RuntimeError("MATHTYPE_CONNECT_OPTION chỉ nhận 0 hoặc 1")
+            connect = dll.MTAPIConnect(connect_option, 30)
+            if connect != 0:
+                raise RuntimeError(f"MTAPIConnect failed: {connect}")
+            if persistent:
+                _PERSISTENT_CONNECTED = True
         try:
             if dll.MTXFormReset() != 0 or dll.MTXFormSetPrefs(MTXFM_PREF_MTDEFAULT, None) != 0:
                 raise RuntimeError("Could not select MathType default preferences")
@@ -192,14 +221,22 @@ def main() -> None:
                 cached_dimensions = read_cached_render(cache_root, key, image_path)
                 if cached_dimensions is None:
                     src_buffer = ctypes.create_string_buffer(mtef)
+                    # SDK cũ có ABI MTAPI_DIMS khác nhau giữa bộ header. Cấp
+                    # buffer dư để DLL ghi an toàn, nhưng đọc kích thước qua
+                    # MTGetLastDimension thay vì diễn giải layout của struct.
+                    dimensions_buffer = ctypes.create_string_buffer(64)
                     try:
                         status = dll.MTXFormEqn(
                             MTXFM_LOCAL, MTXFM_MTEF, ctypes.cast(src_buffer, ctypes.c_void_p), len(mtef),
                             MTXFM_FILE, MTXFM_PICT, None, 0,
-                            str(image_path).encode("mbcs"), None,
+                            str(image_path).encode("mbcs"), ctypes.cast(dimensions_buffer, ctypes.c_void_p),
                         )
                     except OSError as exc:
                         status = -1
+                        # Access violation thường có nghĩa MathType Server đã chết.
+                        # Lượt hiện tại fallback về OMML; lượt kế tiếp phải kết nối lại.
+                        if persistent:
+                            _PERSISTENT_CONNECTED = False
                         skipped.append({"index": index, "reason": f"native error: {exc}"})
                     if status != 0 or not image_path.exists():
                         if not fallback_nodes:
@@ -245,10 +282,11 @@ def main() -> None:
                 if index == 1 or index % 50 == 0 or index == len(objects):
                     print(f"Rendered {index}/{len(objects)}", flush=True)
         finally:
-            try:
-                dll.MTAPIDisconnect()
-            except OSError:
-                pass
+            if not persistent:
+                try:
+                    dll.MTAPIDisconnect()
+                except OSError:
+                    pass
 
         doc_tree.write(str(doc_path), encoding="UTF-8", xml_declaration=True, standalone=True)
         temp_docx = output.with_suffix(".building.docx")

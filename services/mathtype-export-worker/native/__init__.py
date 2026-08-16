@@ -1,0 +1,1 @@
+"""MathType Native API runtime."""

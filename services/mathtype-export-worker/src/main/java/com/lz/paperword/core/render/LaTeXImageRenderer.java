@@ -109,7 +109,7 @@ public class LaTeXImageRenderer {
     private static final String EXPECTED_MATHJAX_VERSION = "3.2.2";
     private static final String EXPECTED_SAXON_JS_VERSION = "2.7.0";
     private static final String EXPECTED_MATHJAX_BUNDLE_HASH =
-        "58db4ec1af9c9f53aed50fd16c5e18c63f159eb2f793f070fe91e43b2b48360d";
+        "62ed4fa5ec756bee44eb0221349360d72d60ede6e2e86ec5ed56165ce317d51c";
     /** 外部命令默认超时秒数。 */
     private static final int DEFAULT_TIMEOUT_SECONDS = 20;
     private static final List<String> ARRAY_LIKE_ENVIRONMENTS = List.of(
@@ -2497,4 +2497,3 @@ public class LaTeXImageRenderer {
         }
     }
 }
-
