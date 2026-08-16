@@ -1,131 +1,45 @@
 import os
-import re
 from typing import List, Dict, Any
-from .common import fix_soft_newlines, resolve_image_file
 from dotenv import load_dotenv
+from doctree import figures_by_id, question_to_rec
+from doctree.write.tex import to_tex
+from font_assets import DOCUMENT_FONT_DIR, MATH_FONT_DIR, latex_font_path
 
 load_dotenv(dotenv_path=os.path.join(os.path.dirname(__file__), "..", "..", "..", "..", "api", ".env"))
 
-def replace_img_with_tikz(q: dict, options_tex: str = "", for_pdf_compilation: bool = False) -> str:
-    content = q.get('content', '') or ''
-    images = q.get('images', [])
-    layout = q.get('layout_type', '') or ''
-    q_type = q.get('question_type', '')
-    
-    if layout.startswith('immini') or layout == 'thm':
-        img_matches = re.findall(r'(!\[.*?\]\((.*?)\))', content)
-        if img_matches:
-            image_codes = []
-            for full_match, url in img_matches:
-                code = replace_img_with_tikz_in_str(full_match, images, for_pdf_compilation)
-                image_codes.append(code.strip())
-            
-            text_content = re.sub(r'!\[.*?\]\((.*?)\)', '', content).strip()
-            
-            if layout == 'immini_all' and options_tex:
-                text_content += "\n    " + options_tex
-                
-            opt_arg = "[thm]"
-            img_block = "\n".join(image_codes)
-            
-            result_immini = f"\\immini{opt_arg}{{\n    {text_content}\n}}{{\n    {img_block}\n}}"
-            if layout != 'immini_all' and options_tex:
-                result_immini += "\n    " + options_tex
-            
-            return result_immini
-            
-    # For normal images, wrap them in center with empty lines before and after
-    def replacer(match):
-        code = replace_img_with_tikz_in_str(match.group(0), images, for_pdf_compilation).strip()
-        return f"\n\n\\begin{{center}}\n{code}\n\\end{{center}}\n\n"
-        
-    content = re.sub(r'!\[.*?\]\((.*?)\)', replacer, content)
-    if options_tex:
-        content += "\n    " + options_tex
-    return content
 
-def replace_img_with_tikz_in_str(content: str, images: list, for_pdf_compilation: bool = False) -> str:
-    def replacer(match):
-        url = match.group(1)
-        abs_path, matched_image = resolve_image_file(url, images)
-        scale_factor = 1
-        for img in images:
-            if img is matched_image:
-                sc = img.get('img_scale')
-                if sc is not None:
-                    try: scale_factor = float(sc)
-                    except: pass
-                    
-                if img.get('img_type') == 'tikz' and img.get('raw_code'):
-                    if for_pdf_compilation:
-                        pdf = abs_path.rsplit('.', 1)[0] + '.pdf'
-                        if os.path.exists(pdf):
-                            return f"\\includegraphics[scale={scale_factor:.2f}]{{{pdf}}}"
-                    return "\n" + img.get('raw_code') + "\n"
-        
-        ext = os.path.splitext(abs_path)[1].lower()
-        if ext in ['.emf', '.wmf']:
-            if for_pdf_compilation:
-                return ""
-            else:
-                return f"\\includegraphics[scale={scale_factor:.2f}]{{{abs_path}}}"
-            
-        if ext in ['.png', '.jpg', '.jpeg']:
-            return f"\\includegraphics[width={scale_factor:.2f}\\textwidth]{{{abs_path}}}"
-        else:
-            return f"\\includegraphics[scale={scale_factor:.2f}]{{{abs_path}}}"
-    return re.sub(r'!\[.*?\]\((.*?)\)', replacer, content)
+def _figures_for_pdf(images: list, pdf_mode: bool) -> dict:
+    """`q_images` của một câu -> `{figure_id: row}` cho `doctree.write.tex`.
 
-def render_options_and_solution_latex(q: dict, include_solution: bool = True, for_pdf_compilation: bool = False, show_answers: bool = True) -> tuple[str, str]:
-    q_type = q.get('question_type')
-    options = q.get('options', [])
-    solution = q.get('solution', '') or ''
-    
-    def replacer_sol(match):
-        code = replace_img_with_tikz_in_str(match.group(0), q.get('images', []), for_pdf_compilation).strip()
-        return f"\n\n\\begin{{center}}\n{code}\n\\end{{center}}\n\n"
-        
-    solution = re.sub(r'!\[.*?\]\((.*?)\)', replacer_sol, solution)
-    
-    options_lines = []
-    
-    if q_type == 'mc':
-        options_lines.append("\\choice")
-        for opt in options:
-            mark = "\\True " if (show_answers and opt.get('is_correct')) else ""
-            opt_content = replace_img_with_tikz_in_str(opt.get('content', ''), q.get('images', []), for_pdf_compilation)
-            options_lines.append(f"{{{mark}{opt_content}}}")
-
-    elif q_type == 'tf':
-        options_lines.append("\\choiceTF[1]")
-        for opt in options:
-            mark = "\\True " if (show_answers and opt.get('is_correct')) else ""
-            opt_content = replace_img_with_tikz_in_str(opt.get('content', ''), q.get('images', []), for_pdf_compilation)
-            options_lines.append(f"{{{mark}{opt_content}}}")
-            
-        # Explanations for TF
-        if any(opt.get('explaination') for opt in options):
-            expl_lines = ["\\begin{itemchoice}"]
-            for opt in options:
-                expl = opt.get('explaination', '') or ''
-                expl = replace_img_with_tikz_in_str(expl, q.get('images', []), for_pdf_compilation)
-                expl_lines.append(f"\\itemch {expl}")
-            expl_lines.append("\\end{itemchoice}")
-            solution += "\n" + "\n".join(expl_lines)
-            
-    elif q_type == 'sa':
-        correct_ans = options[0].get('content', '') if options else ''
-        if not show_answers:
-            correct_ans = ''
-        options_lines.append(f"\\shortans{{{correct_ans}}}")
-        
-    solution_lines = []
-    if include_solution:
-        solution_lines.append(f"\\loigiai{{{solution}}}")
-    return "\n".join(options_lines), "\n".join(solution_lines)
+    Khi `pdf_mode` (biên dịch PDF qua xelatex), hình TikZ đã có bản `.pdf` dựng
+    sẵn thì dùng luôn bản đó thay vì chèn lại mã TikZ — biên dịch hàng trăm mã
+    đề mà vẽ lại TikZ mỗi lần thì quá chậm. Ảnh WMF/EMF sót lại (MathType không
+    dịch được) thì bỏ qua khi ra PDF, vì LaTeX không đọc được hai định dạng đó.
+    """
+    out = {}
+    for img in images or []:
+        row = dict(img)
+        storage = row.get("storage_path") or ""
+        ext = os.path.splitext(storage)[1].lower()
+        if pdf_mode and row.get("img_type") == "tikz" and storage:
+            pdf_path = os.path.splitext(storage)[0] + ".pdf"
+            if os.path.exists(pdf_path):
+                w = row.get("width")
+                # NULL — chưa đặt tỉ lệ — bỏ `width=`, PDF dựng từ đúng
+                # tikzpicture gốc nên kích thước gốc của nó đã là "scale=1".
+                opt = f"[width={w}\\linewidth]" if w is not None else ""
+                row["raw_code"] = f"\\includegraphics{opt}{{{pdf_path}}}"
+        elif pdf_mode and ext in (".wmf", ".emf"):
+            row["raw_code"] = ""
+            row["storage_path"] = ""
+        out[row["id"]] = row
+        out[str(row["id"])] = row
+    return out
 
 def get_raw_latex(contest: dict, questions: List[dict], include_header: bool = True, use_minipage: bool = True, exam_title: str = "", general_info: str = "", code: str = "000", department: str = "", exam_type: str = "", subject: str = "", duration: int = 50, include_solution: bool = True, for_pdf_compilation: bool = False, show_answers: bool = True, force_solcolor: bool = False) -> str:
     lines = []
+    document_font_path = latex_font_path(DOCUMENT_FONT_DIR) + "/"
+    math_font_path = latex_font_path(MATH_FONT_DIR) + "/"
     
     # Calculate section counts
     total_mc = 0; total_tf = 0; total_sa = 0; total_oe = 0
@@ -146,11 +60,10 @@ def get_raw_latex(contest: dict, questions: List[dict], include_header: bool = T
 \\usepackage[{extest_option}]{{ex_test}}
 \\usepackage[utf8]{{vietnam}} 
 \\usepackage{{fontspec}}
-\\setmainfont{{Times New Roman}}
+\\setmainfont{{times.ttf}}[Path={{{document_font_path}}},BoldFont=timesbd.ttf,ItalicFont=timesi.ttf,BoldItalicFont=timesbi.ttf]
 \\usepackage{{unicode-math}}
-\\setmathfont{{CambriaMath}}
-\\setmathrm{{CambriaMath}}
-\\setmathfont{{XITS Math}}[range={{cal,bfcal}}]
+\\setmathfont{{CambriaMath.ttf}}[Path={{{math_font_path}}}]
+\\setmathrm{{CambriaMath.ttf}}[Path={{{math_font_path}}}]
 \\usepackage{{hyperref}}
 \\hypersetup{{
     pdftitle={{}},
@@ -225,9 +138,10 @@ def get_raw_latex(contest: dict, questions: List[dict], include_header: bool = T
 \\setstretch{{1.18}}
 """
         if general_info:
-            gi_lines = general_info.strip().split('\n')
-            gi_tex = '\n\n'.join(f"\\noindent\\textit{{{line.strip()}}}" for line in gi_lines if line.strip())
-            header_tex += f"{gi_tex}\n\\vspace{{0.5cm}}\n"
+            # `general_info` giờ do RichLatexEditor/TreeDoc sinh ra, đã chứa
+            # đầy đủ marks, math, list và table; không bọc `textit` từng dòng
+            # vì sẽ phá cấu trúc môi trường khối.
+            header_tex += f"{general_info.strip()}\n\\vspace{{0.5cm}}\n"
         lines.append(header_tex)
     
     # Map questions by ID
@@ -251,28 +165,28 @@ def get_raw_latex(contest: dict, questions: List[dict], include_header: bool = T
         q_type = q.get('question_type')
         if q_type == 'mc' and not printed_mc:
             if for_pdf_compilation:
-                lines.append(f"\\par\\addvspace{{5pt}}\\noindent\\textbf{{PHẦN I. Câu trắc nghiệm nhiều phương án lựa chọn. Thí sinh trả lời từ câu 1 đến câu {total_mc}. Mỗi câu hỏi thí sinh chỉ chọn một phương án.}}\\par\n\\setcounter{{ex}}{{0}}")
+                lines.append(f"\\par\\addvspace{{5pt}}\\noindent\\textbf{{PHẦN I. Câu trắc nghiệm nhiều phương án lựa chọn.}} Thí sinh trả lời từ câu 1 đến câu {total_mc}. Mỗi câu hỏi thí sinh chỉ chọn một phương án.\\par\n\\setcounter{{ex}}{{0}}")
             else:
                 lines.append("% Phần I")
             printed_mc = True
             cau_counter = 1
         elif q_type == 'tf' and not printed_tf:
             if for_pdf_compilation:
-                lines.append(f"\\par\\addvspace{{5pt}}\\noindent\\textbf{{PHẦN II. Câu trắc nghiệm đúng sai. Thí sinh trả lời từ câu 1 đến câu {total_tf}. Trong mỗi ý a), b), c), d) ở mỗi câu hỏi, thí sinh chọn đúng hoặc sai.}}\\par\n\\setcounter{{ex}}{{0}}")
+                lines.append(f"\\par\\addvspace{{5pt}}\\noindent\\textbf{{PHẦN II. Câu trắc nghiệm đúng sai.}} Thí sinh trả lời từ câu 1 đến câu {total_tf}. Trong mỗi ý a), b), c), d) ở mỗi câu hỏi, thí sinh chọn đúng hoặc sai.\\par\n\\setcounter{{ex}}{{0}}")
             else:
                 lines.append("% Phần II")
             printed_tf = True
             cau_counter = 1
         elif q_type == 'sa' and not printed_sa:
             if for_pdf_compilation:
-                lines.append(f"\\par\\addvspace{{5pt}}\\noindent\\textbf{{PHẦN III. Câu trắc nghiệm trả lời ngắn. Thí sinh trả lời từ câu 1 đến câu {total_sa}.}}\\par\n\\setcounter{{ex}}{{0}}")
+                lines.append(f"\\par\\addvspace{{5pt}}\\noindent\\textbf{{PHẦN III. Câu trắc nghiệm trả lời ngắn.}} Thí sinh trả lời từ câu 1 đến câu {total_sa}.\\par\n\\setcounter{{ex}}{{0}}")
             else:
                 lines.append("% Phần III")
             printed_sa = True
             cau_counter = 1
         elif q_type == 'oe' and not printed_oe:
             if for_pdf_compilation:
-                lines.append(f"\\par\\addvspace{{5pt}}\\noindent\\textbf{{PHẦN IV. Câu tự luận. Thí sinh trả lời từ câu 1 đến câu {total_oe}.}}\\par\n\\setcounter{{ex}}{{0}}")
+                lines.append(f"\\par\\addvspace{{5pt}}\\noindent\\textbf{{PHẦN IV. Câu tự luận.}} Thí sinh trả lời từ câu 1 đến câu {total_oe}.\\par\n\\setcounter{{ex}}{{0}}")
             else:
                 lines.append("% Phần IV")
             printed_oe = True
@@ -285,28 +199,28 @@ def get_raw_latex(contest: dict, questions: List[dict], include_header: bool = T
                 child_type = children[0].get('question_type')
                 if child_type == 'mc' and not printed_mc:
                     if for_pdf_compilation:
-                        lines.append(f"\\par\\addvspace{{5pt}}\\noindent\\textbf{{PHẦN I. Câu trắc nghiệm nhiều phương án lựa chọn. Thí sinh trả lời từ câu 1 đến câu {total_mc}. Mỗi câu hỏi thí sinh chỉ chọn một phương án.}}\\par\n\\setcounter{{ex}}{{0}}")
+                        lines.append(f"\\par\\addvspace{{5pt}}\\noindent\\textbf{{PHẦN I. Câu trắc nghiệm nhiều phương án lựa chọn.}} Thí sinh trả lời từ câu 1 đến câu {total_mc}. Mỗi câu hỏi thí sinh chỉ chọn một phương án.\\par\n\\setcounter{{ex}}{{0}}")
                     else:
                         lines.append("% Phần I")
                     printed_mc = True
                     cau_counter = 1
                 elif child_type == 'tf' and not printed_tf:
                     if for_pdf_compilation:
-                        lines.append(f"\\par\\addvspace{{5pt}}\\noindent\\textbf{{PHẦN II. Câu trắc nghiệm đúng sai. Thí sinh trả lời từ câu 1 đến câu {total_tf}. Trong mỗi ý a), b), c), d) ở mỗi câu hỏi, thí sinh chọn đúng hoặc sai.}}\\par\n\\setcounter{{ex}}{{0}}")
+                        lines.append(f"\\par\\addvspace{{5pt}}\\noindent\\textbf{{PHẦN II. Câu trắc nghiệm đúng sai.}} Thí sinh trả lời từ câu 1 đến câu {total_tf}. Trong mỗi ý a), b), c), d) ở mỗi câu hỏi, thí sinh chọn đúng hoặc sai.\\par\n\\setcounter{{ex}}{{0}}")
                     else:
                         lines.append("% Phần II")
                     printed_tf = True
                     cau_counter = 1
                 elif child_type == 'sa' and not printed_sa:
                     if for_pdf_compilation:
-                        lines.append(f"\\par\\addvspace{{5pt}}\\noindent\\textbf{{PHẦN III. Câu trắc nghiệm trả lời ngắn. Thí sinh trả lời từ câu 1 đến câu {total_sa}.}}\\par\n\\setcounter{{ex}}{{0}}")
+                        lines.append(f"\\par\\addvspace{{5pt}}\\noindent\\textbf{{PHẦN III. Câu trắc nghiệm trả lời ngắn.}} Thí sinh trả lời từ câu 1 đến câu {total_sa}.\\par\n\\setcounter{{ex}}{{0}}")
                     else:
                         lines.append("% Phần III")
                     printed_sa = True
                     cau_counter = 1
                 elif child_type == 'oe' and not printed_oe:
                     if for_pdf_compilation:
-                        lines.append(f"\\par\\addvspace{{5pt}}\\noindent\\textbf{{PHẦN IV. Câu tự luận. Thí sinh trả lời từ câu 1 đến câu {total_oe}.}}\\par\n\\setcounter{{ex}}{{0}}")
+                        lines.append(f"\\par\\addvspace{{5pt}}\\noindent\\textbf{{PHẦN IV. Câu tự luận.}} Thí sinh trả lời từ câu 1 đến câu {total_oe}.\\par\n\\setcounter{{ex}}{{0}}")
                     else:
                         lines.append("% Phần IV")
                     printed_oe = True
@@ -317,21 +231,16 @@ def get_raw_latex(contest: dict, questions: List[dict], include_header: bool = T
                 if use_minipage: lines.append("\\noindent\\begin{minipage}[t]{\\linewidth}")
             if not for_pdf_compilation:
                 lines.append(f"% Câu {cau_counter}")
-            lines.append("\\begin{ex}")
-            content = replace_img_with_tikz(q, "", for_pdf_compilation)
-            lines.append(f"\\sochc{{{len(children)}}}{{{content}}}")
-            
+            group_images = list(q.get('images') or [])
             for child in children:
-                lines.append("    \\begin{chc}")
-                options_tex, solution_tex = render_options_and_solution_latex(child, include_solution, for_pdf_compilation, show_answers)
-                lines.append("        " + replace_img_with_tikz(child, options_tex, for_pdf_compilation))
-                if solution_tex:
-                    lines.append("        " + solution_tex)
-                lines.append("    \\end{chc}")
-                child_id = str(child.get('id', ''))
-                processed_ids.add(child_id)
-                
-            lines.append("\\end{ex}\n")
+                group_images += (child.get('images') or [])
+            figs = _figures_for_pdf(group_images, for_pdf_compilation)
+            recs = [question_to_rec(q)] + [question_to_rec(c) for c in children]
+            lines.append(to_tex(recs, figs, show_answers, include_solution) + "\n")
+
+            for child in children:
+                processed_ids.add(str(child.get('id', '')))
+
             if for_pdf_compilation:
                 if use_minipage: lines.append("\\end{minipage}")
                 lines.append("\\par\\addvspace{2pt}\n")
@@ -347,12 +256,9 @@ def get_raw_latex(contest: dict, questions: List[dict], include_header: bool = T
                 if use_minipage: lines.append("\\noindent\\begin{minipage}[t]{\\linewidth}")
             if not for_pdf_compilation:
                 lines.append(f"% Câu {cau_counter}")
-            lines.append("\\begin{ex}")
-            options_tex, solution_tex = render_options_and_solution_latex(q, include_solution, for_pdf_compilation, show_answers)
-            lines.append("    " + replace_img_with_tikz(q, options_tex, for_pdf_compilation))
-            if solution_tex:
-                lines.append("    " + solution_tex)
-            lines.append("\\end{ex}\n")
+            figs = _figures_for_pdf(q.get('images') or [], for_pdf_compilation)
+            rec = question_to_rec(q)
+            lines.append(to_tex(rec, figs, show_answers, include_solution) + "\n")
             if for_pdf_compilation:
                 if use_minipage: lines.append("\\end{minipage}")
                 lines.append("\\par\\addvspace{2pt}\n")

@@ -6,70 +6,44 @@ import csv
 import io
 from typing import List, Dict, Any
 import xml.etree.ElementTree as ET
+from doctree.adapt import content_len as _content_len
+from doctree.figures import (
+    A4_REFERENCE_WIDTH_PT,
+    get_image_storage_root,
+    resolve_image_file,
+)  # noqa: F401 — giữ tên cũ cho word_exporter.py/pdf_html/renderer.py, ruột
+   # thật nay ở doctree.figures (dùng chung được cho cả doctree/write/docx.py
+   # mà không tạo vòng lặp import doctree<->exporters).
 
 
-def get_image_storage_root() -> str:
-    """Return the absolute image-storage directory independently of cwd.
-
-    Production may override it with IMG_STORAGE_PATH.  The local fallback is
-    resolved from this source file to the repository root, never from the
-    process working directory.
-    """
-    configured = os.getenv("IMG_STORAGE_PATH")
-    if configured:
-        return os.path.abspath(os.path.expanduser(configured))
-    project_root = os.path.abspath(
-        os.path.join(os.path.dirname(__file__), "..", "..", "..", "..")
-    )
-    return os.path.join(project_root, "storage")
+def fmt_points(x: float) -> str:
+    """Định dạng điểm kiểu Việt Nam: 14.0 -> '14,0', 0.25 -> '0,25'. Bản dùng
+    chung — `word_exporter.py` có bản riêng cùng logic (`_fmt_points`), chưa
+    gộp lại vì bộ cũ giữ nguyên tới khi thay hẳn (xem kế hoạch port docx)."""
+    s = f"{x:.2f}"
+    if s.endswith('0'):
+        s = s[:-1]
+    return s.replace('.', ',')
 
 
-def resolve_image_file(url: str, images: list | None = None) -> tuple[str, dict | None]:
-    """Resolve an image URL/DB path to a local file and matching metadata.
-
-    Supports absolute paths stored by older imports, relative DB paths and
-    public ``/static/images/...`` URLs. Existing metadata paths take priority.
-    """
-    import urllib.parse
-
-    storage_root = get_image_storage_root()
-    clean_url = urllib.parse.unquote(str(url or '')).split('?', 1)[0]
-    normalized_url = clean_url.replace('\\', '/')
-    if '/static/images/' in normalized_url:
-        relative_url = normalized_url.split('/static/images/', 1)[1]
-    else:
-        relative_url = normalized_url.lstrip('/')
-    relative_url = os.path.normpath(relative_url)
-    if relative_url == '..' or relative_url.startswith('..' + os.sep):
-        relative_url = os.path.basename(relative_url)
-
-    target_name = os.path.basename(relative_url).lower()
-    matched = None
-    candidates: list[str] = []
-    for image in images or []:
-        stored = str(image.get('storage_path') or '').split('?', 1)[0]
-        stored_normalized = stored.replace('\\', '/')
-        if target_name and os.path.basename(stored_normalized).lower() != target_name:
-            continue
-        matched = image
-        if os.path.isabs(stored):
-            candidates.append(stored)
-        elif '/static/images/' in stored_normalized:
-            candidates.append(os.path.join(storage_root, stored_normalized.split('/static/images/', 1)[1]))
-        elif stored:
-            candidates.append(os.path.join(storage_root, stored.lstrip('/\\')))
-        break
-
-    candidates.extend([
-        os.path.join(storage_root, relative_url),
-        os.path.join(storage_root, os.path.basename(relative_url)),
-    ])
-    for candidate in candidates:
-        absolute = os.path.abspath(candidate)
-        if os.path.exists(absolute):
-            return absolute.replace('\\', '/'), matched
-    return os.path.abspath(candidates[0]).replace('\\', '/'), matched
-
+def get_scoring_config(contest: dict) -> Dict[str, float]:
+    """Đọc `contest['scoring_config']` (JSON, có thể là chuỗi hoặc dict) với
+    giá trị mặc định — bản dùng chung, xem ghi chú ở `fmt_points`."""
+    import json
+    sc = contest.get('scoring_config') if isinstance(contest, dict) else None
+    if isinstance(sc, str):
+        try:
+            sc = json.loads(sc)
+        except Exception:
+            sc = {}
+    if not isinstance(sc, dict):
+        sc = {}
+    return {
+        'mc': float(sc.get('mc', 0.25) or 0.25),
+        'tf': float(sc.get('tf', 1.0) or 1.0),
+        'sa': float(sc.get('sa', 0.5) or 0.5),
+        'oe': float(sc.get('oe', 1.0) or 1.0),
+    }
 
 
 def fix_soft_newlines(text: str) -> str:
@@ -85,25 +59,10 @@ def fix_soft_newlines(text: str) -> str:
     return "".join(parts)
 
 def get_svg_native_width_inches(filepath: str, default_inches: float = 2.6) -> float:
-    try:
-        import xml.etree.ElementTree as ET
-        import re
-        tree = ET.parse(filepath)
-        root = tree.getroot()
-        w_str = root.attrib.get('width', '')
-        if not w_str:
-            vb_str = root.attrib.get('viewBox', '')
-            if vb_str:
-                parts = vb_str.split()
-                if len(parts) >= 4:
-                    w_str = parts[2]
-        if w_str:
-            m = re.search(r'([\d.]+)', w_str)
-            if m:
-                return float(m.group(1)) / 96.0
-    except Exception:
-        pass
-    return default_inches
+    """Giữ tên cũ cho `word_exporter.py` — ruột thật nay ở `doctree.figures`,
+    nơi cũng cần đọc kích thước gốc này khi `width` là NULL."""
+    from doctree.figures import svg_native_width_in
+    return svg_native_width_in(filepath, default_inches)
 
 # Kích thước trang/chữ (pt) — A4 12pt, geometry top=1.2 bottom=2 left=1.5 right=1.2
 LINE_PT = 16.5            # chiều cao 1 dòng (12pt × setstretch ~1.18)
@@ -155,26 +114,57 @@ def _read_image_size_px(path: str):
     return None
 
 
-def _image_height_pt(img: dict) -> float:
-    """Chiều cao hiển thị (pt) của một ảnh trong đề, dựa trên kích thước thật."""
+def raster_native_width_pt(path: str, default_dpi: float = 96.0):
+    """Bề rộng THẬT (pt) của một ảnh raster (PNG/JPG — không phải SVG), đọc
+    DPI thật ghi trong file nếu có (ví dụ ảnh TikZ dựng bằng `pdftocairo -r
+    300` sẽ tự khai 300dpi trong PNG). Không có DPI thì coi là 96dpi — quy ước
+    ảnh web thường gặp, không phải phép đo. Trả `None` nếu không đọc được file.
+
+    Cần vì nhúng PNG vào HTML không kèm `style="width:..."` thì trình duyệt
+    LUÔN hiểu mỗi pixel là 1/96 inch, bất kể file thật sự ở DPI nào — ảnh dựng
+    ở 300dpi mà không nói rõ bề rộng sẽ hiện to gấp 300/96 ≈ 3.1 lần kích
+    thước thật.
+    """
     try:
-        sc = float(img.get('img_scale') or 0.4)
+        from PIL import Image
+        with Image.open(path) as im:
+            dpi = im.info.get("dpi")
+            dpi_x = float(dpi[0]) if dpi else default_dpi
+            return im.width / dpi_x * 72.0
+    except Exception:
+        return None
+
+
+def _image_height_pt(img: dict) -> float:
+    """Chiều cao hiển thị (pt) của một ảnh trong đề, dựa trên kích thước thật.
+
+    `width` NULL — chưa đặt tỉ lệ — ước lượng theo kích thước GỐC của ảnh
+    (khớp cách write/tex.py, write/html.py, write/docx.py đều xuất khi gặp
+    NULL), không còn giả định một tỉ lệ 0.4 bịa ra.
+    """
+    w_ratio = img.get('width')
+    try:
+        sc = float(w_ratio) if w_ratio is not None else None
     except (TypeError, ValueError):
-        sc = 0.4
+        sc = None
     storage_path = img.get('storage_path', '') or ''
     resolved_path, _ = resolve_image_file(storage_path, [img])
     size = _read_image_size_px(resolved_path)
     if not size:
-        # Không đọc được file: ước lượng thô theo scale (hơi cao cho an toàn)
-        return 120.0 + sc * 260.0
+        # Không đọc được file: ước lượng thô (hơi cao cho an toàn)
+        return 120.0 + (sc if sc is not None else 0.4) * 260.0
     w, h = size
     ext = os.path.splitext(storage_path)[1].lower()
     if ext == '.svg':
-        # SVG → PDF, includegraphics[scale=sc]: kích thước = sc × native (px→pt: /96×72)
-        native_h_pt = (h / 96.0) * 72.0
-        return sc * native_h_pt * 1.5  # khớp hệ số phóng trong word/latex
+        # SVG do pdftocairo dựng ra ghi width/height theo POINT sẵn (kế thừa hệ
+        # tọa độ PDF) — `h` đọc được đã là pt, không cần quy đổi gì thêm.
+        native_h_pt = h
+        return (sc * A4_REFERENCE_WIDTH_PT * (h / w)) if sc is not None and w else native_h_pt
+    if sc is None:
+        # Ảnh raster chưa đặt tỉ lệ: coi như xuất ở kích thước gốc (96dpi -> pt)
+        return (h / 96.0) * 72.0
     # png/jpg: width = sc × textwidth → cao = rộng × (h/w)
-    disp_w_pt = sc * TEXTWIDTH_PT
+    disp_w_pt = sc * A4_REFERENCE_WIDTH_PT
     return disp_w_pt * (h / w if w else 1.0)
 
 
@@ -187,18 +177,15 @@ def _estimate_unit_height(unit: List[dict]) -> float:
     total = 1.5 * LINE_PT  # khoảng cách giữa các câu
     for q in unit:
         qt = q.get('question_type')
-        content = q.get('content', '') or ''
-        text = re.sub(r'!\[.*?\]\(.*?\)', '', content)
-        text = re.sub(r'\s+', ' ', text).strip()
         total += 1.4 * LINE_PT  # dòng "Câu N:" + nhãn
-        total += max(1.0, len(text) / CHARS_PER_LINE) * LINE_PT
+        total += max(1.0, _content_len(q.get('content')) / CHARS_PER_LINE) * LINE_PT
 
         for img in (q.get('images', []) or []):
             total += _image_height_pt(img) + 0.5 * LINE_PT
 
         opts = q.get('options', []) or []
         if qt == 'mc':
-            maxlen = max((len(re.sub(r'\s+', ' ', (o.get('content', '') or ''))) for o in opts), default=0)
+            maxlen = max((_content_len(o.get('content')) for o in opts), default=0)
             layout = str(q.get('layout_type', ''))
             if layout == '1' or maxlen > 35:
                 rows = 4
@@ -209,8 +196,7 @@ def _estimate_unit_height(unit: List[dict]) -> float:
             total += (rows + 0.6) * LINE_PT
         elif qt == 'tf':
             for o in opts:
-                ln = len(re.sub(r'\s+', ' ', (o.get('content', '') or '')))
-                total += max(1.0, ln / CHARS_PER_LINE) * LINE_PT
+                total += max(1.0, _content_len(o.get('content')) / CHARS_PER_LINE) * LINE_PT
         elif qt == 'sa':
             total += 1.6 * LINE_PT
         elif qt == 'oe':
@@ -490,28 +476,62 @@ def _do_shuffle(questions: List[dict], shuffle_order: bool = True, shuffle_optio
     
     type_order = ['mc', 'tf', 'sa', 'oe', 'st']
 
+    def complexity_band(q):
+        """Hai cụm mềm: NB+TH và VD+VDC; dữ liệu lỗi về cụm cơ bản."""
+        value = q.get('complexity')
+        try:
+            level = int(value)
+        except (TypeError, ValueError):
+            level = 1
+        return 0 if level <= 2 else 1
+
+    def shuffle_unlocked(items):
+        """Giữ phần tử khóa đúng slot, chỉ đảo phần tử mở theo hai cụm."""
+        values = list(items)
+        fixed = {
+            i: item for i, item in enumerate(values)
+            if not item.get('is_shufflable', True)
+        }
+        movable = [item for i, item in enumerate(values) if i not in fixed]
+        basic = [item for item in movable if complexity_band(item) == 0]
+        applied = [item for item in movable if complexity_band(item) == 1]
+        random.shuffle(basic)
+        random.shuffle(applied)
+        movable = basic + applied
+        result, movable_index = [], 0
+        for i in range(len(values)):
+            if i in fixed:
+                result.append(fixed[i])
+            else:
+                result.append(movable[movable_index])
+                movable_index += 1
+        return result
+
     def order_group(group_qs):
         qs = list(group_qs)
         if not shuffle_order:
             return qs
-        # Câu is_shufflable=False giữ NGUYÊN vị trí; chỉ đảo các câu được phép.
-        fixed = {i: q for i, q in enumerate(qs) if not q.get('is_shufflable', True)}
-        movable = [q for i, q in enumerate(qs) if i not in fixed]
-        random.shuffle(movable)
-        result, mi = [], 0
-        for i in range(len(qs)):
-            if i in fixed:
-                result.append(fixed[i])
-            else:
-                result.append(movable[mi]); mi += 1
-        return result
+        return shuffle_unlocked(qs)
 
     def maybe_shuffle_opts(q):
-        # Đảo phương án/mệnh đề cho MC và ĐÚNG/SAI (tf)
-        if shuffle_options and q.get('question_type') in ('mc', 'tf') and q.get('is_shufflable', True):
-            opts = q.get('options', [])
-            random.shuffle(opts)
-            q['options'] = opts
+        # Cờ của từng option độc lập với cờ đổi vị trí của câu. Option khóa
+        # luôn giữ đúng slot, chỉ các option còn lại mới được random.
+        if shuffle_options and q.get('question_type') in ('mc', 'tf'):
+            opts = list(q.get('options', []))
+            fixed = {
+                i: opt for i, opt in enumerate(opts)
+                if not opt.get('is_shufflable', True)
+            }
+            movable = [opt for i, opt in enumerate(opts) if i not in fixed]
+            random.shuffle(movable)
+            rebuilt, movable_index = [], 0
+            for i in range(len(opts)):
+                if i in fixed:
+                    rebuilt.append(fixed[i])
+                else:
+                    rebuilt.append(movable[movable_index])
+                    movable_index += 1
+            q['options'] = rebuilt
 
     for t in type_order:
         for q in order_group(groups[t]):
@@ -522,7 +542,7 @@ def _do_shuffle(questions: List[dict], shuffle_order: bool = True, shuffle_optio
             if new_q['id'] in children:
                 ch_list = copy.deepcopy(children[new_q['id']])
                 if shuffle_order:
-                    random.shuffle(ch_list)
+                    ch_list = shuffle_unlocked(ch_list)
                 for ch in ch_list:
                     maybe_shuffle_opts(ch)
                     shuffled_questions.append(ch)
