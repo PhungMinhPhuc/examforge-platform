@@ -49,7 +49,9 @@ export default function CodingQuestionPage({
   useEffect(() => {
     if (!user) return;
     load()
-      .catch((e) => setError(e instanceof Error ? e.message : "Không tải được bài"))
+      .catch((e) =>
+        setError(e instanceof Error ? e.message : "Không tải được bài"),
+      )
       .finally(() => setLoading(false));
   }, [user, assignmentId]);
 
@@ -94,8 +96,9 @@ export default function CodingQuestionPage({
                 </div>
                 <h1 className="page-title">Câu {index + 1}</h1>
                 <p className="page-sub">
-                  {[question.chapter, question.lesson].filter(Boolean).join(" · ") ||
-                    "Chưa gắn chương"}{" "}
+                  {[question.chapter, question.lesson]
+                    .filter(Boolean)
+                    .join(" · ") || "Chưa gắn chương"}{" "}
                   · {questions.length} bài trong đề
                 </p>
               </div>
@@ -137,13 +140,16 @@ export default function CodingQuestionPage({
             />
 
             <div className="card" style={{ padding: "1.25rem" }}>
-              <h2 style={{ fontSize: "var(--font-size-md)", marginBottom: ".6rem" }}>
+              <h2
+                style={{
+                  fontSize: "var(--font-size-md)",
+                  marginBottom: ".6rem",
+                }}
+              >
                 Đã nộp ({submissions.length})
               </h2>
               {submissions.length === 0 ? (
-                <p className="page-sub">
-                  Chưa có lượt nộp nào cho câu này.
-                </p>
+                <p className="page-sub">Chưa có lượt nộp nào cho câu này.</p>
               ) : (
                 <div className="rows-scroll" style={{ overflowX: "auto" }}>
                   <table className="problem-table">
@@ -195,9 +201,7 @@ export default function CodingQuestionPage({
                             </span>
                           </td>
                           <td className="cell-score">
-                            {s.score == null
-                              ? "—"
-                              : Number(s.score).toFixed(2)}
+                            {s.score == null ? "—" : Number(s.score).toFixed(2)}
                             {maxScore != null && (
                               <small>/{Number(maxScore).toFixed(2)}</small>
                             )}

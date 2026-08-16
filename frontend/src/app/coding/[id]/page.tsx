@@ -132,7 +132,9 @@ export default function CodingAssignmentPage({
       );
     } catch (e) {
       setError(e instanceof Error ? e.message : "Không thể tải danh sách lớp");
-      toast.error(e instanceof Error ? e.message : "Không thể tải danh sách lớp");
+      toast.error(
+        e instanceof Error ? e.message : "Không thể tải danh sách lớp",
+      );
     }
   };
 
@@ -216,7 +218,9 @@ export default function CodingAssignmentPage({
       toast.success("Đã cập nhật thông tin");
     } catch (e) {
       setError(e instanceof Error ? e.message : "Không thể cập nhật thông tin");
-      toast.error(e instanceof Error ? e.message : "Không thể cập nhật thông tin");
+      toast.error(
+        e instanceof Error ? e.message : "Không thể cập nhật thông tin",
+      );
     } finally {
       setSavingMetadata(false);
     }
@@ -343,7 +347,10 @@ export default function CodingAssignmentPage({
                     <div style={{ display: "grid", gap: "1rem" }}>
                       <div className="card" style={{ padding: "1.25rem" }}>
                         <h2
-                          style={{ fontSize: "var(--font-size-md)", marginBottom: ".75rem" }}
+                          style={{
+                            fontSize: "var(--font-size-md)",
+                            marginBottom: ".75rem",
+                          }}
                         >
                           Mô tả
                         </h2>
@@ -355,7 +362,12 @@ export default function CodingAssignmentPage({
                         </p>
                       </div>
                       <div className="card">
-                        <h3 style={{ marginBottom: "1rem", fontSize: "var(--font-size-md)" }}>
+                        <h3
+                          style={{
+                            marginBottom: "1rem",
+                            fontSize: "var(--font-size-md)",
+                          }}
+                        >
                           Danh sách bài tập ({questions.length} bài)
                         </h3>
                         <div
@@ -596,7 +608,12 @@ export default function CodingAssignmentPage({
                         </div>
                       </div>
                       <div className="card">
-                        <h2 style={{ fontSize: "var(--font-size-md)", marginBottom: ".5rem" }}>
+                        <h2
+                          style={{
+                            fontSize: "var(--font-size-md)",
+                            marginBottom: ".5rem",
+                          }}
+                        >
                           Chia sẻ bài làm
                         </h2>
                         <p
@@ -652,7 +669,12 @@ export default function CodingAssignmentPage({
                         </button>
                       </div>
                       <div className="card">
-                        <h2 style={{ fontSize: "var(--font-size-md)", marginBottom: ".5rem" }}>
+                        <h2
+                          style={{
+                            fontSize: "var(--font-size-md)",
+                            marginBottom: ".5rem",
+                          }}
+                        >
                           Bài đã nộp
                         </h2>
                         <p
@@ -678,7 +700,12 @@ export default function CodingAssignmentPage({
               ) : (
                 <>
                   <div className="card" style={{ padding: "1.25rem" }}>
-                    <h2 style={{ fontSize: "var(--font-size-md)", marginBottom: ".75rem" }}>
+                    <h2
+                      style={{
+                        fontSize: "var(--font-size-md)",
+                        marginBottom: ".75rem",
+                      }}
+                    >
                       Danh sách bài ({questions.length})
                     </h2>
                     <div style={{ overflowX: "auto" }}>
@@ -704,7 +731,8 @@ export default function CodingAssignmentPage({
                         <tbody>
                           {questions.map((q, i) => {
                             const used = q.submission_count || 0;
-                            const limit = q.coding_details.max_submissions || 10;
+                            const limit =
+                              q.coding_details.max_submissions || 10;
                             const status = bestStatus(q.statuses);
                             const open = () =>
                               router.push(`/coding/${assignmentId}/${q.id}`);
@@ -1126,7 +1154,9 @@ export default function CodingAssignmentPage({
                       }}
                     >
                       <div>
-                        <h2 style={{ margin: 0, fontSize: "var(--font-size-lg)" }}>
+                        <h2
+                          style={{ margin: 0, fontSize: "var(--font-size-lg)" }}
+                        >
                           Chỉnh sửa thông tin
                         </h2>
                         <p
