@@ -15,11 +15,12 @@ type Attempt = {
   runtime_ms?: number | null;
   memory_kb?: number | null;
   score: number;
+  max_score?: number;
   submitted_at: string;
   is_late?: boolean;
   source_code: string;
   compiler_output?: string | null;
-  question_content: string;
+  question_content: any; // cây tài liệu (jsonb)
   testcase_results?: Array<{
     order_index: number;
     input_data?: string | null;
@@ -195,13 +196,8 @@ export default function CodingSubmissionHistory({
                 </div>
                 <div style={{ overflowX: "auto" }}>
                   <table
-                    className="submission-record-table"
-                    style={{
-                      width: "100%",
-                      borderCollapse: "collapse",
-                      tableLayout: "fixed",
-                      fontSize: ".85rem",
-                    }}
+                    className="problem-table stripe-manual"
+                    style={{ tableLayout: "fixed", fontSize: ".85rem" }}
                   >
                     <colgroup>
                       <col style={{ width: "7%" }} />
@@ -214,8 +210,8 @@ export default function CodingSubmissionHistory({
                       <col style={{ width: "14%" }} />
                     </colgroup>
                     <thead>
-                      <tr style={{ borderBottom: "1px solid var(--border)" }}>
-                        <th style={{ padding: ".7rem" }}>Lượt</th>
+                      <tr>
+                        <th>Lượt</th>
                         <th>Ngôn ngữ</th>
                         <th>Trạng thái</th>
                         <th>Điểm</th>
@@ -226,55 +222,51 @@ export default function CodingSubmissionHistory({
                       </tr>
                     </thead>
                     <tbody>
-                      {attempts.map((item) => (
+                      {attempts.map((item, rowIndex) => (
                         <Fragment key={item.id}>
                           <tr
                             key={item.id}
-                            style={{ borderTop: "1px solid var(--border)" }}
+                            className={rowIndex % 2 ? "is-alt" : undefined}
                           >
-                            <td style={{ padding: ".75rem" }}>
-                              #{item.attempt_number}
-                            </td>
+                            <td>{item.attempt_number}</td>
                             <td>{item.language}</td>
                             <td>
                               <span className="badge badge-inactive">
                                 {item.status}
                               </span>
                             </td>
-                            <td style={{ textAlign: "right" }}>
+                            <td className="cell-score">
                               {Number(item.score || 0).toFixed(2)}
+                              {item.max_score != null && (
+                                <small>
+                                  /{Number(item.max_score).toFixed(2)}
+                                </small>
+                              )}
                             </td>
-                            <td style={{ textAlign: "right" }}>
+                            <td>
                               {item.runtime_ms == null
                                 ? "—"
                                 : `${item.runtime_ms} ms`}
                             </td>
-                            <td style={{ textAlign: "right" }}>
+                            <td>
                               {item.memory_kb == null
                                 ? "—"
                                 : `${item.memory_kb} KB`}
                             </td>
-                            <td
-                              style={{
-                                textAlign: "right",
-                                whiteSpace: "nowrap",
-                              }}
-                            >
+                            <td style={{ whiteSpace: "nowrap" }}>
                               {new Date(item.submitted_at).toLocaleString(
                                 "vi-VN",
                               )}
                               {item.is_late && (
-                                <span className="badge badge-late" style={{ marginLeft: ".5rem" }}>
+                                <span
+                                  className="badge badge-late"
+                                  style={{ marginLeft: ".5rem" }}
+                                >
                                   Nộp muộn
                                 </span>
                               )}
                             </td>
-                            <td
-                              style={{
-                                textAlign: "right",
-                                paddingRight: ".5rem",
-                              }}
-                            >
+                            <td>
                               <button
                                 className="btn btn-secondary btn-sm"
                                 onClick={() =>
@@ -289,7 +281,7 @@ export default function CodingSubmissionHistory({
                           </tr>
                           {expanded === item.id && (
                             <tr
-                              className="submission-detail-row"
+                              className={`submission-detail-row${rowIndex % 2 ? " is-alt" : ""}`}
                               key={`code-${item.id}`}
                             >
                               <td colSpan={8} style={{ padding: "0 0 .9rem" }}>
@@ -326,6 +318,7 @@ export default function CodingSubmissionHistory({
                                       readOnly: true,
                                       minimap: { enabled: false },
                                       fontSize: 14,
+                                      padding: { top: 8 },
                                       lineNumbers: "on",
                                       scrollBeyondLastLine: false,
                                       automaticLayout: true,

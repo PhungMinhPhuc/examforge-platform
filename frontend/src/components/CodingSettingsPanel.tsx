@@ -1,6 +1,7 @@
 import React from "react";
 import { QuestionDetail } from "./QuestionEditor";
 import Editor from "@monaco-editor/react";
+import NumberInput from "./NumberInput";
 
 export default function CodingSettingsPanel({
   qData,
@@ -39,6 +40,7 @@ export default function CodingSettingsPanel({
           output_data: "",
           point_weight: 1,
           is_public: false,
+          is_sample: false,
           order_index: testcases.length,
         },
       ],
@@ -57,6 +59,14 @@ export default function CodingSettingsPanel({
     onChange({ ...qData, coding_testcases: newTc });
   };
 
+  // Mở cho xem sau khi nộp hàng loạt, đỡ phải tích từng test case
+  const allPublic = testcases.length > 0 && testcases.every((tc) => tc.is_public);
+  const togglePublicAll = () =>
+    onChange({
+      ...qData,
+      coding_testcases: testcases.map((tc) => ({ ...tc, is_public: !allPublic })),
+    });
+
   return (
     <div
       style={{
@@ -69,13 +79,13 @@ export default function CodingSettingsPanel({
       {/* Settings Grid */}
       <div
         style={{
-          background: "#f8fafc",
+          background: "var(--bg-hover)",
           padding: "1rem",
           borderRadius: "0.75rem",
-          border: "1px solid #e2e8f0",
+          border: "1px solid var(--border)",
         }}
       >
-        <h4 style={{ margin: "0 0 1rem 0", color: "#0f172a" }}>
+        <h4 style={{ margin: "0 0 1rem 0", color: "var(--text-primary)" }}>
           Giới hạn tài nguyên & Nộp bài
         </h4>
         <div
@@ -87,60 +97,45 @@ export default function CodingSettingsPanel({
         >
           <div className="form-group">
             <label className="form-label">Time C/C++ (s)</label>
-            <input
-              type="number"
+            <NumberInput
               step="0.1"
               className="input"
               value={details.time_limit_c_cpp}
-              onChange={(e) =>
-                updateDetails("time_limit_c_cpp", parseFloat(e.target.value))
-              }
+              onChange={(v) => updateDetails("time_limit_c_cpp", v)}
             />
           </div>
           <div className="form-group">
             <label className="form-label">Time Java (s)</label>
-            <input
-              type="number"
+            <NumberInput
               step="0.1"
               className="input"
               value={details.time_limit_java}
-              onChange={(e) =>
-                updateDetails("time_limit_java", parseFloat(e.target.value))
-              }
+              onChange={(v) => updateDetails("time_limit_java", v)}
             />
           </div>
           <div className="form-group">
             <label className="form-label">Time Python (s)</label>
-            <input
-              type="number"
+            <NumberInput
               step="0.1"
               className="input"
               value={details.time_limit_python}
-              onChange={(e) =>
-                updateDetails("time_limit_python", parseFloat(e.target.value))
-              }
+              onChange={(v) => updateDetails("time_limit_python", v)}
             />
           </div>
           <div className="form-group">
             <label className="form-label">Memory (MB)</label>
-            <input
-              type="number"
+            <NumberInput
               className="input"
               value={details.memory_limit}
-              onChange={(e) =>
-                updateDetails("memory_limit", parseInt(e.target.value))
-              }
+              onChange={(v) => updateDetails("memory_limit", v)}
             />
           </div>
           <div className="form-group">
             <label className="form-label">Max Submissions</label>
-            <input
-              type="number"
+            <NumberInput
               className="input"
               value={details.max_submissions}
-              onChange={(e) =>
-                updateDetails("max_submissions", parseInt(e.target.value))
-              }
+              onChange={(v) => updateDetails("max_submissions", v)}
             />
           </div>
         </div>
@@ -156,14 +151,35 @@ export default function CodingSettingsPanel({
             marginBottom: "1rem",
           }}
         >
-          <h4 style={{ margin: 0, color: "#0f172a" }}>Danh sách Testcases</h4>
-          <button
-            type="button"
-            className="btn btn-primary btn-sm"
-            onClick={addTestcase}
-          >
-            + Thêm Testcase
-          </button>
+          <div>
+            <h4 style={{ margin: 0, color: "var(--text-primary)" }}>Danh sách Testcases</h4>
+            <div style={{ fontSize: ".85rem" }}>
+              Tổng điểm:{" "}
+              <strong style={{ color: "var(--accent-primary)" }}>
+                {testcases.reduce(
+                  (sum, tc) => sum + (Number(tc.point_weight) || 0),
+                  0,
+                )}
+              </strong>
+            </div>
+          </div>
+          <div style={{ display: "flex", gap: ".5rem", alignItems: "center" }}>
+            <button
+              type="button"
+              className="btn btn-secondary btn-sm"
+              onClick={togglePublicAll}
+              disabled={!testcases.length}
+            >
+              {allPublic ? "Bỏ tích tất cả" : "Cho xem tất cả"}
+            </button>
+            <button
+              type="button"
+              className="btn btn-primary btn-sm"
+              onClick={addTestcase}
+            >
+              + Thêm Testcase
+            </button>
+          </div>
         </div>
 
         {testcases.length === 0 ? (
@@ -171,95 +187,39 @@ export default function CodingSettingsPanel({
             style={{
               textAlign: "center",
               padding: "1rem",
-              background: "#f8fafc",
+              background: "var(--bg-hover)",
               borderRadius: "0.5rem",
-              color: "#64748b",
+              color: "var(--text-muted)",
             }}
           >
             Chưa có testcase nào. Hãy bấm thêm testcase để chấm điểm.
           </div>
         ) : (
-          <div
-            style={{ display: "flex", flexDirection: "column", gap: "1rem" }}
-          >
+          <div className="tc-scroll">
             {testcases.map((tc, idx) => (
-              <div
-                key={idx}
-                style={{
-                  display: "flex",
-                  gap: "0.75rem",
-                  background: "#fff",
-                  padding: "0.75rem",
-                  borderRadius: "0.75rem",
-                  border: "1px solid #e2e8f0",
-                  alignItems: "flex-start",
-                }}
-              >
-                <div style={{ flex: 1 }}>
-                  <label className="form-label">Input</label>
-                  <textarea
-                    className="input"
-                    style={{ minHeight: "80px", fontFamily: "monospace" }}
-                    value={tc.input_data}
-                    onChange={(e) =>
-                      updateTestcase(idx, "input_data", e.target.value)
-                    }
-                    placeholder="Dữ liệu đầu vào (stdin)..."
-                  />
-                </div>
-                <div style={{ flex: 1 }}>
-                  <label className="form-label">Output mong đợi</label>
-                  <textarea
-                    className="input"
-                    style={{ minHeight: "80px", fontFamily: "monospace" }}
-                    value={tc.output_data}
-                    onChange={(e) =>
-                      updateTestcase(idx, "output_data", e.target.value)
-                    }
-                    placeholder="Kết quả đầu ra (stdout)..."
-                  />
-                </div>
-                <div
-                  style={{
-                    width: "88px",
-                    flex: "0 0 88px",
-                    display: "flex",
-                    flexDirection: "column",
-                    gap: "0.65rem",
-                  }}
-                >
-                  <div>
-                    <label
-                      className="form-label"
-                      style={{ fontSize: ".72rem" }}
-                    >
-                      Điểm
-                    </label>
-                    <input
-                      type="number"
-                      min="0"
-                      className="input"
-                      style={{ padding: ".45rem .55rem" }}
+              <div key={idx} className="tc-rec">
+                <div className="tc-rec-head">
+                  <span className="tc-idx">#{idx + 1}</span>
+                  <label className="tc-flag">
+                    Điểm
+                    <NumberInput
+                      min={0}
+                      className="tc-point"
                       value={tc.point_weight}
+                      onChange={(v) => updateTestcase(idx, "point_weight", v)}
+                    />
+                  </label>
+                  <label className="tc-flag">
+                    <input
+                      type="checkbox"
+                      checked={!!tc.is_sample}
                       onChange={(e) =>
-                        updateTestcase(
-                          idx,
-                          "point_weight",
-                          parseInt(e.target.value) || 0,
-                        )
+                        updateTestcase(idx, "is_sample", e.target.checked)
                       }
                     />
-                  </div>
-                  <label
-                    style={{
-                      display: "flex",
-                      alignItems: "center",
-                      gap: "0.4rem",
-                      cursor: "pointer",
-                      fontSize: "0.78rem",
-                      whiteSpace: "nowrap",
-                    }}
-                  >
+                    Hiện trên đề
+                  </label>
+                  <label className="tc-flag">
                     <input
                       type="checkbox"
                       checked={tc.is_public}
@@ -267,16 +227,40 @@ export default function CodingSettingsPanel({
                         updateTestcase(idx, "is_public", e.target.checked)
                       }
                     />
-                    Công khai
+                    Cho xem sau khi nộp
                   </label>
                   <button
                     type="button"
-                    className="btn btn-danger btn-sm"
+                    className="tc-x"
+                    title="Xóa test case"
                     onClick={() => removeTestcase(idx)}
-                    style={{ width: "100%", padding: "0.4rem" }}
                   >
-                    Xóa
+                    ✕
                   </button>
+                </div>
+                <div className="io-pair">
+                  <div>
+                    <div className="code-label">Input</div>
+                    <textarea
+                      className="code-edit"
+                      value={tc.input_data}
+                      onChange={(e) =>
+                        updateTestcase(idx, "input_data", e.target.value)
+                      }
+                      placeholder="Dữ liệu đầu vào (stdin)..."
+                    />
+                  </div>
+                  <div>
+                    <div className="code-label">Output</div>
+                    <textarea
+                      className="code-edit"
+                      value={tc.output_data}
+                      onChange={(e) =>
+                        updateTestcase(idx, "output_data", e.target.value)
+                      }
+                      placeholder="Kết quả đầu ra (stdout)..."
+                    />
+                  </div>
                 </div>
               </div>
             ))}
@@ -286,7 +270,7 @@ export default function CodingSettingsPanel({
 
       {/* Editor cho Code mẫu */}
       <div>
-        <h4 style={{ margin: "0 0 1rem 0", color: "#0f172a" }}>
+        <h4 style={{ margin: "0 0 1rem 0", color: "var(--text-primary)" }}>
           Solution Code
         </h4>
         <div style={{ display: "flex", gap: "1rem", marginBottom: "0.5rem" }}>
@@ -305,7 +289,7 @@ export default function CodingSettingsPanel({
         <div
           style={{
             height: "400px",
-            border: "1px solid #e2e8f0",
+            border: "1px solid var(--border)",
             borderRadius: "0.5rem",
             overflow: "hidden",
           }}
@@ -327,6 +311,7 @@ export default function CodingSettingsPanel({
             options={{
               minimap: { enabled: false },
               fontSize: 14,
+              padding: { top: 8 },
             }}
           />
         </div>

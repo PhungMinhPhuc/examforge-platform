@@ -1,11 +1,14 @@
 ﻿"use client";
 
 import { use, useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
+import Link from "next/link";
 import Sidebar from "@/components/Sidebar";
 import LatexRenderer from "@/components/LatexRenderer";
 import { useAuth } from "@/lib/auth-context";
 import api from "@/lib/api";
-import CodingWorkspace from "@/modules/coding/CodingWorkspace";
+import useScrollRestoration from "@/lib/useScrollRestoration";
+import { STATUS_BADGE, bestStatus } from "@/components/CodingQuestionNode";
 import type {
   CodingAssignment,
   CodingQuestion,
@@ -14,6 +17,38 @@ import type {
 import AddCodingQuestion from "@/modules/coding/AddCodingQuestion";
 import CodingSubmissionHistory from "@/modules/coding/CodingSubmissionHistory";
 import { QuestionEditor, QuestionDetail } from "@/components/QuestionEditor";
+import { treeToPlainText } from "@/lib/docTree";
+import { toast } from "@/lib/toastStore";
+
+// một dòng trong bảng giao/gỡ lớp
+type ClassAssignment = {
+  id: number;
+  class_name: string;
+  assigned: boolean;
+  assigned_at?: string | null;
+  student_count: number;
+  submitted_count: number;
+};
+
+const COMPLEXITY_LABELS: Record<number, string> = {
+  1: "Nhận biết",
+  2: "Thông hiểu",
+  3: "Vận dụng",
+  4: "Vận dụng cao",
+};
+
+// content giờ là cây tài liệu (jsonb) — lấy chữ trơn ra rồi mới cắt ngắn.
+function questionSummary(content: unknown) {
+  const text = treeToPlainText(content).replace(/\s+/g, " ").trim();
+  return text.length > 70 ? `${text.slice(0, 70)}…` : text;
+}
+
+// coding_assignment_students.status
+const PROGRESS_LABELS: Record<string, string> = {
+  not_started: "Chưa bắt đầu",
+  in_progress: "Đang làm",
+  completed: "Đã hoàn thành",
+};
 
 export default function CodingAssignmentPage({
   params,
@@ -26,12 +61,11 @@ export default function CodingAssignmentPage({
       : (params as unknown as { id: string });
   const assignmentId = Number(id);
   const { user } = useAuth();
+  const router = useRouter();
   const [assignment, setAssignment] = useState<CodingAssignment | null>(null);
   const [questions, setQuestions] = useState<CodingQuestion[]>([]);
   const [students, setStudents] = useState<CodingStudentProgress[]>([]);
-  const [classes, setClasses] = useState<
-    Array<{ id: number; class_name: string }>
-  >([]);
+  const [classes, setClasses] = useState<ClassAssignment[]>([]);
   const [showAssignModal, setShowAssignModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
   const [savingMetadata, setSavingMetadata] = useState(false);
@@ -68,6 +102,8 @@ export default function CodingAssignmentPage({
         .catch((e) => setError(e.message))
         .finally(() => setLoading(false));
   }, [user, assignmentId]);
+
+  useScrollRestoration(!loading);
   useEffect(() => {
     if (user?.role === "teacher") api.getClasses().then(setClasses);
   }, [user]);
@@ -83,32 +119,59 @@ export default function CodingAssignmentPage({
     await api.startCodingAssignment(assignmentId);
     await load();
   };
-  const submit = async (
-    questionId: number,
-    sourceCode: string,
-    language: string,
-  ) => {
-    const result = await api.submitCodingCode(assignmentId, questionId, {
-      source_code: sourceCode,
-      language,
-    });
-    await load();
-    return result;
+  // ô tích = lớp đang được giao bài, bỏ tích là gỡ
+  const openAssignModal = async () => {
+    setShowAssignModal(true);
+    try {
+      const data = (await api.getCodingClasses(assignmentId)) as {
+        classes: ClassAssignment[];
+      };
+      setClasses(data.classes);
+      setSelectedClassIds(
+        data.classes.filter((c) => c.assigned).map((c) => c.id),
+      );
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Không thể tải danh sách lớp");
+      toast.error(e instanceof Error ? e.message : "Không thể tải danh sách lớp");
+    }
   };
+
+  const allClassesSelected =
+    classes.length > 0 &&
+    classes.every((cls) => selectedClassIds.includes(cls.id));
+  const toggleClassId = (id: number, on: boolean) =>
+    setSelectedClassIds((ids) =>
+      on ? [...new Set([...ids, id])] : ids.filter((x) => x !== id),
+    );
+  const classesToAdd = classes.filter(
+    (cls) => !cls.assigned && selectedClassIds.includes(cls.id),
+  );
+  const classesToRemove = classes.filter(
+    (cls) => cls.assigned && !selectedClassIds.includes(cls.id),
+  );
+
   const assignToClasses = async () => {
-    if (!selectedClassIds.length) return;
+    if (!classesToAdd.length && !classesToRemove.length) return;
+    if (
+      classesToRemove.length &&
+      !confirm(
+        `Gỡ bài khỏi ${classesToRemove.length} lớp: ${classesToRemove
+          .map((c) => c.class_name)
+          .join(", ")}?\n\n` +
+          "Học sinh các lớp đó sẽ không còn thấy và không vào làm được bài này nữa. " +
+          "Bài đã nộp vẫn giữ nguyên.",
+      )
+    )
+      return;
     setAssigningClasses(true);
     try {
-      await Promise.all(
-        selectedClassIds.map((classId) =>
-          api.assignExistingToClass(classId, "coding", assignmentId),
-        ),
-      );
+      await api.setCodingClasses(assignmentId, selectedClassIds);
       setShowAssignModal(false);
-      setSelectedClassIds([]);
       await load();
+      toast.success("Đã lưu thay đổi");
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Không thể giao bài");
+      setError(e instanceof Error ? e.message : "Không thể lưu thay đổi");
+      toast.error(e instanceof Error ? e.message : "Không thể lưu thay đổi");
     } finally {
       setAssigningClasses(false);
     }
@@ -150,8 +213,10 @@ export default function CodingAssignmentPage({
       });
       setShowEditModal(false);
       await load();
+      toast.success("Đã cập nhật thông tin");
     } catch (e) {
       setError(e instanceof Error ? e.message : "Không thể cập nhật thông tin");
+      toast.error(e instanceof Error ? e.message : "Không thể cập nhật thông tin");
     } finally {
       setSavingMetadata(false);
     }
@@ -167,8 +232,10 @@ export default function CodingAssignmentPage({
     try {
       await api.removeCodingAssignmentQuestion(assignmentId, questionId);
       await load();
+      toast.success("Đã gỡ bài");
     } catch (e) {
       setError(e instanceof Error ? e.message : "Không thể xóa bài");
+      toast.error(e instanceof Error ? e.message : "Không thể xóa bài");
     }
   };
   const openQuestion = async (questionId: number) => {
@@ -180,6 +247,7 @@ export default function CodingAssignmentPage({
       });
     } catch (e) {
       setError(e instanceof Error ? e.message : "Không thể tải câu hỏi");
+      toast.error(e instanceof Error ? e.message : "Không thể tải câu hỏi");
     }
   };
   const saveQuestion = async () => {
@@ -200,6 +268,7 @@ export default function CodingAssignmentPage({
       });
       setQuestionModal(null);
       await load();
+      toast.success("Đã lưu câu hỏi");
     } catch (e) {
       setQuestionModal((v) =>
         v
@@ -210,6 +279,7 @@ export default function CodingAssignmentPage({
             }
           : v,
       );
+      toast.error(e instanceof Error ? e.message : "Không thể lưu câu hỏi");
     }
   };
 
@@ -226,8 +296,10 @@ export default function CodingAssignmentPage({
             <>
               <div className="page-header">
                 <div>
-                  <div className="page-sub" style={{ marginBottom: ".3rem" }}>
-                    Lập trình / Chi tiết
+                  <div className="page-breadcrumb">
+                    <Link href="/coding">Lập trình</Link>
+                    <span className="sep">/</span>
+                    <span className="current">Chi tiết</span>
                   </div>
                   <h1 className="page-title">{assignment.title}</h1>
                   <p className="page-sub">
@@ -245,12 +317,9 @@ export default function CodingAssignmentPage({
                   <div style={{ display: "flex", gap: ".5rem" }}>
                     <button
                       className="btn btn-secondary"
-                      onClick={() => {
-                        setSelectedClassIds([]);
-                        setShowAssignModal(true);
-                      }}
+                      onClick={openAssignModal}
                     >
-                      Giao bài
+                      Lớp áp dụng
                     </button>
                     <AddCodingQuestion
                       assignmentId={assignmentId}
@@ -274,7 +343,7 @@ export default function CodingAssignmentPage({
                     <div style={{ display: "grid", gap: "1rem" }}>
                       <div className="card" style={{ padding: "1.25rem" }}>
                         <h2
-                          style={{ fontSize: "1rem", marginBottom: ".75rem" }}
+                          style={{ fontSize: "var(--font-size-md)", marginBottom: ".75rem" }}
                         >
                           Mô tả
                         </h2>
@@ -286,7 +355,7 @@ export default function CodingAssignmentPage({
                         </p>
                       </div>
                       <div className="card">
-                        <h3 style={{ marginBottom: "1rem", fontSize: "1rem" }}>
+                        <h3 style={{ marginBottom: "1rem", fontSize: "var(--font-size-md)" }}>
                           Danh sách bài tập ({questions.length} bài)
                         </h3>
                         <div
@@ -431,24 +500,91 @@ export default function CodingAssignmentPage({
                             gap: ".5rem",
                           }}
                         >
-                          <div style={{ display: "flex", justifyContent: "space-between", gap: ".75rem", fontSize: ".825rem" }}>
-                            <span style={{ color: "var(--text-secondary)" }}>Thời gian</span>
-                            <strong>{assignment.time_limit ? `${assignment.time_limit} phút` : "Không giới hạn"}</strong>
+                          <div
+                            style={{
+                              display: "flex",
+                              justifyContent: "space-between",
+                              gap: ".75rem",
+                              fontSize: ".825rem",
+                            }}
+                          >
+                            <span style={{ color: "var(--text-secondary)" }}>
+                              Thời gian
+                            </span>
+                            <strong>
+                              {assignment.time_limit
+                                ? `${assignment.time_limit} phút`
+                                : "Không giới hạn"}
+                            </strong>
                           </div>
-                          <div style={{ display: "flex", justifyContent: "space-between", gap: ".75rem", fontSize: ".825rem" }}>
-                            <span style={{ color: "var(--text-secondary)" }}>Mở từ</span>
-                            <strong style={{ textAlign: "right" }}>{assignment.available_from ? new Date(assignment.available_from).toLocaleString("vi-VN") : "Không giới hạn"}</strong>
+                          <div
+                            style={{
+                              display: "flex",
+                              justifyContent: "space-between",
+                              gap: ".75rem",
+                              fontSize: ".825rem",
+                            }}
+                          >
+                            <span style={{ color: "var(--text-secondary)" }}>
+                              Mở từ
+                            </span>
+                            <strong style={{ textAlign: "right" }}>
+                              {assignment.available_from
+                                ? new Date(
+                                    assignment.available_from,
+                                  ).toLocaleString("vi-VN")
+                                : "Không giới hạn"}
+                            </strong>
                           </div>
-                          <div style={{ display: "flex", justifyContent: "space-between", gap: ".75rem", fontSize: ".825rem" }}>
-                            <span style={{ color: "var(--text-secondary)" }}>Hạn nộp</span>
-                            <strong style={{ textAlign: "right" }}>{assignment.due_at ? new Date(assignment.due_at).toLocaleString("vi-VN") : "Không giới hạn"}</strong>
+                          <div
+                            style={{
+                              display: "flex",
+                              justifyContent: "space-between",
+                              gap: ".75rem",
+                              fontSize: ".825rem",
+                            }}
+                          >
+                            <span style={{ color: "var(--text-secondary)" }}>
+                              Hạn nộp
+                            </span>
+                            <strong style={{ textAlign: "right" }}>
+                              {assignment.due_at
+                                ? new Date(assignment.due_at).toLocaleString(
+                                    "vi-VN",
+                                  )
+                                : "Không giới hạn"}
+                            </strong>
                           </div>
-                          {assignment.due_at && <div style={{ display: "flex", justifyContent: "space-between", gap: ".75rem", fontSize: ".825rem" }}>
-                            <span style={{ color: "var(--text-secondary)" }}>Nộp muộn</span>
-                            <strong>{assignment.allow_late_submission ? "Cho phép" : "Không"}</strong>
-                          </div>}
-                          <div style={{ display: "flex", justifyContent: "space-between", gap: ".75rem", fontSize: ".825rem" }}>
-                            <span style={{ color: "var(--text-secondary)" }}>Trạng thái</span>
+                          {assignment.due_at && (
+                            <div
+                              style={{
+                                display: "flex",
+                                justifyContent: "space-between",
+                                gap: ".75rem",
+                                fontSize: ".825rem",
+                              }}
+                            >
+                              <span style={{ color: "var(--text-secondary)" }}>
+                                Nộp muộn
+                              </span>
+                              <strong>
+                                {assignment.allow_late_submission
+                                  ? "Cho phép"
+                                  : "Không"}
+                              </strong>
+                            </div>
+                          )}
+                          <div
+                            style={{
+                              display: "flex",
+                              justifyContent: "space-between",
+                              gap: ".75rem",
+                              fontSize: ".825rem",
+                            }}
+                          >
+                            <span style={{ color: "var(--text-secondary)" }}>
+                              Trạng thái
+                            </span>
                             <strong style={{ textAlign: "right" }}>
                               {assignment.status === "published"
                                 ? "Đang mở"
@@ -460,7 +596,7 @@ export default function CodingAssignmentPage({
                         </div>
                       </div>
                       <div className="card">
-                        <h2 style={{ fontSize: "1rem", marginBottom: ".5rem" }}>
+                        <h2 style={{ fontSize: "var(--font-size-md)", marginBottom: ".5rem" }}>
                           Chia sẻ bài làm
                         </h2>
                         <p
@@ -516,7 +652,7 @@ export default function CodingAssignmentPage({
                         </button>
                       </div>
                       <div className="card">
-                        <h2 style={{ fontSize: "1rem", marginBottom: ".5rem" }}>
+                        <h2 style={{ fontSize: "var(--font-size-md)", marginBottom: ".5rem" }}>
                           Bài đã nộp
                         </h2>
                         <p
@@ -540,14 +676,100 @@ export default function CodingAssignmentPage({
                   </div>
                 </>
               ) : (
-                questions.map((q, i) => (
-                  <CodingWorkspace
-                    key={q.id}
-                    question={q}
-                    questionNumber={i + 1}
-                    onSubmit={(code, lang) => submit(q.id, code, lang)}
-                  />
-                ))
+                <>
+                  <div className="card" style={{ padding: "1.25rem" }}>
+                    <h2 style={{ fontSize: "var(--font-size-md)", marginBottom: ".75rem" }}>
+                      Danh sách bài ({questions.length})
+                    </h2>
+                    <div style={{ overflowX: "auto" }}>
+                      <table className="problem-table">
+                        <colgroup>
+                          <col style={{ width: "34%" }} />
+                          <col style={{ width: "20%" }} />
+                          <col style={{ width: "14%" }} />
+                          <col style={{ width: "10%" }} />
+                          <col style={{ width: "10%" }} />
+                          <col style={{ width: "12%" }} />
+                        </colgroup>
+                        <thead>
+                          <tr>
+                            <th>Câu</th>
+                            <th>Chương</th>
+                            <th>Mức độ</th>
+                            <th>Lượt nộp</th>
+                            <th>Điểm</th>
+                            <th>Trạng thái</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {questions.map((q, i) => {
+                            const used = q.submission_count || 0;
+                            const limit = q.coding_details.max_submissions || 10;
+                            const status = bestStatus(q.statuses);
+                            const open = () =>
+                              router.push(`/coding/${assignmentId}/${q.id}`);
+                            return (
+                              <tr
+                                key={q.id}
+                                className="is-clickable"
+                                role="link"
+                                tabIndex={0}
+                                onClick={open}
+                                onKeyDown={(e) => {
+                                  if (e.key === "Enter" || e.key === " ") {
+                                    e.preventDefault();
+                                    open();
+                                  }
+                                }}
+                              >
+                                <td className="col-text">
+                                  <strong>Câu {i + 1}</strong>
+                                  <span className="cell-sub">
+                                    {questionSummary(q.content)}
+                                  </span>
+                                </td>
+                                <td className="col-text">
+                                  {[q.chapter, q.lesson]
+                                    .filter(Boolean)
+                                    .join(" · ") || "—"}
+                                </td>
+                                <td>
+                                  {q.complexity ? (
+                                    <span
+                                      className={`badge complexity-${q.complexity}`}
+                                    >
+                                      {COMPLEXITY_LABELS[q.complexity]}
+                                    </span>
+                                  ) : (
+                                    "—"
+                                  )}
+                                </td>
+                                <td>
+                                  {used}/{limit}
+                                </td>
+                                <td className="cell-score">
+                                  {q.best_score != null
+                                    ? Number(q.best_score).toFixed(2)
+                                    : "—"}
+                                  <small>
+                                    /{Number(q.point_weight ?? 1).toFixed(2)}
+                                  </small>
+                                </td>
+                                <td>
+                                  <span
+                                    className={`badge ${STATUS_BADGE[status] || "badge-inactive"}`}
+                                  >
+                                    {status}
+                                  </span>
+                                </td>
+                              </tr>
+                            );
+                          })}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                </>
               )}
               {showSubmissions && (
                 <div
@@ -606,69 +828,54 @@ export default function CodingAssignmentPage({
                         </div>
                       ) : (
                         <div style={{ overflowX: "auto" }}>
-                          <table
-                            className="coding-student-table"
-                            style={{
-                              width: "100%",
-                              borderCollapse: "collapse",
-                              fontSize: ".875rem",
-                            }}
-                          >
+                          <table className="problem-table people-table">
+                            <colgroup>
+                              <col style={{ width: "34%" }} />
+                              <col style={{ width: "15%" }} />
+                              <col style={{ width: "18%" }} />
+                              <col style={{ width: "18%" }} />
+                              <col style={{ width: "15%" }} />
+                            </colgroup>
                             <thead>
-                              <tr
-                                style={{
-                                  borderBottom: "1px solid var(--border)",
-                                }}
-                              >
-                                <th style={{ padding: ".75rem" }}>Học sinh</th>
-                                <th style={{ padding: ".75rem" }}>
-                                  Trạng thái
-                                </th>
-                                <th style={{ padding: ".75rem" }}>Lượt nộp</th>
-                                <th style={{ padding: ".75rem" }}>
-                                  Lần nộp cuối
-                                </th>
-                                <th style={{ padding: ".75rem" }}>Thao tác</th>
+                              <tr>
+                                <th>Học sinh</th>
+                                <th>Trạng thái</th>
+                                <th>Lượt nộp</th>
+                                <th>Lần nộp cuối</th>
+                                <th>Thao tác</th>
                               </tr>
                             </thead>
                             <tbody>
                               {students.map((s) => (
-                                <tr
-                                  key={s.id}
-                                  style={{
-                                    borderBottom: "1px solid var(--border)",
-                                  }}
-                                >
-                                  <td style={{ padding: ".75rem" }}>
+                                <tr key={s.id}>
+                                  <td className="col-text">
                                     <strong>{s.student_name}</strong>
-                                    <div
-                                      style={{
-                                        color: "var(--text-secondary)",
-                                        fontSize: ".75rem",
-                                      }}
-                                    >
-                                      {s.email}
-                                    </div>
+                                    <span className="cell-sub">
+                                      {s.email || "Thí sinh tự do"}
+                                    </span>
                                   </td>
-                                  <td style={{ padding: ".75rem" }}>
-                                    {s.status}
-                                    {s.has_late_submission && (
-                                      <span className="badge badge-late" style={{ marginLeft: ".5rem" }}>
+                                  <td>
+                                    {s.has_late_submission ? (
+                                      <span className="badge badge-late">
                                         Nộp muộn
+                                      </span>
+                                    ) : (
+                                      <span
+                                        className={`badge ${s.status === "completed" ? "badge-active" : "badge-inactive"}`}
+                                      >
+                                        {PROGRESS_LABELS[s.status] || s.status}
                                       </span>
                                     )}
                                   </td>
-                                  <td style={{ padding: ".75rem" }}>
-                                    {s.submission_count}
-                                  </td>
-                                  <td style={{ padding: ".75rem" }}>
+                                  <td>{s.submission_count}</td>
+                                  <td>
                                     {s.last_submission_at
                                       ? new Date(
                                           s.last_submission_at,
                                         ).toLocaleString("vi-VN")
                                       : "—"}
                                   </td>
-                                  <td style={{ padding: ".75rem" }}>
+                                  <td>
                                     <button
                                       className="btn btn-secondary btn-sm"
                                       onClick={() =>
@@ -701,7 +908,7 @@ export default function CodingAssignmentPage({
                     position: "fixed",
                     inset: 0,
                     zIndex: 1200,
-                    background: "rgba(15,23,42,.58)",
+                    background: "var(--overlay)",
                     display: "grid",
                     placeItems: "center",
                     padding: "2.5vh",
@@ -737,7 +944,9 @@ export default function CodingAssignmentPage({
                           className="page-sub"
                           style={{ margin: ".25rem 0 0" }}
                         >
-                          {assignment.title}
+                          {assignment.title} · tích để giao, bỏ tích để gỡ. Lớp
+                          bị gỡ sẽ không truy cập được bài nữa, bài đã nộp vẫn
+                          giữ.
                         </p>
                       </div>
                       <button
@@ -754,31 +963,101 @@ export default function CodingAssignmentPage({
                         flex: 1,
                       }}
                     >
-                      <div className="assignment-class-list">
-                        {classes.map((cls) => {
-                          const assigned = assignment.assigned_class_ids?.includes(cls.id) || false;
-                          return (
-                            <label
-                              key={cls.id}
-                              className={`assignment-class-row${assigned ? " is-assigned" : selectedClassIds.includes(cls.id) ? " is-selected" : ""}`}
-                            >
-                              <input
-                                type="checkbox"
-                                disabled={assigned}
-                                checked={assigned || selectedClassIds.includes(cls.id)}
-                                onChange={(e) =>
-                                  setSelectedClassIds((ids) =>
-                                    e.target.checked
-                                      ? [...ids, cls.id]
-                                      : ids.filter((id) => id !== cls.id),
-                                  )
-                                }
-                              />
-                              <strong>{cls.class_name}</strong>
-                              {assigned && <span className="badge badge-active" style={{ marginLeft: "auto" }}>Đã giao</span>}
-                            </label>
-                          );
-                        })}
+                      <div style={{ overflowX: "auto" }}>
+                        <table className="problem-table pick-table">
+                          <colgroup>
+                            <col className="pick-col" />
+                            <col style={{ width: "34%" }} />
+                            <col style={{ width: "18%" }} />
+                            <col style={{ width: "14%" }} />
+                            <col style={{ width: "20%" }} />
+                          </colgroup>
+                          <thead>
+                            <tr>
+                              <th>
+                                <input
+                                  type="checkbox"
+                                  aria-label="Chọn tất cả"
+                                  disabled={!classes.length}
+                                  checked={allClassesSelected}
+                                  onChange={(e) =>
+                                    setSelectedClassIds(
+                                      e.target.checked
+                                        ? classes.map((cls) => cls.id)
+                                        : [],
+                                    )
+                                  }
+                                />
+                              </th>
+                              <th>Lớp</th>
+                              <th>Ngày giao</th>
+                              <th>Đã nộp</th>
+                              <th>Thay đổi</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {classes.map((cls) => {
+                              const selected = selectedClassIds.includes(
+                                cls.id,
+                              );
+                              const willAdd = selected && !cls.assigned;
+                              const willRemove = !selected && cls.assigned;
+                              return (
+                                <tr
+                                  key={cls.id}
+                                  className={
+                                    willRemove
+                                      ? "is-removing"
+                                      : willAdd
+                                        ? "is-selected"
+                                        : undefined
+                                  }
+                                  onClick={() =>
+                                    toggleClassId(cls.id, !selected)
+                                  }
+                                >
+                                  <td onClick={(e) => e.stopPropagation()}>
+                                    <input
+                                      type="checkbox"
+                                      checked={selected}
+                                      onChange={(e) =>
+                                        toggleClassId(cls.id, e.target.checked)
+                                      }
+                                    />
+                                  </td>
+                                  <td className="col-text">
+                                    <strong>{cls.class_name}</strong>
+                                  </td>
+                                  <td>
+                                    {cls.assigned_at
+                                      ? new Date(
+                                          cls.assigned_at,
+                                        ).toLocaleDateString("vi-VN")
+                                      : "—"}
+                                  </td>
+                                  <td>
+                                    {cls.assigned
+                                      ? `${cls.submitted_count}/${cls.student_count}`
+                                      : "—"}
+                                  </td>
+                                  <td>
+                                    {willRemove ? (
+                                      <span className="badge badge-remove">
+                                        Sẽ gỡ
+                                      </span>
+                                    ) : willAdd ? (
+                                      <span className="badge badge-add">
+                                        Sẽ giao
+                                      </span>
+                                    ) : (
+                                      "—"
+                                    )}
+                                  </td>
+                                </tr>
+                              );
+                            })}
+                          </tbody>
+                        </table>
                       </div>
                     </div>
                     <div
@@ -789,13 +1068,27 @@ export default function CodingAssignmentPage({
                         justifyContent: "space-between",
                       }}
                     >
-                      <strong>Đã chọn: {selectedClassIds.length} lớp</strong>
+                      <strong>
+                        {classesToAdd.length || classesToRemove.length
+                          ? [
+                              classesToAdd.length &&
+                                `Giao thêm ${classesToAdd.length} lớp`,
+                              classesToRemove.length &&
+                                `Gỡ ${classesToRemove.length} lớp`,
+                            ]
+                              .filter(Boolean)
+                              .join(" · ")
+                          : `Đang ở ${selectedClassIds.length} lớp`}
+                      </strong>
                       <button
                         className="btn btn-primary"
-                        disabled={!selectedClassIds.length || assigningClasses}
+                        disabled={
+                          (!classesToAdd.length && !classesToRemove.length) ||
+                          assigningClasses
+                        }
                         onClick={assignToClasses}
                       >
-                        {assigningClasses ? "Đang giao…" : "Giao đề"}
+                        {assigningClasses ? "Đang lưu…" : "Lưu thay đổi"}
                       </button>
                     </div>
                   </div>
@@ -807,7 +1100,7 @@ export default function CodingAssignmentPage({
                     position: "fixed",
                     inset: 0,
                     zIndex: 1250,
-                    background: "rgba(15,23,42,.58)",
+                    background: "var(--overlay)",
                     display: "grid",
                     placeItems: "center",
                     padding: "1rem",
@@ -833,7 +1126,7 @@ export default function CodingAssignmentPage({
                       }}
                     >
                       <div>
-                        <h2 style={{ margin: 0, fontSize: "1.25rem" }}>
+                        <h2 style={{ margin: 0, fontSize: "var(--font-size-lg)" }}>
                           Chỉnh sửa thông tin
                         </h2>
                         <p

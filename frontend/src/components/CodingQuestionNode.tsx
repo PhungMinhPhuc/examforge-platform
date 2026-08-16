@@ -4,6 +4,46 @@ import Editor from "@monaco-editor/react";
 
 import Combobox from "@/components/Combobox";
 
+const COMPLEXITY_LABELS: Record<number, string> = {
+  1: "Nhận biết",
+  2: "Thông hiểu",
+  3: "Vận dụng",
+  4: "Vận dụng cao",
+};
+
+// Xếp từ tốt tới xấu. Trạng thái lạ (dữ liệu cũ) xuống cuối.
+export const STATUS_RANK = [
+  "Accepted",
+  "Partial",
+  "Wrong Answer",
+  "Time Limit Exceeded",
+  "Memory Limit Exceeded",
+  "Runtime Error",
+  "Compile Error",
+  "Pending",
+];
+
+/** Trạng thái tốt nhất trong các lượt đã nộp của một câu. */
+export function bestStatus(statuses?: string[]) {
+  if (!statuses?.length) return "Chưa nộp";
+  const rank = (s: string) => {
+    const i = STATUS_RANK.indexOf(s);
+    return i === -1 ? STATUS_RANK.length : i;
+  };
+  return [...statuses].sort((a, b) => rank(a) - rank(b))[0];
+}
+
+// Kết quả tốt nhất của câu, do trang gọi truyền vào
+export const STATUS_BADGE: Record<string, string> = {
+  Accepted: "badge-active",
+  Partial: "badge-partial",
+  "Wrong Answer": "badge-fail",
+  "Compile Error": "badge-compile",
+  "Time Limit Exceeded": "badge-late",
+  Pending: "badge-inactive",
+  "Chưa nộp": "badge-inactive",
+};
+
 export default function CodingQuestionNode({
   node,
   ans, // this is a JSON string: '{"code": "...", "lang": "cpp"}'
@@ -127,29 +167,36 @@ export default function CodingQuestionNode({
         }}
       >
         <div>
-          <div
-            style={{
-              fontWeight: 700,
-              fontSize: "1.2rem",
-              marginBottom: "1rem",
-              display: "flex",
-              alignItems: "center",
-              gap: "0.5rem",
-            }}
-          >
-            <span className="badge badge-cd">Câu {node.qNum}</span>
+          <div className="q-topline">
+            <div className="question-num">{node.qNum}</div>
+            {node.complexity ? (
+              <span className={`badge complexity-${node.complexity}`}>
+                {COMPLEXITY_LABELS[node.complexity]}
+              </span>
+            ) : null}
+            {node.overallStatus ? (
+              <span
+                className={`badge ${STATUS_BADGE[node.overallStatus] || "badge-inactive"}`}
+                style={{ marginLeft: "auto" }}
+              >
+                {node.overallStatus}
+              </span>
+            ) : null}
           </div>
-          <LatexRenderer
-            content={node.content}
-            layoutType={node.layout_type}
-            images={node.images}
-          />
+          <div style={{ fontSize: "1.05rem", lineHeight: 1.75 }}>
+            <LatexRenderer
+              content={node.content}
+              layoutType={node.layout_type}
+              images={node.images}
+              preserveLineBreaks
+            />
+          </div>
         </div>
 
         {/* Limits */}
         <div
           style={{
-            background: "#f8fafc",
+            background: "var(--bg-hover)",
             padding: "1rem",
             borderRadius: "0.5rem",
             fontSize: "0.85rem",
@@ -193,7 +240,7 @@ export default function CodingQuestionNode({
                       fontSize: "0.85rem",
                     }}
                   >
-                    Ví dụ {i + 1}
+                    Testcases {i + 1}
                   </div>
                   <div
                     style={{
@@ -210,7 +257,7 @@ export default function CodingQuestionNode({
                     >
                       <div
                         style={{
-                          fontSize: "0.75rem",
+                          fontSize: "var(--font-size-xs)",
                           color: "var(--text-secondary)",
                           marginBottom: "0.25rem",
                         }}
@@ -231,7 +278,7 @@ export default function CodingQuestionNode({
                     <div style={{ flex: 1, padding: "0.75rem 1rem" }}>
                       <div
                         style={{
-                          fontSize: "0.75rem",
+                          fontSize: "var(--font-size-xs)",
                           color: "var(--text-secondary)",
                           marginBottom: "0.25rem",
                         }}
@@ -342,18 +389,15 @@ export default function CodingQuestionNode({
               Tải file lên
             </button>
           </div>
-          <div style={{ fontSize: "0.75rem", color: "var(--text-muted)" }}>
-            Monaco Editor
-          </div>
         </div>
 
         {lang === "" && code.trim() !== "" && (
           <div
             style={{
               padding: "0.5rem 1rem",
-              background: "rgba(239, 68, 68, 0.1)",
-              borderBottom: "1px solid rgba(239, 68, 68, 0.3)",
-              color: "#ef4444",
+              background: "var(--tone-danger-bg)",
+              borderBottom: "1px solid var(--accent-danger)",
+              color: "var(--accent-danger)",
               fontSize: "0.85rem",
               display: "flex",
               alignItems: "center",
@@ -398,6 +442,7 @@ export default function CodingQuestionNode({
               minimap: { enabled: false },
               fontSize: 14,
               wordWrap: "on",
+              padding: { top: 8 },
             }}
           />
         </div>

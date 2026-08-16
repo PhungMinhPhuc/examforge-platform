@@ -3,6 +3,7 @@
 import { useState } from "react";
 import CodingQuestionNode from "@/components/CodingQuestionNode";
 import type { CodingQuestion } from "./types";
+import { toast } from "@/lib/toastStore";
 
 export default function CodingWorkspace({
   question,
@@ -18,7 +19,6 @@ export default function CodingWorkspace({
 }) {
   const [answer, setAnswer] = useState("");
   const [submitting, setSubmitting] = useState(false);
-  const [message, setMessage] = useState("");
   const used = question.submission_count || 0;
   const limit = question.coding_details.max_submissions || 10;
 
@@ -30,16 +30,15 @@ export default function CodingWorkspace({
       /* handled below */
     }
     if (!parsed.code?.trim() || !parsed.lang) {
-      setMessage("Hãy nhập code và chọn ngôn ngữ trước khi nộp.");
+      toast.warning("Hãy nhập code và chọn ngôn ngữ trước khi nộp.");
       return;
     }
     setSubmitting(true);
-    setMessage("");
     try {
       const result = await onSubmit(parsed.code, parsed.lang);
-      setMessage(`Đã nhận bài. Còn ${result.remaining_submissions} lần nộp.`);
+      toast.success(`Đã nhận bài. Còn ${result.remaining_submissions} lần nộp.`);
     } catch (error) {
-      setMessage(error instanceof Error ? error.message : "Không thể nộp bài");
+      toast.error(error instanceof Error ? error.message : "Không thể nộp bài");
     } finally {
       setSubmitting(false);
     }
@@ -65,18 +64,6 @@ export default function CodingWorkspace({
         <span style={{ color: "var(--text-secondary)", fontSize: "0.85rem" }}>
           Đã dùng {used}/{limit} lượt
         </span>
-        {message && (
-          <span
-            style={{
-              color: message.startsWith("Đã nhận")
-                ? "var(--accent-success)"
-                : "var(--accent-danger)",
-              fontSize: "0.85rem",
-            }}
-          >
-            {message}
-          </span>
-        )}
         <button
           className="btn btn-primary"
           disabled={submitting || used >= limit}

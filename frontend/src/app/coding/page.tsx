@@ -8,6 +8,8 @@ import { useAuth } from "@/lib/auth-context";
 import api from "@/lib/api";
 import type { CodingAssignment } from "@/modules/coding/types";
 import CodingAssignmentForm from "@/modules/coding/CodingAssignmentForm";
+import useScrollRestoration from "@/lib/useScrollRestoration";
+import DetailsMenu from "@/components/DetailsMenu";
 
 const STATUS_LABEL: Record<string, string> = {
   draft: "Bản nháp",
@@ -30,6 +32,8 @@ export default function CodingAssignmentsPage() {
     if (user) load();
   }, [user]);
 
+  useScrollRestoration(!loading);
+
   const updateStatus = async (id: number, status: string) => {
     await api.updateCodingAssignmentStatus(id, status);
     load();
@@ -47,7 +51,7 @@ export default function CodingAssignmentsPage() {
             </p>
           </div>
           {user?.role === "teacher" && (
-            <details style={{ position: "relative" }}>
+            <DetailsMenu style={{ position: "relative" }}>
               <summary
                 className="btn btn-primary"
                 style={{ listStyle: "none", cursor: "pointer" }}
@@ -82,7 +86,7 @@ export default function CodingAssignmentsPage() {
                   Tạo câu lập trình
                 </Link>
               </div>
-            </details>
+            </DetailsMenu>
           )}
         </div>
         <div style={{ display: "flex", gap: ".5rem", marginBottom: "1.25rem" }}>
@@ -139,9 +143,7 @@ export default function CodingAssignmentsPage() {
                       marginBottom: ".45rem",
                     }}
                   >
-                    <span
-                      className="badge badge-mode"
-                    >
+                    <span className="badge badge-mode">
                       {item.time_limit ? "Có tính giờ" : "Bài tập"}
                     </span>
                     <span
@@ -195,7 +197,7 @@ export default function CodingAssignmentsPage() {
                     {user?.role === "teacher" ? "Chi tiết" : "Làm bài"}
                   </Link>
                   {user?.role === "teacher" && (
-                    <details style={{ position: "relative" }}>
+                    <DetailsMenu style={{ position: "relative" }}>
                       <summary
                         className="btn btn-secondary btn-sm"
                         style={{ listStyle: "none", cursor: "pointer" }}
@@ -237,7 +239,7 @@ export default function CodingAssignmentsPage() {
                           </button>
                         )}
                       </div>
-                    </details>
+                    </DetailsMenu>
                   )}
                 </div>
               </div>

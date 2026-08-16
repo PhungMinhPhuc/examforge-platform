@@ -4,10 +4,11 @@ import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import LatexRenderer from "@/components/LatexRenderer";
 import api from "@/lib/api";
+import { toast } from "@/lib/toastStore";
 
 type BankQuestion = {
   id: number;
-  content: string;
+  content: any; // cây tài liệu (jsonb)
   subject?: string;
   grade?: number;
   complexity?: number;
@@ -78,8 +79,10 @@ export default function AddCodingQuestion({
       setSelected(null);
       setOpen(false);
       onAdded();
+      toast.success("Đã thêm bài");
     } catch (e) {
       setError(e instanceof Error ? e.message : "Không thể thêm bài");
+      toast.error(e instanceof Error ? e.message : "Không thể thêm bài");
       setSaving(false);
     }
   };

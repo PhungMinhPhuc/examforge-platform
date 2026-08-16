@@ -3,10 +3,11 @@
 import { useEffect, useState } from "react";
 import LatexRenderer from "@/components/LatexRenderer";
 import api from "@/lib/api";
+import { toast } from "@/lib/toastStore";
 
 type BankQuestion = {
   id: number;
-  content: string;
+  content: any; // cây tài liệu (jsonb)
   subject?: string;
   grade?: number;
   max_submissions?: number;
@@ -41,7 +42,9 @@ export default function CodingAssignmentForm({
 
   const save = async () => {
     if (!title.trim() || selected.length === 0) {
-      setError("Nhập tên và chọn ít nhất một câu lập trình.");
+      const msg = "Nhập tên và chọn ít nhất một câu lập trình.";
+      setError(msg);
+      toast.error(msg);
       return;
     }
     setSaving(true);
@@ -61,8 +64,10 @@ export default function CodingAssignmentForm({
         })),
       });
       onCreated();
+      toast.success("Đã tạo bài tập");
     } catch (e) {
       setError(e instanceof Error ? e.message : "Không thể tạo bài tập");
+      toast.error(e instanceof Error ? e.message : "Không thể tạo bài tập");
       setSaving(false);
     }
   };

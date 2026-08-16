@@ -15,6 +15,7 @@ if ENGINE_PATH not in sys.path:
 
 from routers import auth, questions, upload, classes, contests
 from auth import get_current_user
+from doctree.figures import get_image_storage_root
 
 app = FastAPI(
     title="Hệ thống CSDL",
@@ -22,7 +23,7 @@ app = FastAPI(
     version="1.0.0",
 )
 
-# ── CORS ─────────────────────────────────────────────────────────────────────
+# CORS
 frontend_url = os.getenv("FRONTEND_URL", "http://localhost:3000")
 app.add_middleware(
     CORSMiddleware,
@@ -32,21 +33,46 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# ── Static files (ảnh câu hỏi) ───────────────────────────────────────────────
+# Static files (ảnh câu hỏi)
 class NoCacheStaticFiles(StaticFiles):
     async def get_response(self, path: str, scope):
         response = await super().get_response(path, scope)
         response.headers["Cache-Control"] = "no-cache"
         return response
 
-_default_storage = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "storage"))
-IMG_STORAGE_PATH = os.getenv("IMG_STORAGE_PATH", _default_storage)
+IMG_STORAGE_PATH = get_image_storage_root()
 os.makedirs(IMG_STORAGE_PATH, exist_ok=True)
 app.mount("/static/images", NoCacheStaticFiles(directory=IMG_STORAGE_PATH), name="images")
 
-from routers import auth, questions, upload, classes, contests, export, ai
 
-# ── Routers ──────────────────────────────────────────────────────────────────
+class ImmutableStaticFiles(StaticFiles):
+    async def get_response(self, path: str, scope):
+        response = await super().get_response(path, scope)
+        response.headers["Cache-Control"] = "public, max-age=31536000, immutable"
+        return response
+
+
+PDF_FONT_PATH = os.path.abspath(os.path.join(
+    os.path.dirname(__file__), "..", "assets", "fonts", "document",
+))
+app.mount(
+    "/static/pdf-fonts",
+    ImmutableStaticFiles(directory=PDF_FONT_PATH),
+    name="pdf-fonts",
+)
+FONT_PACKAGE_PATH = os.path.abspath(os.path.join(
+    os.path.dirname(__file__), "..", "assets", "fonts",
+))
+app.mount(
+    "/static/fonts",
+    ImmutableStaticFiles(directory=FONT_PACKAGE_PATH),
+    name="font-package",
+)
+
+from routers import auth, questions, upload, classes, contests, export, ai
+from modules.coding import router as coding_router
+
+# Routers
 app.include_router(auth.router)
 app.include_router(questions.router)
 app.include_router(upload.router)
@@ -54,6 +80,7 @@ app.include_router(classes.router)
 app.include_router(contests.router)
 app.include_router(export.router)
 app.include_router(ai.router)
+app.include_router(coding_router)
 
 
 @app.get("/")

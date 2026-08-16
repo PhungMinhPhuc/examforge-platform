@@ -216,7 +216,7 @@ export default function CodingSubmissionDetail({
                 </div>
               )}
 
-              <h4 style={{ fontSize: "1rem", margin: "0 0 .6rem" }}>
+              <h4 style={{ fontSize: "var(--font-size-md)", margin: "0 0 .6rem" }}>
                 Test case ({testcases.length})
               </h4>
               <div className="rows-scroll" style={{ overflowX: "auto" }}>
