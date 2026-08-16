@@ -1,40 +1,190 @@
-@import url("https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap");
+/* Noto Sans (SIL OFL 1.1, tự host — xem assets/fonts/web/ui/LICENSE-NotoSans.txt)
+   thay Google Sans Flex: phủ tiếng Việt tốt, cảm giác đọc nhẹ nhàng hơn cho
+   nội dung dài (đề thi, câu hỏi) so với font vốn thiết kế cho tiêu đề/thương
+   hiệu. Mỗi độ đậm một file tĩnh riêng — xem lý do ở lịch sử đổi font trước. */
+@font-face {
+  font-family: "System UI Bundled";
+  src: url("/api/static/fonts/web/ui/NotoSans-Regular.ttf") format("truetype");
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+}
 
-/* ── CSS Variables ────────────────────────────────────────────────── */
+@font-face {
+  font-family: "System UI Bundled";
+  src: url("/api/static/fonts/web/ui/NotoSans-Medium.ttf") format("truetype");
+  font-style: normal;
+  font-weight: 500;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "System UI Bundled";
+  src: url("/api/static/fonts/web/ui/NotoSans-SemiBold.ttf") format("truetype");
+  font-style: normal;
+  font-weight: 600;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "System UI Bundled";
+  src: url("/api/static/fonts/web/ui/NotoSans-Bold.ttf") format("truetype");
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "System UI Bundled";
+  src: url("/api/static/fonts/web/ui/NotoSans-ExtraBold.ttf") format("truetype");
+  font-style: normal;
+  font-weight: 800;
+  font-display: swap;
+}
+
+/* Dự phòng CJK (Nhật/Hàn) — VẪN cùng family "System UI Bundled", chỉ khác
+   `unicode-range`. Trình duyệt chỉ tự tải file này khi trang thật sự có ký
+   tự rơi vào dải đó; trang tiếng Việt bình thường không đụng tới, không tốn
+   băng thông. Chỉ bundle 2 độ đậm (400/700, ~5-6MB/file) cho CJK — đây là
+   trường hợp hiếm gặp trong đề thi, không đáng tải đủ 5 độ đậm như phần
+   Latin. Chữ Hán dùng chung giữa hai khối (viết chữ Nhật lẫn tiếng Hàn mượn
+   Hán tự) nên KHÔNG trùng dải với nhau. */
+@font-face {
+  font-family: "System UI Bundled";
+  src: url("/api/static/fonts/web/ui/NotoSansJP-Regular.ttf") format("truetype");
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  unicode-range: U+3000-30FF, U+3400-4DBF, U+4E00-9FFF, U+F900-FAFF, U+FF00-FFEF;
+}
+@font-face {
+  font-family: "System UI Bundled";
+  src: url("/api/static/fonts/web/ui/NotoSansJP-Bold.ttf") format("truetype");
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  unicode-range: U+3000-30FF, U+3400-4DBF, U+4E00-9FFF, U+F900-FAFF, U+FF00-FFEF;
+}
+@font-face {
+  font-family: "System UI Bundled";
+  src: url("/api/static/fonts/web/ui/NotoSansKR-Regular.ttf") format("truetype");
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  unicode-range: U+1100-11FF, U+3130-318F, U+AC00-D7A3;
+}
+@font-face {
+  font-family: "System UI Bundled";
+  src: url("/api/static/fonts/web/ui/NotoSansKR-Bold.ttf") format("truetype");
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  unicode-range: U+1100-11FF, U+3130-318F, U+AC00-D7A3;
+}
+
+/* CSS Variables */
 :root {
   --bg-base: #f8f9fa;
   --bg-surface: #ffffff;
   --bg-elevated: #ffffff;
   --bg-card: #ffffff;
   --bg-hover: #f1f3f5;
+  /* Đậm hơn cả hàng trắng lẫn hàng sọc, để hover thấy rõ trên mọi hàng. */
+  --bg-row-hover: #eceff3;
+  /* Trạng thái nút trên ribbon editor, mô phỏng Word nhưng vẫn theo theme. */
+  --editor-button-hover: #f1f1f1;
+  --editor-button-active: #d9d9d9;
+  --editor-button-active-hover: #cecece;
+  --editor-button-active-border: #b7b7b7;
+  --editor-button-focus: #8a8a8a;
 
-  --accent-primary: #255ba7;
-  --accent-primary-hover: #1e4d91;
-  --accent-primary-strong: #174078;
-  --accent-primary-soft: #eff6ff;
-  --accent-primary-selected: #e4eefc;
-  --accent-primary-border: #b9d1f2;
-  --accent-secondary: #0ea5e9;
-  --accent-danger: #ef4444;
-  --accent-warning: #f59e0b;
-  --accent-success: #10b981;
+  --accent-primary: #1e3faa;
+  --accent-primary-hover: #19368f;
+  --accent-primary-strong: #142b73;
+  --accent-primary-soft: #f0f3ff;
+  --accent-primary-selected: #e6ebff;
+  --accent-primary-border: #bbc7f3;
+  /* Dành riêng cho "thông tin" (info) — tách khỏi primary. Xem
+     temp/design-tokens-demo/light-dark-demo.html. */
+  --accent-secondary: #1a73e8;
+  /* success/warning/danger lấy đúng bộ màu đã chốt cùng chấm mức độ của
+     snackbar (Google Workspace "on light"), thay bộ màu cũ
+     (#15803d/#f59e0b/#c24141) — badge/nút/snackbar giờ dùng chung 1 nguồn. */
+  --accent-danger: #d93025;
+  --accent-warning: #f9ab00;
+  --accent-success: #188038;
+  --answer-correct-bg: #e6f4ea;
+  --answer-correct-border: #a8dab5;
+  --answer-wrong-bg: #fce8e6;
+  --answer-wrong-border: #f6aea9;
 
-  --text-primary: #000000;
-  --text-secondary: #000000;
-  --text-muted: #000000;
+  /* Màu loại câu (mc/tf/sa/oe/cd) — nguồn DUY NHẤT cho cả class .badge-mc...
+     trong CSS lẫn TYPE_COLORS trong TSX (questions/page.tsx,
+     questions/upload/page.tsx, contests/[id]/page.tsx). Trước đây TYPE_COLORS
+     là hex tĩnh + hậu tố alpha ("14"/"33") ghi thẳng trong JS nên không đổi
+     được theo theme — đây là lý do badge loại câu vẫn "dính" màu sáng dù
+     class CSS đã có bản tối. st dùng chung --tone-purple-*, không lặp lại. */
+  --type-mc: #1e3faa;
+  --type-mc-soft: rgba(30, 63, 170, 0.08);
+  --type-mc-border: rgba(30, 63, 170, 0.2);
+  --type-tf: #b45309;
+  --type-tf-soft: rgba(180, 83, 9, 0.08);
+  --type-tf-border: rgba(180, 83, 9, 0.2);
+  --type-sa: #047857;
+  --type-sa-soft: rgba(4, 120, 87, 0.08);
+  --type-sa-border: rgba(4, 120, 87, 0.2);
+  --type-oe: #1d4ed8;
+  --type-oe-soft: rgba(29, 78, 216, 0.08);
+  --type-oe-border: rgba(29, 78, 216, 0.2);
+  --type-cd: #0e7490;
+  --type-cd-soft: rgba(14, 116, 144, 0.08);
+  --type-cd-border: rgba(14, 116, 144, 0.2);
+  /* Chữ đặt trên nền accent-primary/success/danger (nút, badge tròn) — theme
+     tối sẽ đổi ngược lại vì lúc đó accent-* là màu NHẠT (chữ trắng sẽ mù). */
+  --text-on-accent: #ffffff;
+
+  /* Nền mờ phía sau hộp thoại */
+  --overlay: rgba(15, 23, 42, 0.58);
+
+  /* Khối code: mã nguồn, input/output test case, ô soạn test case */
+  --code-bg: #1e222b;
+  --code-text: #e6e9f0;
+  --code-muted: #98a0b0;
+  --code-chip: #2b303b;
+  --code-chip-text: #cbd2de;
+  --code-chip-border: #3a4150;
+
+  /* Bộ màu phụ dùng cho badge trạng thái */
+  --tone-warning-bg: #fff7ed;
+  --tone-warning-text: #ea580c;
+  --tone-warning-border: #fed7aa;
+  --tone-purple-bg: #faf5ff;
+  --tone-purple-text: #7e22ce;
+  --tone-purple-border: #e9d5ff;
+  --tone-danger-bg: rgba(217, 48, 37, 0.12);
+
+  /* Trước là cùng #000000 cả ba — không phân cấp được chữ chính/phụ/mờ.
+     Xem temp/design-tokens-demo/. secondary/muted lấy theo xám THUẦN
+     (R=G=B, không ngả xanh) kiểu VSCode Light Modern — foreground/
+     descriptionForeground gốc trùng nhau (#3B3B3B) nên muted nội suy
+     nhạt hơn để vẫn giữ 3 cấp. Xem
+     temp/question-editor-demo/text-muted-demo.html. */
+  --text-primary: #111827;
+  --text-secondary: #3b3b3b;
+  --text-muted: #5a5a5a;
 
   --border: #e5e7eb;
   --border-strong: #c2cbd9;
-  --border-focus: #255ba7;
+  --border-focus: #1e3faa;
   --text-placeholder: #9ca3af;
 
-  --gradient-hero: #255ba7;
-  --gradient-card: rgba(37, 91, 167, 0.06);
+  --gradient-hero: #1e3faa;
+  --gradient-card: rgba(30, 63, 170, 0.06);
 
   --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.05);
   --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
   --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
-  --shadow-glow: 0 0 20px rgba(37, 91, 167, 0.15);
+  --shadow-glow: 0 0 20px rgba(30, 63, 170, 0.15);
 
   --radius-sm: 8px;
   --radius-md: 12px;
@@ -43,9 +193,121 @@
 
   --transition: 0.2s ease;
   --transition-slow: 0.4s ease;
+
+  /* Thang cỡ chữ dùng chung — 9 bậc, thay cho việc mỗi chỗ tự ghi cứng một số rem riêng. */
+  --font-size-2xs: 0.7rem;
+  --font-size-xs: 0.75rem;
+  --font-size-sm: 0.825rem;
+  --font-size-base: 0.875rem;
+  --font-size-md: 1rem;
+  --font-size-lg: 1.25rem;
+  --font-size-xl: 1.75rem;
+  --font-size-2xl: clamp(1.4rem, 3vw, 2rem);
+  --font-size-3xl: clamp(1.8rem, 4vw, 3rem);
+
+  /* Khớp đúng 5 file Noto Sans đang bundle (assets/fonts/web/ui/). */
+  --font-weight-regular: 400;
+  --font-weight-medium: 500;
+  --font-weight-semibold: 600;
+  --font-weight-bold: 700;
+  --font-weight-extrabold: 800;
 }
 
-/* ── Reset ────────────────────────────────────────────────────────── */
+/* =====================================================================
+   THEME TỐI — bật bằng data-theme="dark" trên <html> (xem lib/theme.ts +
+   nút chuyển ở trang Cài đặt). Không nền đen tuyệt đối (#000, dễ chói) —
+   theo đúng khuyến nghị Material, nền trung tính quanh #16181d.
+   --bg-surface tái dùng đúng --code-bg (#1e222b) đã có sẵn cho khối mã
+   nguồn. success/warning/danger + info lấy đúng bộ chấm đã chốt ở
+   error-toast-demo/demo-big-apps.html (tab Google, bản nền tối) — xem
+   temp/design-tokens-demo/light-dark-demo.html để đối chiếu gốc.
+   ===================================================================== */
+:root[data-theme="dark"] {
+  --bg-base: #16181d;
+  --bg-surface: #1e222b;
+  --bg-elevated: #262b35;
+  --bg-card: #1e222b;
+  --bg-hover: #262b35;
+  --bg-row-hover: #2b303b;
+  /* Word dark dùng các lớp xám than, không phủ mảng trắng lên icon. */
+  --editor-button-hover: #30343c;
+  --editor-button-active: #3b4049;
+  --editor-button-active-hover: #464c56;
+  --editor-button-active-border: #737b88;
+  --editor-button-focus: #aab0bb;
+
+  --accent-primary: #8ab4f8;
+  --accent-primary-hover: #aecbfa;
+  --accent-primary-strong: #d2e3fc;
+  --accent-primary-soft: rgba(138, 180, 248, 0.14);
+  --accent-primary-selected: rgba(138, 180, 248, 0.22);
+  --accent-primary-border: rgba(138, 180, 248, 0.4);
+  --accent-secondary: #4dd0e1;
+
+  --accent-danger: #f28b82;
+  --accent-warning: #fdd663;
+  --accent-success: #81c995;
+  --answer-correct-bg: rgba(129, 201, 149, 0.14);
+  --answer-correct-border: rgba(129, 201, 149, 0.4);
+  --answer-wrong-bg: rgba(242, 139, 130, 0.14);
+  --answer-wrong-border: rgba(242, 139, 130, 0.4);
+  /* accent-primary/success/danger giờ là màu NHẠT (dùng làm chữ trên nền
+     tối) — chữ đặt TRÊN nền các màu đó (nút, badge tròn) phải tối lại,
+     không thể trắng như theme sáng nữa. */
+  --text-on-accent: #16181d;
+
+  --overlay: rgba(0, 0, 0, 0.6);
+
+  /* --code-* giữ nguyên — vốn đã tối sẵn từ trước, không cần đổi theo theme. */
+
+  --tone-warning-bg: rgba(253, 214, 99, 0.14);
+  --tone-warning-text: #fdd663;
+  --tone-warning-border: rgba(253, 214, 99, 0.4);
+  --tone-purple-bg: rgba(196, 148, 250, 0.14);
+  --tone-purple-text: #c494fa;
+  --tone-purple-border: rgba(196, 148, 250, 0.4);
+
+  --type-mc: #8ab4f8;
+  --type-mc-soft: rgba(138, 180, 248, 0.14);
+  --type-mc-border: rgba(138, 180, 248, 0.35);
+  --type-tf: #ffb74d;
+  --type-tf-soft: rgba(255, 183, 77, 0.14);
+  --type-tf-border: rgba(255, 183, 77, 0.35);
+  --type-sa: #6ee7b7;
+  --type-sa-soft: rgba(110, 231, 183, 0.14);
+  --type-sa-border: rgba(110, 231, 183, 0.35);
+  --type-oe: #93c5fd;
+  --type-oe-soft: rgba(147, 197, 253, 0.14);
+  --type-oe-border: rgba(147, 197, 253, 0.35);
+  --type-cd: #67e8f9;
+  --type-cd-soft: rgba(103, 232, 249, 0.14);
+  --type-cd-border: rgba(103, 232, 249, 0.35);
+  --tone-danger-bg: rgba(242, 139, 130, 0.14);
+
+  /* secondary/muted lấy theo xám THUẦN (R=G=B, không ngả xanh) kiểu
+     VSCode Dark Modern — muted = descriptionForeground #9D9D9D thật,
+     secondary nội suy giữa đó và foreground #CCCCCC vì VSCode chỉ có 2
+     cấp còn app cần 3. Xem
+     temp/question-editor-demo/text-muted-demo.html. */
+  --text-primary: #e8eaed;
+  --text-secondary: #b8b8b8;
+  --text-muted: #9d9d9d;
+  --text-placeholder: #5f6673;
+
+  --border: #333944;
+  --border-strong: #454c59;
+  --border-focus: #8ab4f8;
+
+  --gradient-hero: #8ab4f8;
+  --gradient-card: rgba(138, 180, 248, 0.08);
+
+  --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.3);
+  --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.35);
+  --shadow-lg: 0 10px 20px -3px rgba(0, 0, 0, 0.45);
+  --shadow-glow: 0 0 20px rgba(138, 180, 248, 0.2);
+}
+
+/* Reset */
 *,
 *::before,
 *::after {
@@ -56,12 +318,27 @@
 
 html {
   scroll-behavior: smooth;
+  scrollbar-color: var(--border-strong) transparent;
+}
+
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: var(--border-strong);
+  border-radius: 6px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: var(--text-muted);
 }
 
 body {
   font-family:
-    "Inter",
-    -apple-system,
+    "System UI Bundled",
     sans-serif;
   background: var(--bg-base);
   color: var(--text-primary);
@@ -70,23 +347,23 @@ body {
   -webkit-font-smoothing: antialiased;
 }
 
-/* ── Typography ───────────────────────────────────────────────────── */
+/* Typography */
 h1 {
-  font-size: clamp(1.8rem, 4vw, 3rem);
-  font-weight: 800;
+  font-size: var(--font-size-3xl);
+  font-weight: var(--font-weight-extrabold);
   line-height: 1.2;
 }
 h2 {
-  font-size: clamp(1.4rem, 3vw, 2rem);
-  font-weight: 700;
+  font-size: var(--font-size-2xl);
+  font-weight: var(--font-weight-bold);
 }
 h3 {
-  font-size: 1.25rem;
-  font-weight: 600;
+  font-size: var(--font-size-lg);
+  font-weight: var(--font-weight-semibold);
 }
 h4 {
-  font-size: 1rem;
-  font-weight: 600;
+  font-size: var(--font-size-md);
+  font-weight: var(--font-weight-semibold);
 }
 
 a {
@@ -98,7 +375,7 @@ a:hover {
   opacity: 0.8;
 }
 
-/* ── Layout ───────────────────────────────────────────────────────── */
+/* Layout */
 .container {
   max-width: 1280px;
   margin: 0 auto;
@@ -116,7 +393,7 @@ a:hover {
   overflow-y: auto;
 }
 
-/* ── Buttons ──────────────────────────────────────────────────────── */
+/* Buttons */
 .btn {
   display: inline-flex;
   align-items: center;
@@ -125,8 +402,11 @@ a:hover {
   padding: 0.6rem 1.25rem;
   border: none;
   border-radius: var(--radius-sm);
-  font-size: 0.875rem;
-  font-weight: 600;
+  font-size: var(--font-size-base);
+  /* Không đặt thì <button> lấy line-height normal của trình duyệt còn <a> và
+     <summary> kế thừa 1.6 của body, hai loại nút lệch nhau ~6px chiều cao. */
+  line-height: 1.25;
+  font-weight: var(--font-weight-semibold);
   cursor: pointer;
   transition: all var(--transition);
   white-space: nowrap;
@@ -135,7 +415,7 @@ a:hover {
 
 .btn-primary {
   background: var(--gradient-hero);
-  color: #fff;
+  color: var(--text-on-accent);
 }
 .btn-primary:hover {
   background: var(--accent-primary-hover);
@@ -181,7 +461,7 @@ a:hover {
 }
 .btn-lg {
   padding: 0.875rem 2rem;
-  font-size: 1rem;
+  font-size: var(--font-size-md);
 }
 .btn-block {
   width: 100%;
@@ -193,7 +473,7 @@ a:hover {
   transform: none !important;
 }
 
-/* ── Cards ────────────────────────────────────────────────────────── */
+/* Cards */
 .card {
   background: var(--bg-card);
   border: 1px solid var(--border);
@@ -202,7 +482,7 @@ a:hover {
   transition: all var(--transition);
 }
 .card:hover {
-  border-color: rgba(37, 91, 167, 0.3);
+  border-color: rgba(30, 63, 170, 0.3);
   box-shadow: var(--shadow-md);
 }
 
@@ -220,35 +500,110 @@ a:hover {
   border-radius: var(--radius-lg);
 }
 
-/* ── Forms ────────────────────────────────────────────────────────── */
+/* Forms */
 .form-group {
   margin-bottom: 0.85rem;
 }
+/* Nhãn field đơn (Email, Chương, Time C/C++...) — tối giản, không huy
+   hiệu/hoa (bản cũ: nền xanh + viền + IN HOA lặp lại ở 49 chỗ khắp app,
+   xem temp/question-editor-demo/label-styles.html). */
 .form-label {
-  display: inline-block;
-  font-size: 0.75rem;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-  color: #4338ca;
-  background: #e0e7ff;
-  border: 1px solid #c7d2fe;
-  padding: 0.25rem 0.5rem;
-  border-radius: 6px;
+  display: block;
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-bold);
+  color: var(--text-secondary);
   margin-bottom: 0.4rem;
+}
+/* Tiêu đề khối nội dung lớn (Nội dung đề bài, Phương án trả lời...) — đậm
+   và có gạch màu bên trái để nổi hơn .form-label một bậc, tách vai trò
+   khỏi nhãn field thay vì dùng chung 1 class như trước. */
+.section-label {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  font-size: var(--font-size-lg);
+  font-weight: var(--font-weight-bold);
+  color: var(--text-primary);
+  margin-bottom: 0.6rem;
+}
+.section-label::before {
+  content: "";
+  width: 4px;
+  height: 1.15em;
+  background: var(--accent-primary);
+  border-radius: 2px;
+  flex-shrink: 0;
+}
+
+/* Khối "thông tin phân loại" (Môn học/Khối lớp/Chương/Bài học/Mức độ) —
+   kiểu "bảng hàng kề": 1 khung viền mảnh bao NGOÀI cả khối, mỗi field là
+   1 hàng ngang (nhãn trái cố định + giá trị phải), cách nhau bằng đường
+   kẻ mảnh — không "hộp hoá" từng field riêng lẻ như bản .select cũ. Xem
+   temp/question-editor-demo/property-list-demo.html (kiểu D). */
+.meta-table {
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  /* KHÔNG overflow:hidden — danh sách gợi ý của Combobox định vị absolute
+     bên trong từng hàng, overflow:hidden trên khung ngoài sẽ cắt mất
+     (đặc biệt hàng cuối "Mức độ" thì cắt toàn bộ). Bo góc ở đây chỉ để bo
+     viền khung; bo góc nền hover của hàng đầu/cuối xử lý riêng bên dưới. */
+}
+.meta-row {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.55rem 0.9rem;
+  border-bottom: 1px solid var(--border);
+}
+.meta-row:last-child {
+  border-bottom: none;
+}
+.meta-row:hover {
+  background: var(--bg-hover);
+}
+.meta-row:first-child:hover {
+  border-radius: calc(var(--radius-md) - 1px) calc(var(--radius-md) - 1px) 0 0;
+}
+.meta-row:last-child:hover {
+  border-radius: 0 0 calc(var(--radius-md) - 1px) calc(var(--radius-md) - 1px);
+}
+.meta-row-label {
+  width: 110px;
+  flex-shrink: 0;
+  font-size: var(--font-size-base);
+  color: var(--text-muted);
+  font-weight: var(--font-weight-semibold);
+}
+/* Áp cho <input> bên trong Combobox (qua prop className) và <select> Loại
+   câu hỏi — bỏ khung hộp cũ, chỉ còn viền dưới + đổi màu khi focus, vẫn
+   rõ là ô chọn được (Combobox tự có sẵn mũi tên ▼ riêng). */
+.meta-row-value {
+  flex: 1;
+  border: none;
+  border-bottom: 1.5px solid var(--border-strong);
+  border-radius: 4px 4px 0 0;
+  background: transparent;
+  padding: 0.35rem 0.1rem;
+  font-size: var(--font-size-base);
+  font-weight: var(--font-weight-medium);
+  color: var(--text-primary);
+}
+.meta-row-value:focus {
+  outline: none;
+  border-bottom-color: var(--accent-primary);
 }
 
 .input,
 .select,
 .textarea {
   width: 100%;
-  background: #ffffff;
-  border: 1.5px solid #cbd5e1;
+  background: var(--bg-surface);
+  border: 1.5px solid var(--border-strong);
   border-radius: 6px;
   padding: 0.5rem 0.75rem;
-  color: #0f172a;
+  color: var(--text-primary);
   font-size: 0.95rem;
-  font-weight: 500;
+  font-weight: var(--font-weight-medium);
   font-family: inherit;
   transition: all 0.2s;
   outline: none;
@@ -256,15 +611,15 @@ a:hover {
 .input:hover,
 .select:hover,
 .textarea:hover {
-  border-color: #94a3b8;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+  border-color: var(--accent-primary-border);
+  box-shadow: var(--shadow-sm);
 }
 .input:focus,
 .select:focus,
 .textarea:focus {
-  background: #ffffff;
+  background: var(--bg-surface);
   border-color: var(--accent-primary);
-  box-shadow: 0 0 0 4px rgba(37, 91, 167, 0.15);
+  box-shadow: 0 0 0 4px var(--accent-primary-selected);
 }
 .input::placeholder,
 .select::placeholder,
@@ -287,46 +642,46 @@ textarea::placeholder {
   min-height: 100px;
 }
 
-/* ── Badges ───────────────────────────────────────────────────────── */
+/* Badges */
 .badge {
   display: inline-flex;
   align-items: center;
   gap: 0.25rem;
   padding: 0.2rem 0.6rem;
   border-radius: 100px;
-  font-size: 0.75rem;
-  font-weight: 600;
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-semibold);
 }
 
 .badge-mc {
-  background: rgba(37, 91, 167, 0.08);
-  color: #255ba7;
-  border: 1px solid rgba(37, 91, 167, 0.2);
+  background: var(--type-mc-soft);
+  color: var(--type-mc);
+  border: 1px solid var(--type-mc-border);
 }
 .badge-tf {
-  background: rgba(180, 83, 9, 0.08);
-  color: #b45309;
-  border: 1px solid rgba(180, 83, 9, 0.2);
+  background: var(--type-tf-soft);
+  color: var(--type-tf);
+  border: 1px solid var(--type-tf-border);
 }
 .badge-sa {
-  background: rgba(4, 120, 87, 0.08);
-  color: #047857;
-  border: 1px solid rgba(4, 120, 87, 0.2);
+  background: var(--type-sa-soft);
+  color: var(--type-sa);
+  border: 1px solid var(--type-sa-border);
 }
 .badge-oe {
-  background: rgba(29, 78, 216, 0.08);
-  color: #1d4ed8;
-  border: 1px solid rgba(29, 78, 216, 0.2);
+  background: var(--type-oe-soft);
+  color: var(--type-oe);
+  border: 1px solid var(--type-oe-border);
 }
 .badge-st {
-  background: #faf5ff;
-  color: #7e22ce;
-  border: 1px solid #e9d5ff;
+  background: var(--tone-purple-bg);
+  color: var(--tone-purple-text);
+  border: 1px solid var(--tone-purple-border);
 }
 .badge-cd {
-  background: rgba(14, 116, 144, 0.08);
-  color: #0e7490;
-  border: 1px solid rgba(14, 116, 144, 0.2);
+  background: var(--type-cd-soft);
+  color: var(--type-cd);
+  border: 1px solid var(--type-cd-border);
 }
 
 .badge-active {
@@ -349,23 +704,58 @@ textarea::placeholder {
 }
 
 .complexity-1 {
-  background: rgba(107, 203, 119, 0.15);
-  color: #6bcb77;
+  background: #f0fdf4;
+  color: #16a34a;
+  border: 1px solid #bbf7d0;
 }
 .complexity-2 {
-  background: rgba(255, 217, 61, 0.15);
-  color: #ffd93d;
+  background: #eff6ff;
+  color: #2563eb;
+  border: 1px solid #bfdbfe;
 }
 .complexity-3 {
-  background: rgba(255, 165, 0, 0.15);
-  color: #ffa500;
+  background: #fff7ed;
+  color: #ea580c;
+  border: 1px solid #fed7aa;
 }
 .complexity-4 {
-  background: rgba(255, 107, 107, 0.15);
-  color: #ff6b6b;
+  background: #fef2f2;
+  color: #dc2626;
+  border: 1px solid #fecaca;
 }
 
-/* ── Sidebar ──────────────────────────────────────────────────────── */
+/* .badge-mc/tf/sa/oe/cd/st giờ đọc thẳng biến --type-x và --tone-purple-x
+   nên TỰ đổi theo theme, không cần override riêng nữa. Nhóm .complexity vẫn
+   còn hardcode cho nền sáng (chưa gom thành biến) nên vẫn cần override dưới
+   đây. Theme tối: bộ màu độ khó ở trên hardcode cho nền SÁNG (nền đặc màu
+   pastel + chữ đậm) — không đổi theo theme nên bị "dán đè" lên trang tối.
+   Đổi sang nền mờ (rgba) + chữ nhạt, cùng phương pháp đã dùng cho
+   success/warning/danger ở khối :root[data-theme="dark"] phía trên. */
+:root[data-theme="dark"] .badge-late {
+  color: #ffb74d;
+}
+:root[data-theme="dark"] .complexity-1 {
+  background: rgba(134, 239, 172, 0.14);
+  color: #86efac;
+  border-color: rgba(134, 239, 172, 0.35);
+}
+:root[data-theme="dark"] .complexity-2 {
+  background: rgba(147, 197, 253, 0.14);
+  color: #93c5fd;
+  border-color: rgba(147, 197, 253, 0.35);
+}
+:root[data-theme="dark"] .complexity-3 {
+  background: rgba(253, 186, 116, 0.14);
+  color: #fdba74;
+  border-color: rgba(253, 186, 116, 0.35);
+}
+:root[data-theme="dark"] .complexity-4 {
+  background: rgba(252, 165, 165, 0.14);
+  color: #fca5a5;
+  border-color: rgba(252, 165, 165, 0.35);
+}
+
+/* Sidebar */
 .sidebar {
   width: 260px;
   height: 100vh;
@@ -401,14 +791,14 @@ textarea::placeholder {
 }
 
 .sidebar-logo-text {
-  font-weight: 700;
+  font-weight: var(--font-weight-bold);
   font-size: 0.9rem;
   line-height: 1.3;
 }
 .sidebar-logo-text span {
   color: var(--text-muted);
-  font-size: 0.75rem;
-  font-weight: 400;
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-regular);
   display: block;
 }
 
@@ -422,10 +812,8 @@ textarea::placeholder {
 }
 
 .sidebar-section-title {
-  font-size: 0.7rem;
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.08em;
+  font-size: var(--font-size-base);
+  font-weight: var(--font-weight-semibold);
   color: var(--text-muted);
   padding: 0.75rem 0.5rem 0.4rem;
 }
@@ -437,8 +825,8 @@ textarea::placeholder {
   padding: 0.625rem 0.75rem;
   border-radius: var(--radius-sm);
   color: var(--text-secondary);
-  font-size: 0.875rem;
-  font-weight: 500;
+  font-size: var(--font-size-base);
+  font-weight: var(--font-weight-medium);
   cursor: pointer;
   transition: all var(--transition);
   text-decoration: none;
@@ -454,11 +842,72 @@ textarea::placeholder {
 }
 .nav-item.active .nav-icon {
   color: var(--accent-primary);
+  background: var(--bg-surface);
 }
 .nav-icon {
-  font-size: 1rem;
-  min-width: 20px;
-  text-align: center;
+  width: 34px;
+  height: 34px;
+  flex: 0 0 34px;
+  display: grid;
+  place-items: center;
+  border-radius: 9px;
+  color: var(--text-secondary);
+  background: var(--bg-hover);
+  transition: background var(--transition), color var(--transition);
+}
+.nav-icon svg {
+  width: 20px;
+  height: 20px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.8;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+/* Create actions shown in the question-bank header. */
+.question-create-dropdown {
+  position: relative;
+}
+.question-create-dropdown-trigger svg {
+  width: 16px;
+  height: 16px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.8;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+.question-create-dropdown-menu {
+  position: absolute;
+  z-index: 100;
+  top: calc(100% + 8px);
+  right: 0;
+  width: 270px;
+  padding: 0.4rem;
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-lg);
+}
+.question-create-dropdown-menu a {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  padding: 0.7rem 0.75rem;
+  color: var(--text-primary);
+  text-decoration: none;
+  border-radius: var(--radius-sm);
+}
+.question-create-dropdown-menu a:hover {
+  background: var(--accent-primary-soft);
+}
+.question-create-dropdown-menu strong {
+  font-size: 0.9rem;
+}
+.question-create-dropdown-menu span {
+  color: var(--text-secondary);
+  font-size: 0.78rem;
 }
 
 .sidebar-footer {
@@ -482,7 +931,7 @@ textarea::placeholder {
   display: flex;
   align-items: center;
   justify-content: center;
-  font-weight: 700;
+  font-weight: var(--font-weight-bold);
   font-size: 0.85rem;
 }
 .user-info {
@@ -490,16 +939,18 @@ textarea::placeholder {
   min-width: 0;
 }
 .user-name {
-  font-size: 0.875rem;
-  font-weight: 600;
-  truncate: true;
+  font-size: var(--font-size-base);
+  font-weight: var(--font-weight-semibold);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 .user-role {
-  font-size: 0.7rem;
+  font-size: var(--font-size-2xs);
   color: var(--text-muted);
 }
 
-/* ── Tables ───────────────────────────────────────────────────────── */
+/* Tables */
 .table-wrap {
   overflow-x: auto;
   border-radius: var(--radius-md);
@@ -515,10 +966,8 @@ thead {
 }
 thead th {
   padding: 0.75rem 1rem;
-  font-size: 0.75rem;
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-semibold);
   color: var(--text-secondary);
   text-align: left;
 }
@@ -531,10 +980,301 @@ tbody tr:hover {
 }
 tbody td {
   padding: 0.875rem 1rem;
-  font-size: 0.875rem;
+  font-size: var(--font-size-base);
 }
 
-/* ── Question Card ────────────────────────────────────────────────── */
+/* Bảng bản ghi dùng chung. Mặc định mọi cột canh giữa, cột chữ thêm .col-text */
+.problem-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: var(--font-size-base);
+}
+.problem-table thead {
+  background: transparent;
+}
+.problem-table thead th {
+  padding: 0.75rem;
+  text-align: center;
+  color: var(--accent-primary);
+  font-size: var(--font-size-base);
+  font-weight: var(--font-weight-bold);
+  border-bottom: 1px solid var(--border-strong);
+}
+.problem-table tbody tr {
+  border-top: 1px solid var(--border-strong);
+  transition: background var(--transition);
+}
+.problem-table tbody tr:nth-child(even) {
+  background: var(--bg-base);
+}
+.problem-table tbody tr:hover {
+  background: var(--bg-row-hover);
+}
+.problem-table tbody td {
+  padding: 0.75rem;
+  text-align: center;
+  vertical-align: middle;
+  font-variant-numeric: tabular-nums;
+  /* height của td là chiều cao tối thiểu: đặt bằng hàng có badge để thêm/bớt
+     badge không làm hàng co giãn. Ô nhiều dòng vẫn tự cao thêm. */
+  height: 3.125rem;
+}
+.problem-table td.col-text {
+  text-align: left;
+  font-variant-numeric: normal;
+  overflow-wrap: anywhere;
+}
+.problem-table .cell-score {
+  font-weight: var(--font-weight-semibold);
+  color: var(--accent-primary);
+}
+/* Tổng điểm nhỏ hơn điểm đạt được, giữ cùng màu accent */
+.problem-table .cell-score small {
+  font-size: 0.8em;
+}
+/* Dòng phụ luôn gói trong một dòng, cắt bằng "…" để mọi bản ghi cao bằng nhau */
+.problem-table .cell-sub {
+  display: block;
+  font-size: var(--font-size-xs);
+  color: var(--text-secondary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+/* Chỉ hiện 3 bản ghi rồi cuộn; dòng tiêu đề dính lại ở trên khi cuộn. 2.7rem là chiều cao dòng tiêu đề, 3.125rem là chiều cao một bản ghi. */
+.rows-scroll {
+  max-height: calc(2.7rem + 3.5 * 3.125rem);
+  overflow-y: auto;
+}
+.rows-scroll .problem-table thead th {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  background: var(--bg-surface);
+}
+.problem-table tr.is-clickable {
+  cursor: pointer;
+}
+.problem-table tr.is-clickable:focus-visible {
+  outline: 2px solid var(--border-focus);
+  outline-offset: -2px;
+}
+
+/* Bảng có hàng chi tiết xen giữa thì tự gán .is-alt, vì nth-child lệch nhịp
+   khi hàng chi tiết bung ra. */
+.problem-table.stripe-manual tbody tr:nth-child(even) {
+  background: transparent;
+}
+.problem-table.stripe-manual tbody tr.is-alt {
+  background: var(--bg-base);
+}
+
+/* Các bảng người nộp bài dùng chung khung cột để thẳng hàng với nhau. */
+.people-table {
+  table-layout: fixed;
+}
+
+/* Khối code đọc dữ liệu: input, output, mã nguồn đã nộp */
+.code-box {
+  position: relative;
+}
+.code-box pre {
+  margin: 0;
+  padding: 0.9rem 3rem 0.9rem 1rem;
+  min-height: 3rem;
+  overflow: auto;
+  background: var(--code-bg);
+  color: var(--code-text);
+  border-radius: var(--radius-sm);
+  font-family: ui-monospace, Consolas, monospace;
+  font-size: var(--font-size-md);
+  line-height: 1.6;
+}
+.code-box pre.is-hidden {
+  color: var(--code-muted);
+}
+.code-box .code-copy {
+  position: absolute;
+  top: 0.5rem;
+  right: 0.5rem;
+  width: 28px;
+  height: 28px;
+  display: grid;
+  place-items: center;
+  background: var(--code-chip);
+  color: var(--code-chip-text);
+  border: 1px solid var(--code-chip-border);
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 0.8rem;
+}
+.code-label {
+  font-size: 0.9rem;
+  font-weight: var(--font-weight-semibold);
+  margin-bottom: 0.35rem;
+}
+.io-pair {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1rem;
+}
+
+/* Soạn test case: danh sách cuộn riêng, mỗi test case một bản ghi */
+.tc-scroll {
+  max-height: 420px;
+  overflow-y: auto;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  padding: 0.75rem;
+  background: var(--bg-base);
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+.tc-rec {
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 0.75rem;
+}
+.tc-rec-head {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  margin-bottom: 0.6rem;
+  font-size: 0.85rem;
+  flex-wrap: wrap;
+}
+.tc-idx {
+  font-weight: var(--font-weight-bold);
+  min-width: 28px;
+}
+.tc-flag {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.tc-point {
+  width: 68px;
+  padding: 0.3rem 0.5rem;
+  font-size: 0.85rem;
+  border: 1.5px solid var(--border-strong);
+  border-radius: 6px;
+  font-family: inherit;
+  text-align: center;
+  background: var(--bg-surface);
+  color: var(--text-primary);
+}
+.tc-x {
+  margin-left: auto;
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  display: grid;
+  place-items: center;
+  font-size: var(--font-size-xs);
+  color: var(--accent-danger);
+  border: 1px solid var(--border);
+  background: var(--bg-surface);
+  border-radius: 6px;
+  cursor: pointer;
+}
+.tc-rec .code-box pre {
+  height: 6.2rem;
+  font-size: 0.9rem;
+  line-height: 1.5;
+}
+.tc-rec textarea.code-edit {
+  width: 100%;
+  height: 6.2rem;
+  padding: 0.9rem 1rem;
+  background: var(--code-bg);
+  color: var(--code-text);
+  border: 0;
+  border-radius: var(--radius-sm);
+  font-family: ui-monospace, Consolas, monospace;
+  font-size: 0.9rem;
+  line-height: 1.5;
+  resize: vertical;
+  outline: none;
+}
+
+/* Số câu, mức độ và trạng thái đứng chung một hàng; đề bài xuống dòng dưới */
+.q-topline {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  margin-bottom: 0.85rem;
+}
+
+/* Bảng chọn nhiều ở luồng giao bài: bấm cả hàng để chọn, hàng đã giao thì khóa */
+.pick-table tbody tr {
+  cursor: pointer;
+}
+.pick-table tbody tr.is-selected,
+.pick-table tbody tr.is-selected:hover {
+  background: var(--accent-primary-selected);
+}
+.pick-table tbody tr.is-assigned,
+.pick-table tbody tr.is-assigned:hover {
+  cursor: not-allowed;
+  opacity: 0.52;
+  background: var(--bg-base);
+}
+.pick-table .pick-col {
+  width: 44px;
+}
+
+/* Bảng vừa giao vừa gỡ: xem trước thay đổi trước khi lưu. */
+.pick-table tbody tr.is-removing,
+.pick-table tbody tr.is-removing:hover {
+  background: var(--answer-wrong-bg);
+}
+.badge-add {
+  background: rgba(30, 63, 170, 0.1);
+  color: var(--accent-primary);
+}
+.badge-partial {
+  background: var(--tone-warning-bg);
+  color: var(--tone-warning-text);
+  border: 1px solid var(--tone-warning-border);
+}
+.badge-fail {
+  background: var(--tone-danger-bg);
+  color: var(--accent-danger);
+}
+.badge-compile {
+  background: var(--tone-purple-bg);
+  color: var(--tone-purple-text);
+  border: 1px solid var(--tone-purple-border);
+}
+.badge-remove {
+  background: rgba(194, 65, 65, 0.12);
+  color: var(--accent-danger);
+}
+
+/* Bản ghi ở "Đề thi gần đây": bấm cả hàng để mở đề, thêm hover và viền focus */
+.recent-record {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  padding: 0.75rem;
+  background: var(--bg-elevated);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: background var(--transition);
+}
+.recent-record:hover {
+  background: var(--bg-hover);
+}
+.recent-record:focus-visible {
+  outline: 2px solid var(--border-focus);
+  outline-offset: 2px;
+}
+
+/* Question Card */
 .question-card {
   background: var(--bg-card);
   border: 1px solid var(--border);
@@ -543,34 +1283,1149 @@ tbody td {
   transition: all var(--transition);
 }
 .question-card:hover {
-  border-color: rgba(37, 91, 167, 0.3);
+  border-color: rgba(30, 63, 170, 0.3);
 }
 
 .question-header {
   display: flex;
   align-items: flex-start;
   gap: 1rem;
-  margin-bottom: 1rem;
+  margin-bottom: 0rem;
 }
 .question-num {
   min-width: 36px;
   height: 36px;
   background: var(--accent-primary);
-  color: #ffffff;
+  color: var(--text-on-accent);
   border-radius: var(--radius-sm);
   border: 1px solid var(--accent-primary);
-  box-shadow: 0 2px 6px rgba(37, 91, 167, 0.16);
+  box-shadow: 0 2px 6px rgba(30, 63, 170, 0.16);
   display: flex;
   align-items: center;
   justify-content: center;
-  font-weight: 700;
-  font-size: 0.9rem;
+  font-weight: var(--font-weight-bold);
+  font-size: var(--font-size-md);
 }
 
 .question-content {
-  font-size: 0.95rem;
-  line-height: 1.7;
   margin-bottom: 1rem;
+  /* Trước không đặt gì nên ăn thẳng cỡ mặc định của body (1rem/16px) — quá
+     to giữa danh sách nhiều câu. .exam-workspace .question-content bên dưới
+     override riêng lúc làm bài thật, không bị ảnh hưởng bởi dòng này. */
+  font-size: var(--font-size-sm);
+}
+
+/* Ảnh đặt cạnh (layout immini) trong LatexRenderer — nổi bên phải (không có
+   bản "trái" trên web), chữ trôi quanh. Tự đóng khung (clearfix ngay trong
+   .lr-side) nên không lan ra ảnh hưởng các khối anh em (đáp án render bằng
+   LatexRenderer riêng, nằm ngoài div này). */
+.lr-side {
+  overflow: hidden; /* clearfix */
+}
+.lr-side-fig {
+  position: relative;
+  float: right;
+  margin: 0 0 10px 14px;
+  text-align: center;
+}
+.lr-local-zoom {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 5px;
+  margin-bottom: 4px;
+}
+.lr-zoom-btn {
+  width: 20px;
+  height: 20px;
+  border-radius: 6px;
+  border: 1px solid var(--border);
+  background: var(--bg-surface);
+  color: var(--accent-primary);
+  font-size: 13px;
+  font-weight: var(--font-weight-bold);
+  line-height: 1;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+.lr-zoom-btn:hover {
+  background: var(--accent-primary-soft);
+}
+.lr-zoom-input {
+  width: 38px;
+  text-align: center;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 1px 2px;
+  font-size: 11px;
+  font-weight: var(--font-weight-semibold);
+  background: var(--bg-surface);
+  color: var(--text-primary);
+}
+.lr-zoom-input::-webkit-outer-spin-button,
+.lr-zoom-input::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+.lr-zoom-sign {
+  font-size: 10.5px;
+  color: var(--text-secondary);
+  margin-left: -2px;
+}
+@media (max-width: 640px) {
+  .lr-side-fig {
+    float: none;
+    display: block;
+    margin: 0 auto 10px;
+    max-width: 80%;
+  }
+}
+
+/* Dựng từ cây tài liệu (treeToHtml, dùng chung tên lớp với PDF —
+   backend/src/engine/exporters/pdf_html/renderer.py) — ảnh không trôi (layout
+   "normal"), bảng, danh sách, khối mã. Ảnh trôi (immini) dùng .lr-side* riêng
+   ở trên vì cần thêm cụm zoom cục bộ mà PDF không có. */
+.latex-content p {
+  margin: 0 0 0.6rem;
+}
+.latex-content p:last-child {
+  margin-bottom: 0;
+}
+.latex-content .doc-figure-block {
+  text-align: center;
+  margin: 10px auto;
+}
+.latex-content .doc-figure-block img,
+.latex-content .doc-figure {
+  display: inline-block;
+  height: auto;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border);
+  background: #fff;
+}
+.latex-content .doc-figure-inline {
+  vertical-align: middle;
+}
+.latex-content .doc-figure.is-missing,
+.latex-content .doc-figure-inline.is-missing {
+  display: inline-block;
+  color: var(--accent-danger);
+  font-style: italic;
+  font-size: 0.85em;
+}
+.latex-content .doc-table {
+  border-collapse: collapse;
+  margin: 8px auto;
+  font-size: 0.95em;
+  width: 100%;
+  max-width: 100%;
+  table-layout: fixed;
+}
+.latex-content .doc-table td {
+  border: 1px solid #000;
+  padding: 4px 7px;
+  text-align: center;
+  vertical-align: middle;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+.lr-preview-zoom {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  margin-bottom: 4px;
+}
+.lr-preview-zoom button {
+  width: 20px;
+  height: 20px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--bg-surface);
+  color: var(--accent-primary);
+  font-size: 13px;
+  font-weight: var(--font-weight-bold);
+  line-height: 1;
+  cursor: pointer;
+}
+.lr-preview-zoom button:hover {
+  background: var(--accent-primary-soft);
+}
+.lr-preview-zoom input {
+  width: 38px;
+  text-align: center;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 1px 2px;
+  background: var(--bg-surface);
+  color: var(--text-primary);
+  font-size: 11px;
+  font-weight: var(--font-weight-semibold);
+  outline: none;
+}
+.lr-preview-zoom input::-webkit-outer-spin-button,
+.lr-preview-zoom input::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+.lr-preview-zoom span {
+  margin-left: -2px;
+  color: var(--text-secondary);
+  font-size: 10.5px;
+}
+.lr-preview-inline-image {
+  position: relative;
+  display: inline-block;
+  vertical-align: middle;
+}
+.lr-preview-zoom.is-inline {
+  position: absolute;
+  left: 50%;
+  bottom: 100%;
+  transform: translateX(-50%);
+  z-index: 5;
+  margin-bottom: 2px;
+  white-space: nowrap;
+}
+.latex-content .doc-columns {
+  width: 100%;
+  align-items: start;
+}
+.latex-content .doc-column {
+  min-width: 0;
+  padding: 0 4px;
+}
+.rle-columns {
+  width: 100%;
+  gap: 0;
+  padding: 6px;
+  border: 1px dashed var(--border-strong);
+  border-radius: var(--radius-sm);
+  background: var(--bg-elevated);
+}
+.rle-columns > div {
+  min-width: 0;
+  padding: 4px 8px;
+  border-right: 1px dashed var(--border);
+}
+.rle-columns > div:last-child {
+  border-right: 0;
+}
+.rle-column-head {
+  margin: -4px -4px 6px;
+  padding: 2px 5px;
+  text-align: left;
+  font: 11px/1.4 sans-serif;
+  color: var(--text-muted);
+  background: var(--bg-surface);
+  border-bottom: 1px dashed var(--border);
+}
+.rle-column-width {
+  width: 44px;
+  padding: 1px 3px;
+  border: 1px solid var(--border);
+  border-radius: 3px;
+  font: inherit;
+}
+.latex-content .doc-math {
+  text-align: center;
+  margin: 0.35rem 0;
+}
+.latex-content .doc-code {
+  display: block;
+  background: var(--code-bg);
+  color: var(--code-text);
+  padding: 0.6rem 0.8rem;
+  border-radius: var(--radius-sm);
+  font-family: "SFMono-Regular", Consolas, monospace;
+  font-size: 0.85rem;
+  overflow-x: auto;
+  margin: 0.35rem 0;
+}
+.latex-content ul,
+.latex-content ol {
+  margin: 0.3rem 0 0.6rem 1.4rem;
+}
+.latex-content li {
+  margin-bottom: 0.2rem;
+}
+
+/* RichLatexEditor — ô soạn cây tài liệu (contentEditable chung, công thức/
+   ảnh là "atom" contenteditable=false, xem RichLatexEditor.tsx). */
+.rle-toolbar button:not(:disabled) {
+  transition: background-color 90ms ease, box-shadow 90ms ease;
+}
+
+.rle-toolbar button:not(:disabled):hover {
+  background-color: var(--editor-button-hover) !important;
+}
+
+.rle-toolbar button:not(:disabled):active {
+  background-color: var(--editor-button-active) !important;
+  box-shadow: inset 0 0 0 1px var(--editor-button-active-border);
+}
+
+.rle-toolbar button[aria-pressed="true"] {
+  background-color: var(--editor-button-active) !important;
+  box-shadow: inset 0 0 0 1px var(--editor-button-active-border);
+}
+
+.rle-toolbar button[aria-pressed="true"]:hover {
+  background-color: var(--editor-button-active-hover) !important;
+}
+
+.rle-toolbar button:focus-visible {
+  outline: 1px solid var(--editor-button-focus);
+  outline-offset: -1px;
+}
+
+.rle-surface {
+  outline: none;
+  text-align: justify;
+}
+/* Ảnh trôi phải (.rle-image.side-right) bị float ra khỏi luồng — không có
+   clearfix thì khung viền .rle-surface co lại theo mỗi chữ, ảnh tràn ra
+   ngoài khung. */
+.rle-surface::after {
+  content: "";
+  display: table;
+  clear: both;
+}
+.rle-p {
+  margin: 0 0 0.6rem;
+}
+.rle-p:last-child {
+  margin-bottom: 0;
+}
+.rle-math {
+  display: inline-block;
+  padding: 0 3px;
+  border-radius: 4px;
+  cursor: pointer;
+  border-bottom: 1px dashed transparent;
+}
+.rle-math:hover {
+  background: var(--accent-primary-soft);
+  border-bottom-color: var(--accent-primary);
+}
+.rle-mathblock {
+  display: block;
+  text-align: center;
+  padding: 6px 4px;
+  margin: 4px 0 0.6rem;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+}
+.rle-mathblock:hover {
+  background: var(--accent-primary-soft);
+}
+.rle-image.rle-imginline {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  vertical-align: middle;
+  cursor: pointer;
+  padding: 4px 6px;
+  margin: 2px 4px;
+  max-width: 90%;
+}
+.rle-image.rle-imginline .rle-image-zoom {
+  margin-bottom: 4px;
+}
+.rle-image.rle-imginline .rle-image-img {
+  height: auto;
+}
+.rle-list,
+.rle-table {
+  margin: 0.3rem 0 0.6rem;
+}
+.rle-list,
+.rle-surface ol,
+.rle-surface ul {
+  /* Trình duyệt vốn đã đặt padding-inline-start cho ol/ul. Trước đây editor
+     cộng thêm margin-left 1.4rem nên marker bị thụt hai lần. Tự đặt một
+     nguồn khoảng lùi duy nhất để ordered/unordered list thẳng hàng. */
+  padding-inline-start: 2rem;
+  list-style-position: outside;
+}
+.rle-list > li,
+.rle-surface ol > li,
+.rle-surface ul > li {
+  padding-inline-start: 0.2rem;
+}
+.rle-table {
+  margin-left: 0;
+  border-collapse: collapse;
+  width: 100%;
+  table-layout: fixed;
+}
+.rle-table td {
+  position: relative;
+  border: 1px solid #000;
+  padding: 4px 8px;
+  min-width: 40px;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+  vertical-align: top;
+}
+.rle-table td::after {
+  content: "";
+  position: absolute;
+  z-index: 2;
+  top: 0;
+  right: -4px;
+  width: 8px;
+  height: 100%;
+  cursor: col-resize;
+}
+.rle-table td::before {
+  content: "";
+  position: absolute;
+  z-index: 2;
+  left: 0;
+  bottom: -4px;
+  width: 100%;
+  height: 8px;
+  cursor: row-resize;
+}
+.rle-table td:hover::after,
+.rle-table td:hover::before {
+  background: color-mix(in srgb, var(--accent-primary) 24%, transparent);
+}
+.rle-table td:focus {
+  background: var(--accent-primary-soft);
+  outline: none;
+}
+.rle-code {
+  display: block;
+  position: relative;
+  background: var(--code-bg);
+  color: var(--code-text);
+  padding: 0.6rem 0.8rem;
+  border-radius: var(--radius-sm);
+  font-family: "SFMono-Regular", Consolas, monospace;
+  font-size: 0.85rem;
+  white-space: pre-wrap;
+  margin: 0.3rem 0 0.6rem;
+  outline: none;
+}
+.rle-code[data-lang]:not([data-lang=""]) {
+  padding-top: 1.75rem;
+}
+.rle-code[data-lang]:not([data-lang=""])::before {
+  content: attr(data-lang);
+  position: absolute;
+  top: 0.4rem;
+  right: 0.6rem;
+  color: var(--code-muted);
+  font-family: inherit;
+  font-size: 0.68rem;
+  line-height: 1;
+  text-transform: uppercase;
+  pointer-events: none;
+}
+.rle-image {
+  display: block;
+  margin: 0.6rem 0;
+  padding: 0.6rem 0;
+  box-sizing: border-box;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+}
+.rle-image.side-right {
+  float: right;
+  margin: 0 0 0.6rem 0.85rem;
+  width: var(--rle-image-width, auto);
+  max-width: 100%;
+}
+.rle-image.side-center {
+  /* .rle-image mặc định display:block chiếm hết bề ngang — margin:auto
+     không tự căn giữa được nếu không co theo đúng nội dung bên trong (chỉ
+     max-width thôi thì khối vẫn giữ bề rộng đầy, margin:auto vô tác dụng). */
+  width: 100%;
+  /* Cho phép card dùng toàn bộ bề ngang editor. Giới hạn 70% cũ làm ảnh đề
+     thi khổ rộng tràn khỏi card rồi bị cắt ở mép vùng soạn thảo. */
+  max-width: 100%;
+  margin-left: auto;
+  margin-right: auto;
+}
+.rle-image-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding-left: 0.75rem;
+  padding-right: 0.75rem;
+  margin-bottom: 0.5rem;
+}
+.rle-image-actions {
+  display: flex;
+  gap: 0.4rem;
+}
+.rle-image-zoom {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+.rle-iz-btn {
+  width: 22px;
+  height: 22px;
+  padding: 0 !important;
+}
+.rle-iz-input {
+  width: 42px;
+  text-align: center;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 1px 3px;
+  font-size: 11.5px;
+  font-weight: var(--font-weight-semibold);
+  background: var(--bg-surface);
+  color: var(--text-primary);
+}
+.rle-iz-input::-webkit-outer-spin-button,
+.rle-iz-input::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+.rle-iz-sign {
+  font-size: 11px;
+  color: var(--text-secondary);
+}
+.rle-image-img {
+  max-width: 100%;
+  height: auto;
+  border-radius: 4px;
+  border: 1px solid var(--border);
+  display: block;
+  background: #fff;
+}
+
+.rle-image.side-center > .rle-image-img {
+  width: var(--rle-image-width, auto);
+  margin-left: auto;
+  margin-right: auto;
+}
+
+.rle-image.side-right > .rle-image-img {
+  width: 100%;
+}
+
+/* Exam workspace */
+.exam-body-layout {
+  width: 96%;
+  margin: 0 auto;
+  padding: 0.75rem 0 clamp(1.25rem, 2vw, 2.5rem);
+  display: grid;
+  grid-template-columns: minmax(0, 78%) minmax(0, 22%);
+  gap: clamp(1rem, 1.5vw, 2rem);
+  align-items: start;
+}
+.exam-body-layout.nav-closed {
+  grid-template-columns: minmax(0, 1fr) 48px;
+}
+.exam-sticky-header {
+  display: grid !important;
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+}
+.exam-sticky-header > div:nth-child(2) {
+  grid-column: 2;
+}
+.exam-question-column {
+  min-width: 0;
+  width: 100%;
+}
+.exam-workspace .question-content,
+.exam-workspace .option-item,
+.exam-workspace .tf-item {
+  font-size: var(--font-size-md);
+}
+.exam-workspace .latex-content {
+  font-size: var(--font-size-md);
+  line-height: 1.75;
+}
+.exam-workspace .question-content {
+  line-height: 1.75;
+}
+.exam-question-nav {
+  position: sticky;
+  top: 102px;
+  min-height: 52px;
+  max-height: calc(100vh - 114px);
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-sm);
+}
+.exam-question-nav.open {
+  position: fixed;
+  z-index: 120;
+  top: 102px;
+  right: 2%;
+  bottom: 0.75rem;
+  width: 21.12%;
+  max-height: none;
+  padding: 1.1rem;
+  overflow: visible;
+}
+.exam-question-nav.closed {
+  display: flex;
+  justify-content: center;
+  padding: 0;
+  border: 0;
+  background: var(--accent-primary);
+  box-shadow: 0 5px 16px rgba(30, 63, 170, 0.22);
+}
+.exam-question-nav-toggle {
+  position: absolute;
+  top: 0.7rem;
+  right: 0.7rem;
+  width: 30px;
+  height: 30px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--bg-surface);
+  color: var(--text-secondary);
+  font-size: var(--font-size-lg);
+  line-height: 1;
+  cursor: pointer;
+}
+.exam-question-nav.closed .exam-question-nav-toggle {
+  position: static;
+  width: 48px;
+  height: 48px;
+  border: 0;
+  background: var(--accent-primary);
+  color: var(--text-on-accent);
+}
+.exam-question-nav.closed .exam-question-nav-toggle:hover {
+  background: var(--accent-primary-hover);
+  color: var(--text-on-accent);
+}
+.exam-question-nav-toggle:hover {
+  color: var(--accent-primary);
+  border-color: var(--accent-primary-border);
+  background: var(--accent-primary-soft);
+}
+.exam-question-nav.open .exam-question-nav-toggle {
+  top: 0;
+  right: 0;
+  width: 40px;
+  height: 40px;
+}
+.exam-question-nav-heading {
+  padding-right: 2.25rem;
+  font-size: var(--font-size-md);
+  font-weight: 750;
+}
+.exam-candidate-info {
+  margin-bottom: 1rem;
+  padding-bottom: 1rem;
+  border-bottom: 1px solid var(--border);
+}
+.exam-candidate-info-title {
+  padding-right: 2.25rem;
+  margin-bottom: 0.75rem;
+  font-size: var(--font-size-md);
+  font-weight: 750;
+}
+.exam-candidate-info dl {
+  display: grid;
+  grid-template-columns: 78px minmax(0, 1fr);
+  gap: 0.45rem 0.65rem;
+  font-size: 0.78rem;
+}
+.exam-candidate-info dt {
+  color: var(--text-muted);
+}
+.exam-candidate-info dd {
+  color: var(--text-primary);
+  font-weight: var(--font-weight-semibold);
+  overflow-wrap: anywhere;
+}
+.exam-question-nav-summary {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem 0.9rem;
+  margin: 0.85rem 0 1rem;
+  color: var(--text-secondary);
+  font-size: 0.78rem;
+}
+.exam-question-nav-summary span {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+.exam-question-nav-summary i {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+}
+.answered-dot {
+  background: var(--accent-primary);
+}
+.unanswered-dot {
+  background: var(--border-strong);
+}
+.marked-dot {
+  background: #d97706;
+}
+/* Nút đánh dấu treo dưới ô số câu. Đặt absolute để nó không tính vào chiều cao
+   hàng tiêu đề — nếu tính thì đề một dòng cũng bị đẩy phần đáp án xuống ~30px.
+   Nút rơi vào khoảng lề trái 3rem của phần đáp án nên không đè lên gì. */
+.exam-question-marker {
+  position: relative;
+  width: 36px;
+  height: 36px;
+  flex-shrink: 0;
+}
+.exam-bookmark-button {
+  position: absolute;
+  top: calc(100% + 0.35rem);
+  left: 50%;
+  transform: translateX(-50%);
+  width: 28px;
+  height: 26px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--border);
+  border-radius: 7px;
+  background: var(--bg-surface);
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: all var(--transition);
+}
+.exam-bookmark-button:hover {
+  color: #b45309;
+  border-color: #f59e0b;
+  background: #fffbeb;
+}
+.exam-bookmark-button.active {
+  color: #b45309;
+  border-color: #f59e0b;
+  background: #fef3c7;
+}
+.exam-question-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, 38px);
+  gap: 0.4rem;
+  justify-content: start;
+}
+.exam-question-jump {
+  width: 38px;
+  height: 38px;
+  justify-self: center;
+  border: 1px solid var(--border);
+  border-radius: 9px;
+  background: var(--bg-elevated);
+  color: var(--text-secondary);
+  font: inherit;
+  font-size: 0.78rem;
+  font-weight: var(--font-weight-bold);
+  cursor: pointer;
+  transition: all var(--transition);
+}
+.exam-question-jump:hover {
+  border-color: var(--accent-primary);
+  color: var(--accent-primary);
+  transform: translateY(-1px);
+}
+.exam-question-jump.answered {
+  border-color: var(--accent-primary);
+  background: var(--accent-primary);
+  color: var(--text-on-accent);
+  box-shadow: 0 3px 8px rgba(30, 63, 170, 0.2);
+}
+.exam-question-jump.marked {
+  border-color: var(--accent-warning);
+  background: var(--accent-warning);
+  color: var(--text-on-accent);
+  box-shadow: 0 3px 8px rgba(249, 171, 0, 0.22);
+}
+.exam-question-nav-progress {
+  margin-top: 1rem;
+  padding-top: 1rem;
+  border-top: 1px solid var(--border);
+}
+.exam-question-nav-progress > div:first-child {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 0.55rem;
+  color: var(--text-secondary);
+  font-size: 0.78rem;
+}
+.exam-question-nav-progress strong {
+  color: var(--text-primary);
+}
+.exam-question-nav-content {
+  min-height: calc(100vh - 148px);
+  display: flex;
+  flex-direction: column;
+  max-height: calc(100vh - 148px);
+  overflow-y: auto;
+  scrollbar-gutter: stable;
+}
+.exam-question-nav.open .exam-question-nav-content {
+  height: 100%;
+  min-height: 0;
+  max-height: none;
+}
+.exam-question-nav-submit {
+  position: sticky;
+  bottom: -1.1rem;
+  margin-top: auto;
+  padding: 1rem 0 1.1rem;
+  background: var(--bg-surface);
+}
+.exam-question-nav-submit .btn {
+  width: 100%;
+}
+
+@media (min-width: 1051px) {
+  .exam-body-layout.nav-closed {
+    grid-template-columns: minmax(0, 1fr) 40px;
+  }
+  .exam-question-nav.closed {
+    min-height: 40px;
+    transform: translateY(-1rem);
+  }
+  .exam-question-nav.closed .exam-question-nav-toggle {
+    width: 40px;
+    height: 40px;
+    font-size: 1.05rem;
+  }
+  .exam-question-nav.open .exam-question-nav-toggle {
+    top: -1rem;
+  }
+}
+
+@media (max-width: 1050px) {
+  .exam-body-layout,
+  .exam-body-layout.nav-closed {
+    grid-template-columns: minmax(0, 1fr) 48px;
+    padding: 1.25rem;
+    gap: 0.75rem;
+  }
+  .exam-question-nav.open {
+    position: fixed;
+    z-index: 120;
+    top: 80px;
+    right: 1rem;
+    bottom: 0.75rem;
+    width: min(300px, calc(100vw - 2rem));
+    max-height: none;
+  }
+}
+
+@media (max-width: 680px) {
+  .exam-sticky-header {
+    grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+    gap: 0.5rem !important;
+    padding: 0.75rem 1rem !important;
+  }
+  .exam-sticky-header > div:first-child {
+    min-width: 0;
+  }
+  .exam-sticky-header > div:first-child > div:first-child {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .exam-sticky-header > button {
+    padding: 0.55rem 0.75rem;
+    font-size: 0.8rem;
+  }
+  .exam-body-layout,
+  .exam-body-layout.nav-closed {
+    display: block;
+    padding: 1rem;
+  }
+  .exam-question-nav.closed {
+    position: fixed;
+    z-index: 120;
+    right: 0rem;
+    top: 80px;
+    bottom: auto;
+    width: 33px;
+    min-height: 36px;
+    padding: 0;
+    border: 0;
+    border-radius: 10px 0 0 10px;
+    background: var(--accent-primary);
+    box-shadow: 0 5px 16px rgba(30, 63, 170, 0.28);
+  }
+  .exam-question-nav.closed .exam-question-nav-toggle {
+    width: 40px;
+    height: 36px;
+    border: 0;
+    border-radius: 10px;
+    background: var(--accent-primary);
+    color: var(--text-on-accent);
+    font-size: 1.15rem;
+  }
+  .exam-question-nav.closed .exam-question-nav-toggle:hover {
+    background: var(--accent-primary-hover);
+    color: var(--text-on-accent);
+  }
+  .exam-question-nav.open .exam-question-nav-toggle {
+    position: fixed;
+    z-index: 121;
+    top: 80px;
+    right: 0.5rem;
+    width: 40px;
+    height: 36px;
+    border: 0;
+    border-radius: 10px;
+    background: var(--accent-primary);
+    color: var(--text-on-accent);
+    box-shadow: 0 5px 16px rgba(30, 63, 170, 0.28);
+  }
+  .exam-workspace .question-content,
+  .exam-workspace .option-item,
+  .exam-workspace .tf-item {
+    font-size: var(--font-size-md);
+  }
+  .exam-workspace .latex-content {
+    font-size: var(--font-size-md);
+  }
+}
+
+/* Exam result summary */
+.exam-result-kicker {
+  color: var(--accent-primary);
+  font-size: 0.82rem;
+  font-weight: 750;
+  margin-bottom: 0.45rem;
+}
+.exam-result-title {
+  font-size: var(--font-size-xl);
+  margin-bottom: 1.5rem;
+}
+.exam-result-details {
+  display: grid;
+  grid-template-columns: minmax(180px, 1fr) minmax(180px, 1.35fr);
+  gap: 0.8rem 1.5rem;
+  padding-bottom: 1.25rem;
+  color: var(--text-secondary);
+}
+.exam-result-details strong {
+  color: var(--text-primary);
+  font-weight: 650;
+}
+.exam-result-sections {
+  padding: 1rem 0;
+  border-top: 1px solid var(--border);
+}
+.exam-result-sections > div {
+  display: grid;
+  grid-template-columns: minmax(180px, 1fr) minmax(180px, 1.35fr);
+  gap: 1.5rem;
+  padding: 0.42rem 0;
+  color: var(--text-secondary);
+}
+.exam-result-sections strong {
+  color: var(--text-primary);
+  text-align: left;
+}
+.exam-result-score-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1.5rem;
+  margin: 0.5rem 0 1.25rem;
+  padding: 1rem 1.25rem;
+  border: 2px solid var(--accent-primary);
+  border-radius: var(--radius-md);
+}
+.exam-result-score-row > span {
+  color: var(--text-secondary);
+  font-weight: 650;
+}
+.exam-result-score-row > strong {
+  color: var(--accent-primary);
+  font-size: 2rem;
+  line-height: 1;
+}
+.exam-result-score-row small {
+  font-size: var(--font-size-md);
+  color: var(--text-secondary);
+}
+.exam-result-detail-button {
+  display: flex;
+  width: 100%;
+  margin-bottom: 0.75rem;
+}
+.exam-result-note {
+  color: var(--text-muted);
+  font-size: 0.78rem;
+  line-height: 1.5;
+  text-align: center;
+  margin-bottom: 0.5rem;
+}
+.exam-result-back {
+  display: flex;
+  width: 100%;
+}
+@media (max-width: 600px) {
+  .exam-result-details {
+    grid-template-columns: 1fr;
+    gap: 0.25rem;
+  }
+  .exam-result-details strong {
+    margin-bottom: 0.55rem;
+  }
+}
+
+/* Result detail page */
+.result-page-content {
+  max-width: 1440px;
+  margin: 0 auto;
+}
+/* Breadcrumb đầu trang. min-height bằng chiều cao nút ‹ › để hai bên thẳng hàng */
+.page-breadcrumb {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  min-height: 24px;
+  margin-bottom: 0.25rem;
+  font-size: var(--font-size-base);
+}
+.page-breadcrumb .sep {
+  color: var(--border);
+}
+.page-breadcrumb .current {
+  color: var(--text-secondary);
+}
+
+/* Ghép với .page-header để có cặp nút ‹ ›, nhưng giữ canh lề riêng */
+.result-page-header,
+.page-header.result-page-header {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 1.25rem;
+}
+.result-page-header h1 {
+  font-size: 1.8rem;
+  line-height: 1.2;
+}
+.result-actions {
+  position: relative;
+}
+.result-actions summary {
+  list-style: none;
+  cursor: pointer;
+}
+.result-actions summary::-webkit-details-marker {
+  display: none;
+}
+.result-actions-menu {
+  position: absolute;
+  z-index: 20;
+  top: calc(100% + 0.4rem);
+  right: 0;
+  width: 150px;
+  padding: 0.35rem;
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-lg);
+}
+.result-actions-menu button {
+  width: 100%;
+  justify-content: flex-start;
+  color: var(--accent-danger);
+}
+.result-overview-card {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 280px;
+  gap: 1.5rem;
+  padding: 1.35rem 1.5rem;
+  margin-bottom: 1.5rem;
+}
+.result-overview-main h2 {
+  font-size: var(--font-size-md);
+  margin-bottom: 1rem;
+}
+.result-info-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 1rem;
+}
+.result-info-grid > div {
+  min-width: 0;
+  padding-right: 1rem;
+  border-right: 1px solid var(--border);
+}
+.result-info-grid > div:last-child {
+  border-right: 0;
+}
+.result-info-grid span,
+.result-score-panel > span {
+  display: block;
+  color: var(--text-muted);
+  font-size: var(--font-size-xs);
+  margin-bottom: 0.35rem;
+}
+.result-info-grid strong {
+  font-size: 0.9rem;
+  overflow-wrap: anywhere;
+}
+.result-score-panel {
+  padding-left: 1.5rem;
+  border-left: 1px solid var(--border);
+}
+.result-score-panel > strong {
+  display: block;
+  color: var(--accent-primary);
+  font-size: 1.85rem;
+  line-height: 1.1;
+}
+.result-score-panel small {
+  color: var(--text-secondary);
+  font-size: 0.9rem;
+}
+.result-counts {
+  display: flex;
+  gap: 1rem;
+  margin-top: 0.75rem;
+  color: var(--text-secondary);
+  font-size: var(--font-size-xs);
+}
+.result-counts b {
+  color: var(--text-primary);
+}
+.result-block-list {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+.result-block-list > .card {
+  padding: 1.5rem;
+}
+@media (max-width: 900px) {
+  .result-overview-card {
+    grid-template-columns: 1fr;
+  }
+  .result-score-panel {
+    padding: 1rem 0 0;
+    border-left: 0;
+    border-top: 1px solid var(--border);
+  }
+  .result-info-grid {
+    grid-template-columns: 1fr;
+    gap: 0.75rem;
+  }
+  .result-info-grid > div {
+    border-right: 0;
+    padding-right: 0;
+  }
 }
 
 .options-list {
@@ -590,24 +2445,24 @@ tbody td {
   border-radius: var(--radius-sm);
   cursor: pointer;
   transition: all var(--transition);
-  font-size: 0.875rem;
+  font-size: var(--font-size-base);
 }
 .option-item:hover {
   border-color: var(--accent-primary);
-  background: rgba(37, 91, 167, 0.05);
+  background: rgba(30, 63, 170, 0.05);
 }
 .option-item.selected {
   border-color: var(--accent-primary);
-  background: rgba(37, 91, 167, 0.1);
+  background: rgba(30, 63, 170, 0.1);
 }
 .option-item.correct {
-  border-color: var(--accent-success);
-  background: rgba(107, 203, 119, 0.1);
-  color: var(--accent-success);
+  border-color: var(--answer-correct-border);
+  background: var(--answer-correct-bg);
+  color: var(--text-primary);
 }
 .option-item.wrong {
-  border-color: var(--accent-danger);
-  background: rgba(255, 107, 107, 0.1);
+  border-color: var(--answer-wrong-border);
+  background: var(--answer-wrong-bg);
 }
 
 .option-label {
@@ -618,17 +2473,17 @@ tbody td {
   display: flex;
   align-items: center;
   justify-content: center;
-  font-weight: 700;
+  font-weight: var(--font-weight-bold);
   font-size: 0.8rem;
   flex-shrink: 0;
 }
 .option-item.selected .option-label {
   background: var(--accent-primary);
-  color: white;
+  color: var(--text-on-accent);
 }
 .option-item.correct .option-label {
   background: var(--accent-success);
-  color: white;
+  color: var(--text-on-accent);
 }
 
 .tf-grid {
@@ -670,18 +2525,18 @@ tbody td {
   border-radius: var(--radius-sm);
   cursor: pointer;
   transition: all var(--transition);
-  font-size: 0.875rem;
+  font-size: var(--font-size-base);
 }
 .tf-item:hover {
   border-color: var(--accent-primary);
 }
 .tf-item.true-sel {
-  border-color: var(--accent-success);
-  background: rgba(107, 203, 119, 0.08);
+  border-color: var(--answer-correct-border);
+  background: var(--answer-correct-bg);
 }
 .tf-item.false-sel {
-  border-color: var(--accent-danger);
-  background: rgba(255, 107, 107, 0.08);
+  border-color: var(--answer-wrong-border);
+  background: var(--answer-wrong-bg);
 }
 
 .tf-toggle {
@@ -697,20 +2552,20 @@ tbody td {
   background: transparent;
   color: var(--text-muted);
   cursor: pointer;
-  font-size: 0.75rem;
-  font-weight: 600;
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-semibold);
   transition: all var(--transition);
 }
 .tf-toggle button.active-T {
   background: var(--accent-success);
-  color: white;
+  color: var(--text-on-accent);
 }
 .tf-toggle button.active-F {
   background: var(--accent-danger);
-  color: white;
+  color: var(--text-on-accent);
 }
 
-/* ── Exam Timer ───────────────────────────────────────────────────── */
+/* Exam Timer */
 .exam-timer {
   display: flex;
   align-items: center;
@@ -720,8 +2575,12 @@ tbody td {
   border-radius: var(--radius-md);
   padding: 0.5rem 1rem;
   font-size: 1.2rem;
-  font-weight: 700;
+  font-weight: var(--font-weight-bold);
   font-variant-numeric: tabular-nums;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
 }
 .exam-timer.warning {
   color: var(--accent-warning);
@@ -769,8 +2628,8 @@ tbody td {
   font-size: 1.3rem;
 }
 .stat-value {
-  font-size: 1.75rem;
-  font-weight: 800;
+  font-size: var(--font-size-xl);
+  font-weight: var(--font-weight-extrabold);
 }
 .stat-label {
   font-size: 0.8rem;
@@ -801,8 +2660,8 @@ tbody td {
   animation: slideUp 0.3s ease;
 }
 .modal-title {
-  font-size: 1.25rem;
-  font-weight: 700;
+  font-size: var(--font-size-lg);
+  font-weight: var(--font-weight-bold);
   margin-bottom: 1.5rem;
 }
 
@@ -819,15 +2678,15 @@ tbody td {
 .upload-zone:hover,
 .upload-zone.drag-over {
   border-color: var(--accent-primary);
-  background: rgba(37, 91, 167, 0.05);
+  background: rgba(30, 63, 170, 0.05);
 }
 .upload-icon {
   font-size: 3rem;
   margin-bottom: 1rem;
 }
 .upload-text {
-  font-size: 1rem;
-  font-weight: 500;
+  font-size: var(--font-size-md);
+  font-weight: var(--font-weight-medium);
   margin-bottom: 0.5rem;
 }
 .upload-sub {
@@ -839,7 +2698,7 @@ tbody td {
 .alert {
   padding: 0.875rem 1rem;
   border-radius: var(--radius-sm);
-  font-size: 0.875rem;
+  font-size: var(--font-size-base);
   display: flex;
   align-items: flex-start;
   gap: 0.5rem;
@@ -856,8 +2715,8 @@ tbody td {
   color: #6bcb77;
 }
 .alert-info {
-  background: rgba(37, 91, 167, 0.1);
-  border: 1px solid rgba(37, 91, 167, 0.3);
+  background: rgba(30, 63, 170, 0.1);
+  border: 1px solid rgba(30, 63, 170, 0.3);
   color: #a99fff;
 }
 .alert-warning {
@@ -866,14 +2725,14 @@ tbody td {
   color: #ffd93d;
 }
 
-/* ── Skeleton loading ─────────────────────────────────────────────── */
+/* Skeleton loading */
 .skeleton {
   background: var(--bg-hover);
   animation: shimmer 1.5s infinite;
   border-radius: var(--radius-sm);
 }
 
-/* ── Page header ──────────────────────────────────────────────────── */
+/* Page header */
 .page-header {
   display: flex;
   align-items: center;
@@ -883,16 +2742,16 @@ tbody td {
   gap: 1rem;
 }
 .page-title {
-  font-size: 1.75rem;
-  font-weight: 800;
+  font-size: var(--font-size-xl);
+  font-weight: var(--font-weight-extrabold);
 }
 .page-sub {
   color: var(--text-secondary);
-  font-size: 0.875rem;
+  font-size: var(--font-size-base);
   margin-top: 0.25rem;
 }
 
-/* ── Search/Filter bar ────────────────────────────────────────────── */
+/* Search/Filter bar */
 .filter-bar {
   display: flex;
   flex-wrap: wrap;
@@ -919,13 +2778,14 @@ tbody td {
   }
 }
 
-/* ── Pagination ───────────────────────────────────────────────────── */
+/* Pagination */
 .pagination {
   display: flex;
   align-items: center;
   gap: 0.5rem;
   justify-content: center;
   margin-top: 1.5rem;
+  margin-bottom: 1.5rem;
 }
 .page-btn {
   min-width: 36px;
@@ -938,13 +2798,13 @@ tbody td {
   border: 1px solid var(--border);
   background: var(--bg-elevated);
   cursor: pointer;
-  font-size: 0.875rem;
+  font-size: var(--font-size-base);
   transition: all var(--transition);
 }
 .page-btn:hover,
 .page-btn.active {
   border-color: var(--accent-primary);
-  background: rgba(37, 91, 167, 0.15);
+  background: rgba(30, 63, 170, 0.15);
   color: var(--accent-primary);
 }
 
@@ -968,7 +2828,7 @@ tbody td {
   color: #0f172a;
 }
 
-/* ── Animations ───────────────────────────────────────────────────── */
+/* Animations */
 @keyframes fadeIn {
   from {
     opacity: 0;
@@ -1027,7 +2887,7 @@ tbody td {
   display: inline-block;
 }
 
-/* ── Empty State ──────────────────────────────────────────────────── */
+/* Empty State */
 .empty-state {
   text-align: center;
   padding: 4rem 2rem;
@@ -1043,7 +2903,7 @@ tbody td {
   margin-bottom: 0.5rem;
 }
 
-/* ── Sidebar top bar / collapse ───────────────────────────────────── */
+/* Sidebar top bar / collapse */
 .sidebar-topbar {
   display: none;
 }
@@ -1127,60 +2987,13 @@ tbody td {
   transform: translateY(-2rem);
 }
 
-.assignment-class-list {
-  display: flex;
-  flex-direction: column;
-  gap: 0;
-  border: 1px solid var(--border);
-  border-radius: var(--radius-md);
-  overflow: hidden;
+/* Hàng chi tiết dính liền vào bản ghi phía trên nó, không tự tách ra. */
+.problem-table tbody tr.submission-detail-row {
+  border-top: 0;
 }
-
-.assignment-class-row {
-  display: flex;
-  align-items: center;
-  gap: 0.75rem;
-  min-height: 52px;
-  padding: 0.75rem 1rem;
-  cursor: pointer;
-  background: var(--bg-surface);
-  border-bottom: 1px solid var(--border);
-  transition: background-color 0.15s ease;
-}
-
-.assignment-class-row:last-child {
-  border-bottom: 0;
-}
-
-.assignment-class-row:hover {
-  background: var(--bg-hover);
-}
-
-.assignment-class-row.is-selected {
-  background: rgba(37, 91, 167, 0.08);
-}
-
-.assignment-class-row.is-assigned {
-  cursor: not-allowed;
-  opacity: 0.52;
-  background: var(--bg-hover);
-}
-
-.submission-record-table thead th,
-.submission-record-table tbody > tr:not(.submission-detail-row) > td {
-  text-align: center !important;
-  vertical-align: middle;
-}
-
-.coding-student-table th,
-.coding-student-table td {
-  text-align: center;
-  vertical-align: middle;
-}
-
-.coding-student-table th:first-child,
-.coding-student-table td:first-child {
+.problem-table tbody tr.submission-detail-row > td {
   text-align: left;
+  padding-top: 0;
 }
 
 /* Desktop: collapse the sidebar to a slim left rail.
@@ -1188,7 +3001,7 @@ tbody td {
    The blue logo box, toggle button and user avatar stay, centered in the rail. */
 @media (min-width: 769px) {
   body.sidebar-collapsed .sidebar {
-    width: auto;
+    width: 76px;
     overflow: visible;
   }
 
@@ -1209,12 +3022,34 @@ tbody td {
   }
   body.sidebar-collapsed .sidebar-hide-btn {
     padding: 0.35rem 0.5rem;
-    font-size: 0.75rem;
+    font-size: var(--font-size-xs);
   }
 
-  /* Hide the labels/nav — keep the box, the button and the avatar */
+  body.sidebar-collapsed .sidebar-nav {
+    display: block;
+    padding: 0 0.55rem;
+  }
+  body.sidebar-collapsed .sidebar-section {
+    display: grid;
+    justify-items: center;
+  }
+  body.sidebar-collapsed .nav-item {
+    width: 48px;
+    height: 48px;
+    justify-content: center;
+    padding: 0;
+    gap: 0;
+  }
+  body.sidebar-collapsed .nav-icon {
+    width: 36px;
+    height: 36px;
+    flex-basis: 36px;
+  }
+
+  /* Hide text while keeping every navigation icon available. */
   body.sidebar-collapsed .sidebar-logo-text,
-  body.sidebar-collapsed .sidebar-nav,
+  body.sidebar-collapsed .sidebar-section-title,
+  body.sidebar-collapsed .nav-label,
   body.sidebar-collapsed .user-info {
     display: none;
   }
@@ -1247,7 +3082,7 @@ tbody td {
   opacity: 0.72;
 }
 
-/* ── Responsive ───────────────────────────────────────────────────── */
+/* Responsive */
 @media (max-width: 768px) {
   /* Turn the sidebar into a slide-in drawer instead of hiding it */
   .sidebar {
@@ -1281,7 +3116,7 @@ tbody td {
     border-bottom: 1px solid var(--border);
   }
   .sidebar-topbar-brand {
-    font-weight: 700;
+    font-weight: var(--font-weight-bold);
     font-size: 0.95rem;
   }
 
@@ -1327,6 +3162,11 @@ tbody td {
 }
 
 .latex-content {
+  /* Một chuẩn typography cho mọi nơi dùng LatexRenderer: đề bài, đáp án,
+     lời giải và modal chi tiết. `.question-content` chỉ còn lo khoảng cách
+     sau phần đề, không còn vô tình làm đề bài khác cỡ các trường còn lại. */
+  font-size: var(--font-size-md);
+  line-height: 1.7;
   max-width: 100%;
   word-break: break-word;
   overflow-wrap: break-word;
@@ -1349,30 +3189,125 @@ mjx-container[display="true"] {
 .latex-content td {
   padding: 0.5rem;
 }
+.option-list-surface {
+  padding: 1rem;
+  background: var(--bg-base);
+  border-radius: 0.75rem;
+}
 .option-card {
   display: flex;
   align-items: flex-start;
   gap: 1rem;
   padding: 1rem 1.25rem;
-  background: #f8fafc;
+  background: var(--bg-surface);
   border: 1.5px solid transparent;
-  border-left: 4px solid #cbd5e1;
+  border-left: 4px solid var(--border-strong);
   border-radius: 0.75rem;
   transition: all 0.2s ease;
   margin-bottom: 1rem;
 }
 .option-card:focus-within {
-  background: #ffffff;
-  border-color: #e2e8f0;
+  background: var(--bg-surface);
+  border-color: var(--border);
   border-left-color: var(--accent-primary);
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
 }
 .option-card.is-correct {
-  background: rgba(16, 185, 129, 0.05);
-  border-left-color: #10b981;
+  background: var(--bg-surface);
+  border-left-color: var(--answer-correct-border);
 }
 .option-card.is-correct:focus-within {
-  background: #ffffff;
-  border-color: #10b981;
+  background: var(--bg-surface);
+  border-color: var(--answer-correct-border);
   box-shadow: 0 4px 12px rgba(16, 185, 129, 0.15);
+}
+
+/* Toast — kiểu Google Material Snackbar. Cố ý KHÔNG dùng
+ * --accent-danger/--tone-danger-bg... của globals.css: màu nền snackbar là
+ * "inverse surface" theo đúng chuẩn Material — luôn tối, không đổi theo
+ * theme sáng/tối của app — nên hằng số màu ở đây tách riêng khỏi bộ token
+ * theme, không lẫn vào đó. */
+
+.g-snackbar-zone {
+  position: fixed;
+  left: 20px;
+  bottom: 20px;
+  z-index: 2000;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 8px;
+  pointer-events: none;
+}
+
+.g-snackbar {
+  pointer-events: auto;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  background: #323232;
+  color: #fff;
+  font-size: 0.85rem;
+  padding: 14px 16px 14px 14px;
+  border-radius: 4px;
+  box-shadow:
+    0 3px 5px -1px rgba(0, 0, 0, 0.2),
+    0 6px 10px 0 rgba(0, 0, 0, 0.14),
+    0 1px 18px 0 rgba(0, 0, 0, 0.12);
+  min-width: 280px;
+  max-width: 420px;
+  animation: g-snackbar-in 0.22s cubic-bezier(0, 0, 0.2, 1);
+}
+
+@keyframes g-snackbar-in {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.g-snackbar-dot {
+  flex: none;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  margin-top: 1px;
+}
+
+.g-snackbar-msg {
+  flex: 1;
+  word-break: break-word;
+}
+
+.g-snackbar-action {
+  flex: none;
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-family: inherit;
+  font-size: 0.82rem;
+  font-weight: 700;
+  letter-spacing: 0.3px;
+  padding: 0;
+  color: #8ab4f8; /* một màu accent duy nhất cho mọi mức độ, giống "UNDO" của Gmail — mức độ đã có chấm màu lo rồi */
+}
+.g-snackbar-action:hover {
+  color: #aecbfa;
+}
+
+@media (max-width: 480px) {
+  .g-snackbar-zone {
+    left: 12px;
+    right: 12px;
+    bottom: 12px;
+  }
+  .g-snackbar {
+    min-width: 0;
+    max-width: none;
+    width: 100%;
+  }
 }

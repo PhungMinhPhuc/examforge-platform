@@ -8,9 +8,25 @@ import NavigationHistory from "@/components/NavigationHistory";
 
 interface NavItemProps {
   href: string;
-  icon: string;
+  icon: SidebarIconName;
   label: string;
   onNavigate?: () => void;
+}
+
+type SidebarIconName = "dashboard" | "library" | "create" | "import" | "exams" | "classes" | "ai";
+
+const sidebarIconPaths: Record<SidebarIconName, React.ReactNode> = {
+  dashboard: <><rect x="3" y="3" width="7" height="9" rx="1" /><rect x="14" y="3" width="7" height="5" rx="1" /><rect x="14" y="12" width="7" height="9" rx="1" /><rect x="3" y="16" width="7" height="5" rx="1" /></>,
+  library: <><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20" /><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z" /><path d="M8 7h8M8 11h6" /></>,
+  create: <><rect x="3" y="3" width="18" height="18" rx="2" /><path d="M12 8v8M8 12h8" /></>,
+  import: <><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" /><path d="M14 2v6h6M12 18v-6M9 15l3 3 3-3" /></>,
+  exams: <><path d="M9 5h6M9 3v4M7 5H5a2 2 0 0 0-2 2v13h18V7a2 2 0 0 0-2-2h-2" /><path d="M7 11h10M7 15h7" /></>,
+  classes: <><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" /><circle cx="9" cy="7" r="4" /><path d="M22 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75" /></>,
+  ai: <path d="M12 3l1.2 3.8L17 8l-3.8 1.2L12 13l-1.2-3.8L7 8l3.8-1.2zM5 14l.8 2.2L8 17l-2.2.8L5 20l-.8-2.2L2 17l2.2-.8zM18 14l1 3 3 1-3 1-1 3-1-3-3-1 3-1z" />,
+};
+
+function SidebarIcon({ name }: { name: SidebarIconName }) {
+  return <svg viewBox="0 0 24 24" aria-hidden="true">{sidebarIconPaths[name]}</svg>;
 }
 
 function NavItem({ href, icon, label, onNavigate }: NavItemProps) {
@@ -24,16 +40,20 @@ function NavItem({ href, icon, label, onNavigate }: NavItemProps) {
             !path.startsWith("/questions/upload") &&
             !path.startsWith("/questions/create"))
         : href === "/contests"
-          ? path.startsWith("/contests") || path.startsWith("/coding")
+          ? path.startsWith("/contests") ||
+            path.startsWith("/coding") ||
+            path.startsWith("/results")
           : path === href || path.startsWith(href + "/");
   return (
     <Link
       href={href}
       className={`nav-item ${isActive ? "active" : ""}`}
       onClick={onNavigate}
+      title={label}
+      aria-current={isActive ? "page" : undefined}
     >
-      <span className="nav-icon">{icon}</span>
-      <span>{label}</span>
+      <span className="nav-icon"><SidebarIcon name={icon} /></span>
+      <span className="nav-label">{label}</span>
     </Link>
   );
 }
@@ -45,6 +65,7 @@ export default function Sidebar() {
   const [isOpen, setIsOpen] = useState(false); // mobile drawer
   const [collapsed, setCollapsed] = useState(false); // desktop hide
   const menuRef = useRef<HTMLDivElement>(null);
+  const hasRestoredCollapsed = useRef(false);
 
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
@@ -58,15 +79,26 @@ export default function Sidebar() {
 
   // Restore the desktop collapsed preference on first render
   useEffect(() => {
-    setCollapsed(localStorage.getItem("sidebarCollapsed") === "1");
+    const savedCollapsed = localStorage.getItem("sidebarCollapsed") === "1";
+    setCollapsed(savedCollapsed);
+    document.body.classList.toggle("sidebar-collapsed", savedCollapsed);
   }, []);
 
   // Persist the preference and reflect it on <body> so the layout can react
   useEffect(() => {
+    // Do not overwrite the saved preference with the initial React value
+    // before the restore effect above has applied it.
+    if (!hasRestoredCollapsed.current) {
+      hasRestoredCollapsed.current = true;
+      return;
+    }
     localStorage.setItem("sidebarCollapsed", collapsed ? "1" : "0");
     document.body.classList.toggle("sidebar-collapsed", collapsed);
-    return () => document.body.classList.remove("sidebar-collapsed");
   }, [collapsed]);
+
+  useEffect(() => {
+    return () => document.body.classList.remove("sidebar-collapsed");
+  }, []);
 
   const isMobile = () =>
     typeof window !== "undefined" && window.innerWidth <= 768;
@@ -84,18 +116,19 @@ export default function Sidebar() {
   };
 
   const teacherNav = [
-    { href: "/dashboard", icon: "", label: "Tổng quan" },
-    { href: "/questions", icon: "", label: "Ngân hàng câu hỏi" },
-    { href: "/contests", icon: "", label: "Đề thi và bài tập" },
-    { href: "/classes", icon: "", label: "Lớp học" },
-    { href: "/ai", icon: "", label: "AI" },
+    { href: "/dashboard", icon: "dashboard" as const, label: "Tổng quan" },
+    { href: "/questions", icon: "library" as const, label: "Ngân hàng câu hỏi" },
+    { href: "/questions/create", icon: "create" as const, label: "Tạo câu hỏi" },
+    { href: "/questions/upload", icon: "import" as const, label: "Nhập câu hỏi" },
+    { href: "/contests", icon: "exams" as const, label: "Đề thi và bài tập" },
+    { href: "/classes", icon: "classes" as const, label: "Lớp học" },
+    { href: "/ai", icon: "ai" as const, label: "AI" },
   ];
 
   const studentNav = [
-    { href: "/dashboard", icon: "", label: "Tổng quan" },
-    { href: "/classes", icon: "", label: "Lớp học" },
-    { href: "/contests", icon: "", label: "Đề thi của tôi" },
-    { href: "/coding", icon: "", label: "Lập trình" },
+    { href: "/dashboard", icon: "dashboard" as const, label: "Tổng quan" },
+    { href: "/classes", icon: "classes" as const, label: "Lớp học" },
+    { href: "/contests", icon: "exams" as const, label: "Đề thi và bài tập" },
   ];
 
   const navItems = user?.role === "teacher" ? teacherNav : studentNav;
@@ -230,7 +263,7 @@ export default function Sidebar() {
                       background: "none",
                       border: "none",
                       cursor: "pointer",
-                      color: "#ef4444",
+                      color: "var(--accent-danger)",
                       fontSize: "0.9rem",
                       padding: "0.5rem 0.75rem",
                       textAlign: "left",

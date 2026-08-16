@@ -3,8 +3,10 @@
 import { useState, useRef, useEffect } from "react";
 import { aiApi, ChatMessage, NormalizeProgress } from "@/lib/ai-api";
 import LatexRenderer from "@/components/LatexRenderer";
+import { useAuth } from "@/lib/auth-context";
+import { toast } from "@/lib/toastStore";
 
-export default function FloatingChatbot() {
+function FloatingChatbotContent() {
   const [isOpen, setIsOpen] = useState(false);
   const [mode, setMode] = useState<"chat" | "normalize">("chat");
   const [messages, setMessages] = useState<ChatMessage[]>([]);
@@ -52,7 +54,7 @@ export default function FloatingChatbot() {
           { role: "model", content: data.response },
         ]);
       } catch (err) {
-        alert("Lỗi: " + (err as Error).message);
+        toast.error("Lỗi: " + (err as Error).message);
       } finally {
         setIsLoading(false);
       }
@@ -65,7 +67,7 @@ export default function FloatingChatbot() {
         setInput("");
         setSelectedFiles([]);
       } catch (err) {
-        alert("Lỗi: " + (err as Error).message);
+        toast.error("Lỗi: " + (err as Error).message);
       } finally {
         setIsLoading(false);
         setProgress(null);
@@ -242,7 +244,7 @@ export default function FloatingChatbot() {
             />
           </svg>
         ) : (
-          <span style={{ fontWeight: "bold", fontSize: "1.25rem" }}>AI</span>
+          <span style={{ fontWeight: "bold", fontSize: "var(--font-size-lg)" }}>AI</span>
         )}
       </button>
 
@@ -263,16 +265,16 @@ export default function FloatingChatbot() {
                   display: "flex",
                   alignItems: "center",
                   justifyContent: "center",
-                  fontSize: "1.25rem",
+                  fontSize: "var(--font-size-lg)",
                 }}
               >
                 AI
               </div>
               <div>
-                <h3 style={{ fontWeight: "bold", margin: 0, fontSize: "1rem" }}>
+                <h3 style={{ fontWeight: "bold", margin: 0, fontSize: "var(--font-size-md)" }}>
                   AI
                 </h3>
-                <p style={{ fontSize: "0.75rem", opacity: 0.8, margin: 0 }}>
+                <p style={{ fontSize: "var(--font-size-xs)", opacity: 0.8, margin: 0 }}>
                   {typeof window !== "undefined"
                     ? (() => {
                         const p =
@@ -324,7 +326,7 @@ export default function FloatingChatbot() {
               </h3>
               <p
                 style={{
-                  fontSize: "0.875rem",
+                  fontSize: "var(--font-size-base)",
                   color: "#6b7280",
                   margin: "0 0 1rem 0",
                 }}
@@ -335,8 +337,8 @@ export default function FloatingChatbot() {
               <a
                 href="/ai"
                 style={{
-                  background: "#2563eb",
-                  color: "white",
+                  background: "var(--accent-primary)",
+                  color: "var(--text-on-accent)",
                   padding: "0.5rem 1rem",
                   borderRadius: "0.5rem",
                   textDecoration: "none",
@@ -374,7 +376,7 @@ export default function FloatingChatbot() {
                           textAlign: "center",
                           color: "#9ca3af",
                           marginTop: "2.5rem",
-                          fontSize: "0.875rem",
+                          fontSize: "var(--font-size-base)",
                         }}
                       >
                         <p>
@@ -471,7 +473,7 @@ export default function FloatingChatbot() {
                                 width: "100%",
                                 maxWidth: "240px",
                                 height: "8px",
-                                background: "#e5e7eb",
+                                background: "var(--border)",
                                 borderRadius: "9999px",
                                 overflow: "hidden",
                               }}
@@ -531,7 +533,7 @@ export default function FloatingChatbot() {
                             d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"
                           />
                         </svg>
-                        <p style={{ fontSize: "0.875rem" }}>
+                        <p style={{ fontSize: "var(--font-size-base)" }}>
                           Tải ảnh/PDF/Word lên hoặc paste text thô vào ô bên
                           dưới để chuẩn hóa.
                         </p>
@@ -568,8 +570,8 @@ export default function FloatingChatbot() {
                           style={{
                             width: "100%",
                             padding: "0.75rem",
-                            background: "#2563eb",
-                            color: "white",
+                            background: "var(--accent-primary)",
+                            color: "var(--text-on-accent)",
                             border: "none",
                             borderRadius: "0.5rem",
                             fontWeight: 600,
@@ -605,8 +607,8 @@ export default function FloatingChatbot() {
               <div
                 style={{
                   padding: "0.75rem",
-                  background: "white",
-                  borderTop: "1px solid #e5e7eb",
+                  background: "var(--bg-surface)",
+                  borderTop: "1px solid var(--border)",
                 }}
               >
                 {selectedFiles.length > 0 && mode === "normalize" && (
@@ -622,9 +624,9 @@ export default function FloatingChatbot() {
                       <div
                         key={i}
                         style={{
-                          background: "#f3e8ff",
-                          color: "#7e22ce",
-                          fontSize: "0.75rem",
+                          background: "var(--tone-purple-bg)",
+                          color: "var(--tone-purple-text)",
+                          fontSize: "var(--font-size-xs)",
                           padding: "0.25rem 0.5rem",
                           borderRadius: "0.25rem",
                           display: "flex",
@@ -735,7 +737,7 @@ export default function FloatingChatbot() {
                     className={`chatbot-send ${mode === "chat" ? "chat" : "norm"}`}
                   >
                     {isLoading ? (
-                      <span style={{ fontSize: "0.75rem" }}>...</span>
+                      <span style={{ fontSize: "var(--font-size-xs)" }}>...</span>
                     ) : (
                       <svg
                         style={{ width: "20px", height: "20px" }}
@@ -760,4 +762,11 @@ export default function FloatingChatbot() {
       )}
     </>
   );
+}
+
+export default function FloatingChatbot() {
+  const { user, isLoading } = useAuth();
+
+  if (isLoading || user?.role !== "teacher") return null;
+  return <FloatingChatbotContent />;
 }

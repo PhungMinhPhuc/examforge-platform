@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { createPortal } from "react-dom";
+import { APP_HISTORY_KEY } from "@/lib/appHistory";
 
 export default function NavigationHistory() {
   const router = useRouter();
@@ -33,7 +34,7 @@ export default function NavigationHistory() {
   }, [pathname]);
 
   useEffect(() => {
-    const key = "appNavigationHistory";
+    const key = APP_HISTORY_KEY;
     let data: { entries: string[]; index: number };
     try {
       data = JSON.parse(sessionStorage.getItem(key) || "null");

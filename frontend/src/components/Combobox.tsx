@@ -119,7 +119,8 @@ export default function Combobox({
             right: 0,
             background: "var(--bg-surface)",
             border: "1px solid var(--border)",
-            borderRadius: "var(--radius-sm)",
+            borderRadius: "var(--radius-md)",
+            overflow: "hidden",
             marginTop: "4px",
             zIndex: 100,
             maxHeight: "200px",
@@ -137,7 +138,7 @@ export default function Combobox({
                   style={{
                     padding: "0.5rem 1rem",
                     cursor: "pointer",
-                    fontSize: "0.875rem",
+                    fontSize: "var(--font-size-base)",
                   }}
                   onMouseEnter={(e) =>
                     (e.currentTarget.style.background = "var(--bg-hover)")
@@ -160,7 +161,7 @@ export default function Combobox({
               style={{
                 padding: "0.5rem 1rem",
                 color: "var(--text-muted)",
-                fontSize: "0.875rem",
+                fontSize: "var(--font-size-base)",
               }}
             >
               Không có gợi ý

@@ -5,6 +5,8 @@ import { useAuth } from "@/lib/auth-context";
 import { useRouter } from "next/navigation";
 import Sidebar from "@/components/Sidebar";
 import api from "@/lib/api";
+import { getStoredTheme, applyTheme, type Theme } from "@/lib/theme";
+import { toast } from "@/lib/toastStore";
 
 export default function SettingsPage() {
   const { user, isLoading, logout } = useAuth();
@@ -17,6 +19,20 @@ export default function SettingsPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
+
+  // Bắt đầu bằng "light" (khớp bản HTML server render) rồi mới đọc
+  // localStorage thật sau khi mount — tránh lệch giữa server/client
+  // (script chống chớp trong layout.tsx đã set data-theme trên <html>
+  // trước đó rồi, chỗ này chỉ đồng bộ lại state cho đúng nút đang bấm).
+  const [theme, setTheme] = useState<Theme>("light");
+  useEffect(() => {
+    setTheme(getStoredTheme());
+  }, []);
+
+  const handleThemeChange = (next: Theme) => {
+    setTheme(next);
+    applyTheme(next);
+  };
 
   useEffect(() => {
     if (!isLoading && !user) {
@@ -47,6 +63,7 @@ export default function SettingsPage() {
         body: JSON.stringify(payload),
       });
       setSuccess("Cập nhật thông tin thành công!");
+      toast.success("Cập nhật thông tin thành công!");
       // Xoá mật khẩu sau khi cập nhật
       setPassword("");
 
@@ -60,6 +77,7 @@ export default function SettingsPage() {
       }, 1500);
     } catch (err: any) {
       setError(err.message || "Có lỗi xảy ra khi cập nhật hồ sơ");
+      toast.error(err.message || "Có lỗi xảy ra khi cập nhật hồ sơ");
     } finally {
       setLoading(false);
     }
@@ -111,6 +129,39 @@ export default function SettingsPage() {
           <p className="page-sub">Quản lý thông tin cá nhân và bảo mật</p>
         </div>
 
+        <div
+          className="card"
+          style={{ maxWidth: "600px", marginBottom: "1.5rem" }}
+        >
+          <div style={{ marginBottom: "1rem" }}>
+            <div style={{ fontWeight: 700 }}>Giao diện</div>
+            <div
+              style={{
+                fontSize: "var(--font-size-xs)",
+                color: "var(--text-muted)",
+              }}
+            >
+              Áp dụng ngay, ghi nhớ cho lần sau trên máy này
+            </div>
+          </div>
+          <div style={{ display: "flex", gap: "0.5rem" }}>
+            <button
+              type="button"
+              className={`btn ${theme === "light" ? "btn-primary" : "btn-secondary"}`}
+              onClick={() => handleThemeChange("light")}
+            >
+              ☀ Sáng
+            </button>
+            <button
+              type="button"
+              className={`btn ${theme === "dark" ? "btn-primary" : "btn-secondary"}`}
+              onClick={() => handleThemeChange("dark")}
+            >
+              ● Tối
+            </button>
+          </div>
+        </div>
+
         <div className="card" style={{ maxWidth: "600px" }}>
           {error && (
             <div className="alert alert-error" style={{ marginBottom: "1rem" }}>
@@ -141,7 +192,7 @@ export default function SettingsPage() {
               />
               <div
                 style={{
-                  fontSize: "0.75rem",
+                  fontSize: "var(--font-size-xs)",
                   color: "var(--text-muted)",
                   marginTop: "0.25rem",
                 }}
@@ -172,7 +223,7 @@ export default function SettingsPage() {
                 />
                 <div
                   style={{
-                    fontSize: "0.75rem",
+                    fontSize: "var(--font-size-xs)",
                     color: "var(--text-muted)",
                     marginTop: "0.25rem",
                   }}
@@ -195,7 +246,7 @@ export default function SettingsPage() {
               {password && (
                 <div
                   style={{
-                    fontSize: "0.75rem",
+                    fontSize: "var(--font-size-xs)",
                     color: "var(--accent-warning)",
                     marginTop: "0.25rem",
                   }}

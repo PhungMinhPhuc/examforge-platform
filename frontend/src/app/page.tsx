@@ -284,7 +284,7 @@ export default function HomePage() {
             <p
               style={{
                 color: "var(--text-secondary)",
-                fontSize: "0.875rem",
+                fontSize: "var(--font-size-base)",
                 marginBottom: "1.5rem",
               }}
             >
@@ -307,7 +307,7 @@ export default function HomePage() {
               type="submit"
               className="btn btn-primary btn-block btn-lg"
             >
-              Vào thi ngay →
+              Vào thi ngay
             </button>
           </form>
         )}
