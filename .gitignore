@@ -1,4 +1,4 @@
-# ===== Python =====
+# Python
 __pycache__/
 *.py[cod]
 *$py.class
@@ -10,7 +10,7 @@ __pycache__/
 venv/
 env/
 
-# ===== Node / Next.js =====
+# Node / Next.js
 node_modules/
 .next/
 out/
@@ -18,13 +18,13 @@ out/
 *-debug.log*
 .pnpm-debug.log*
 
-# ===== Môi trường / bí mật =====
+# Môi trường
 .env
 .env.*
 !.env.example
 password.txt
 
-# ===== LaTeX build artifacts =====
+# LaTeX build artifacts
 *.aux
 *.log
 *.out
@@ -43,7 +43,7 @@ test_*.tex
 test_*.pdf
 test_*.txt
 
-# ===== Model weights (tải riêng, KHÔNG đưa vào git) =====
+# Model weights (tải riêng, KHÔNG đưa vào git)
 *.pt
 *.pth
 *.onnx
@@ -51,18 +51,19 @@ test_*.txt
 *.safetensors
 *.weights
 
-# ===== Prototype (HTML→PDF export) =====
+# Prototype (HTML to PDF export) (Latency)
 html_pdf_export/
 
-# ===== Build / output =====
+# Build / output
 build/
 dist/
 %OUTDIR%/
 /%OUTDIR%/
 /storage/
+/.runtime/
 Sample/
 
-# ===== IDE / OS =====
+# IDE / OS
 .vscode/
 .idea/
 *.swp
@@ -70,3 +71,7 @@ Sample/
 .DS_Store
 Thumbs.db
 desktop.ini
+
+# Bản chuyển đổi thử (chuẩn hóa dữ liệu) — chỉ chạy tại máy
+docs/
+Temp/
