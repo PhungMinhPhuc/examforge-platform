@@ -59,7 +59,7 @@ export default function DashboardPage() {
             label: "Câu hỏi",
             value: stats.questions,
             href: "/questions",
-            rgb: "37,91,167",
+            rgb: "30,63,170",
           },
           {
             icon: "",
@@ -161,7 +161,7 @@ export default function DashboardPage() {
               {
                 icon: "",
                 accent: "var(--accent-primary)",
-                accentRgb: "37,91,167",
+                accentRgb: "30,63,170",
                 title: "Upload câu hỏi LaTeX",
                 desc: "Upload file .tex hoặc .zip, hệ thống tự parse và phân loại câu hỏi.",
                 label: "Bắt đầu upload",
@@ -213,7 +213,7 @@ export default function DashboardPage() {
                 <p
                   style={{
                     color: "var(--text-secondary)",
-                    fontSize: "0.875rem",
+                    fontSize: "var(--font-size-base)",
                     marginBottom: "1.25rem",
                   }}
                 >
@@ -263,13 +263,15 @@ export default function DashboardPage() {
               {recentContests.map((c: Record<string, unknown>) => (
                 <div
                   key={String(c.id)}
-                  style={{
-                    display: "flex",
-                    alignItems: "center",
-                    gap: "1rem",
-                    padding: "0.75rem",
-                    background: "var(--bg-elevated)",
-                    borderRadius: "var(--radius-sm)",
+                  className="recent-record"
+                  role="link"
+                  tabIndex={0}
+                  onClick={() => router.push(`/contests/${String(c.id)}`)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" || e.key === " ") {
+                      e.preventDefault();
+                      router.push(`/contests/${String(c.id)}`);
+                    }
                   }}
                 >
                   <div style={{ flex: 1 }}>
@@ -290,6 +292,7 @@ export default function DashboardPage() {
                   <Link
                     href={`/contests/${String(c.id)}`}
                     className="btn btn-ghost btn-sm"
+                    onClick={(e) => e.stopPropagation()}
                   >
                     Xem
                   </Link>

@@ -9,11 +9,14 @@ import api from "@/lib/api";
 import Link from "next/link";
 import { QuestionEditor, QuestionDetail } from "@/components/QuestionEditor";
 import ExportContestModal from "@/components/ExportContestModal";
+import NumberInput from "@/components/NumberInput";
+import useScrollRestoration from "@/lib/useScrollRestoration";
+import { toast } from "@/lib/toastStore";
 
 type QuestionInContest = {
   id: number;
   question_type: string;
-  content: string;
+  content: any; // cây tài liệu (jsonb) — xem frontend/src/lib/docTree.ts
   layout_type: string;
   original_order: number;
   point_weight: number;
@@ -22,7 +25,7 @@ type QuestionInContest = {
   complexity?: number;
   parent_id?: number | null;
   children?: QuestionInContest[];
-  images?: { storage_path: string; img_scale?: number; img_type?: string }[];
+  images?: { id?: number; storage_path: string; width?: number; img_type?: string }[];
 };
 
 type Contest = {
@@ -31,7 +34,6 @@ type Contest = {
   time_limit: number;
   status: string;
   public_id: string;
-  class_id?: number;
   assigned_class_ids?: number[];
   scoring_config?: Record<string, number>;
   allow_guest_link: boolean;
@@ -50,24 +52,50 @@ const TYPE_LABELS: Record<string, string> = {
 };
 
 const TYPE_COLORS: Record<string, string> = {
-  mc: "#255BA7",
-  tf: "#B45309",
-  sa: "#047857",
-  oe: "#1D4ED8",
-  st: "#7E22CE",
-  cd: "#0E7490",
+  mc: "var(--type-mc)",
+  tf: "var(--type-tf)",
+  sa: "var(--type-sa)",
+  oe: "var(--type-oe)",
+  st: "var(--tone-purple-text)",
+  cd: "var(--type-cd)",
+};
+const TYPE_SOFT: Record<string, string> = {
+  mc: "var(--type-mc-soft)",
+  tf: "var(--type-tf-soft)",
+  sa: "var(--type-sa-soft)",
+  oe: "var(--type-oe-soft)",
+  cd: "var(--type-cd-soft)",
+};
+const TYPE_BORDER: Record<string, string> = {
+  mc: "var(--type-mc-border)",
+  tf: "var(--type-tf-border)",
+  sa: "var(--type-sa-border)",
+  oe: "var(--type-oe-border)",
+  cd: "var(--type-cd-border)",
 };
 
 const typeBackground = (type: string) =>
-  type === "st" ? "#FAF5FF" : `${TYPE_COLORS[type] || "#64748b"}14`;
+  type === "st" ? "var(--tone-purple-bg)" : TYPE_SOFT[type] || "var(--type-mc-soft)";
 const typeBorder = (type: string) =>
-  type === "st" ? "#E9D5FF" : `${TYPE_COLORS[type] || "#64748b"}33`;
+  type === "st"
+    ? "var(--tone-purple-border)"
+    : TYPE_BORDER[type] || "var(--type-mc-border)";
 
 const COMPLEXITY_LABELS: Record<number, string> = {
   1: "Nhận biết",
   2: "Thông hiểu",
   3: "Vận dụng",
   4: "Vận dụng cao",
+};
+
+// một dòng trong bảng giao/gỡ lớp
+type ClassAssignment = {
+  id: number;
+  class_name: string;
+  assigned: boolean;
+  assigned_at?: string | null;
+  student_count: number;
+  submitted_count: number;
 };
 
 export default function ContestDetailPage({
@@ -84,6 +112,7 @@ export default function ContestDetailPage({
   const [contest, setContest] = useState<Contest | null>(null);
   const [questions, setQuestions] = useState<QuestionInContest[]>([]);
   const [submissions, setSubmissions] = useState<any[]>([]);
+  const [contestMaxScore, setContestMaxScore] = useState<number | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [toggling, setToggling] = useState(false);
@@ -92,9 +121,7 @@ export default function ContestDetailPage({
   const [showEditContestModal, setShowEditContestModal] = useState(false);
   const [showExportModal, setShowExportModal] = useState(false);
   const [showAssignModal, setShowAssignModal] = useState(false);
-  const [classOptions, setClassOptions] = useState<
-    Array<{ id: number; class_name: string }>
-  >([]);
+  const [classOptions, setClassOptions] = useState<ClassAssignment[]>([]);
   const [selectedClassIds, setSelectedClassIds] = useState<number[]>([]);
   const [assigningClasses, setAssigningClasses] = useState(false);
   const [editContestData, setEditContestData] = useState({
@@ -124,6 +151,8 @@ export default function ContestDetailPage({
     if (!isLoading && user?.role !== "teacher") router.replace("/contests");
   }, [user, isLoading, router]);
 
+  useScrollRestoration(!loading);
+
   useEffect(() => {
     Promise.all([
       api.getContest(contestId),
@@ -133,6 +162,7 @@ export default function ContestDetailPage({
         setContest(res.contest as Contest);
         setQuestions((res.questions || []) as QuestionInContest[]);
         setSubmissions(subRes.submissions || []);
+        setContestMaxScore(subRes.max_score ?? null);
       })
       .catch((err) => setError(err.message))
       .finally(() => setLoading(false));
@@ -145,8 +175,10 @@ export default function ContestDetailPage({
     try {
       await api.updateContestStatus(contest.id, newStatus);
       setContest((prev) => (prev ? { ...prev, status: newStatus } : prev));
+      toast.success("Đã cập nhật trạng thái");
     } catch (e: unknown) {
       setError(e instanceof Error ? e.message : "Lỗi cập nhật trạng thái");
+      toast.error(e instanceof Error ? e.message : "Lỗi cập nhật trạng thái");
     } finally {
       setToggling(false);
     }
@@ -154,9 +186,15 @@ export default function ContestDetailPage({
 
   const handleOpenEditContest = () => {
     if (!contest) return;
-    const localValue = (value?: string | null) => value
-      ? new Date(new Date(value).getTime() - new Date(value).getTimezoneOffset() * 60000).toISOString().slice(0, 16)
-      : "";
+    const localValue = (value?: string | null) =>
+      value
+        ? new Date(
+            new Date(value).getTime() -
+              new Date(value).getTimezoneOffset() * 60000,
+          )
+            .toISOString()
+            .slice(0, 16)
+        : "";
     setEditContestData({
       title: contest.title,
       time_limit: contest.time_limit,
@@ -172,8 +210,12 @@ export default function ContestDetailPage({
     try {
       const payload = {
         ...editContestData,
-        available_from: editContestData.available_from ? new Date(editContestData.available_from).toISOString() : null,
-        due_at: editContestData.due_at ? new Date(editContestData.due_at).toISOString() : null,
+        available_from: editContestData.available_from
+          ? new Date(editContestData.available_from).toISOString()
+          : null,
+        due_at: editContestData.due_at
+          ? new Date(editContestData.due_at).toISOString()
+          : null,
       };
       await api.updateContest(contest.id, payload);
       setContest({
@@ -186,7 +228,7 @@ export default function ContestDetailPage({
       });
       setShowEditContestModal(false);
     } catch (e: unknown) {
-      alert(e instanceof Error ? e.message : "Lỗi cập nhật đề thi");
+      toast.error(e instanceof Error ? e.message : "Lỗi cập nhật đề thi");
     }
   };
 
@@ -209,43 +251,63 @@ export default function ContestDetailPage({
     setContest({ ...contest, allow_guest_link: enabled });
   };
 
+  // ô tích = lớp đang được giao đề, bỏ tích là gỡ
   const openAssignModal = async () => {
-    setSelectedClassIds([]);
     setShowAssignModal(true);
     try {
-      setClassOptions(
-        (await api.getClasses()) as Array<{ id: number; class_name: string }>,
+      const data = (await api.getContestClasses(contestId)) as {
+        classes: ClassAssignment[];
+      };
+      setClassOptions(data.classes);
+      setSelectedClassIds(
+        data.classes.filter((c) => c.assigned).map((c) => c.id),
       );
     } catch (e) {
       setError(e instanceof Error ? e.message : "Không thể tải danh sách lớp");
+      toast.error(e instanceof Error ? e.message : "Không thể tải danh sách lớp");
     }
   };
 
+  const allClassesSelected =
+    classOptions.length > 0 &&
+    classOptions.every((cls) => selectedClassIds.includes(cls.id));
+  const toggleClassId = (id: number, on: boolean) =>
+    setSelectedClassIds((ids) =>
+      on ? [...new Set([...ids, id])] : ids.filter((x) => x !== id),
+    );
+  const classesToAdd = classOptions.filter(
+    (cls) => !cls.assigned && selectedClassIds.includes(cls.id),
+  );
+  const classesToRemove = classOptions.filter(
+    (cls) => cls.assigned && !selectedClassIds.includes(cls.id),
+  );
+
   const assignToClasses = async () => {
-    if (!selectedClassIds.length) return;
+    if (!classesToAdd.length && !classesToRemove.length) return;
+    if (
+      classesToRemove.length &&
+      !confirm(
+        `Gỡ đề khỏi ${classesToRemove.length} lớp: ${classesToRemove
+          .map((c) => c.class_name)
+          .join(", ")}?\n\n` +
+          "Học sinh các lớp đó sẽ không còn thấy và không vào làm được đề này nữa. " +
+          "Bài đã nộp vẫn giữ nguyên.",
+      )
+    )
+      return;
     setAssigningClasses(true);
     try {
-      await Promise.all(
-        selectedClassIds.map((classId) =>
-          api.assignExistingToClass(classId, "contest", contestId),
-        ),
-      );
+      await api.setContestClasses(contestId, selectedClassIds);
       setContest((current) =>
         current
-          ? {
-              ...current,
-              assigned_class_ids: Array.from(
-                new Set([
-                  ...(current.assigned_class_ids || []),
-                  ...selectedClassIds,
-                ]),
-              ),
-            }
+          ? { ...current, assigned_class_ids: [...selectedClassIds] }
           : current,
       );
       setShowAssignModal(false);
+      toast.success("Đã lưu thay đổi");
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Không thể giao đề");
+      setError(e instanceof Error ? e.message : "Không thể lưu thay đổi");
+      toast.error(e instanceof Error ? e.message : "Không thể lưu thay đổi");
     } finally {
       setAssigningClasses(false);
     }
@@ -312,10 +374,12 @@ export default function ContestDetailPage({
       setDetailModal(null);
       const res = await api.getContest(contestId);
       setQuestions(res.questions as QuestionInContest[]);
+      toast.success("Đã lưu câu hỏi");
     } catch (e: any) {
       setDetailModal((d) =>
         d ? { ...d, saving: false, error: e.message || "Lỗi lưu câu hỏi" } : d,
       );
+      toast.error(e?.message || "Lỗi lưu câu hỏi");
     }
   };
 
@@ -417,7 +481,7 @@ export default function ContestDetailPage({
             className="btn btn-ghost"
             style={{ marginTop: "1rem" }}
           >
-            ← Quay lại
+            Quay lại
           </Link>
         </main>
       </div>
@@ -430,30 +494,10 @@ export default function ContestDetailPage({
         {/* Header */}
         <div className="page-header">
           <div>
-            <div
-              style={{
-                display: "flex",
-                alignItems: "center",
-                gap: "0.75rem",
-                marginBottom: "0.25rem",
-              }}
-            >
-              <Link
-                href="/contests"
-                style={{
-                  color: "var(--text-muted)",
-                  fontSize: "0.875rem",
-                  textDecoration: "none",
-                }}
-              >
-                Đề thi
-              </Link>
-              <span style={{ color: "var(--border)" }}>/</span>
-              <span
-                style={{ fontSize: "0.875rem", color: "var(--text-secondary)" }}
-              >
-                Chi tiết
-              </span>
+            <div className="page-breadcrumb">
+              <Link href="/contests">Đề thi</Link>
+              <span className="sep">/</span>
+              <span className="current">Chi tiết</span>
             </div>
             <h1 className="page-title">{contest.title}</h1>
           </div>
@@ -491,7 +535,7 @@ export default function ContestDetailPage({
         >
           {/* Question list */}
           <div className="card">
-            <h3 style={{ marginBottom: "1rem", fontSize: "1rem" }}>
+            <h3 style={{ marginBottom: "1rem", fontSize: "var(--font-size-md)" }}>
               Danh sách câu hỏi ({topLevelQs.length} mục -{" "}
               {actualQuestions.length} câu)
             </h3>
@@ -539,7 +583,7 @@ export default function ContestDetailPage({
                         display: "flex",
                         alignItems: "center",
                         justifyContent: "center",
-                        fontSize: "0.75rem",
+                        fontSize: "var(--font-size-xs)",
                         fontWeight: 700,
                         color:
                           TYPE_COLORS[q.question_type] ||
@@ -561,7 +605,7 @@ export default function ContestDetailPage({
                       >
                         <span
                           style={{
-                            fontSize: "0.7rem",
+                            fontSize: "var(--font-size-2xs)",
                             fontWeight: 600,
                             padding: "0.15rem 0.45rem",
                             borderRadius: 99,
@@ -583,7 +627,7 @@ export default function ContestDetailPage({
                             <span
                               key={type}
                               style={{
-                                fontSize: "0.7rem",
+                                fontSize: "var(--font-size-2xs)",
                                 fontWeight: 600,
                                 padding: "0.15rem 0.45rem",
                                 borderRadius: 99,
@@ -599,7 +643,7 @@ export default function ContestDetailPage({
                         {q.chapter && (
                           <span
                             style={{
-                              fontSize: "0.7rem",
+                              fontSize: "var(--font-size-2xs)",
                               color: "var(--text-muted)",
                             }}
                           >
@@ -609,7 +653,7 @@ export default function ContestDetailPage({
                         {q.complexity && (
                           <span
                             style={{
-                              fontSize: "0.7rem",
+                              fontSize: "var(--font-size-2xs)",
                               color: "var(--text-muted)",
                             }}
                           >
@@ -634,8 +678,14 @@ export default function ContestDetailPage({
                         )}
                       <div
                         style={{
-                          fontSize: "0.825rem",
-                          color: "var(--text-secondary)",
+                          // Chữ thật nằm trong LatexRenderer (con), tự set
+                          // font-size riêng qua class .latex-content — nên
+                          // "fontSize" đặt ở div cha này không có tác dụng.
+                          // Ghi đè thẳng biến --font-size-md mà .latex-content
+                          // đang dùng, chỉ trong phạm vi div này — không đụng
+                          // .question-content/.latex-content ở nơi khác.
+                          ["--font-size-md" as string]: "var(--font-size-xs)",
+                          color: "var(--text-primary)",
                           lineHeight: 1.5,
                           maxHeight: "6em",
                           overflow: "hidden",
@@ -655,7 +705,7 @@ export default function ContestDetailPage({
                     {/* Weight */}
                     <div
                       style={{
-                        fontSize: "0.75rem",
+                        fontSize: "var(--font-size-xs)",
                         color: "var(--text-muted)",
                         flexShrink: 0,
                         textAlign: "right",
@@ -704,16 +754,15 @@ export default function ContestDetailPage({
                                 height: 28,
                                 borderRadius: "50%",
                                 flexShrink: 0,
-                                background: `${TYPE_COLORS[child.question_type] || "#64748b"}14`,
-                                border: `1px solid ${TYPE_COLORS[child.question_type] || "#64748b"}33`,
+                                background: typeBackground(child.question_type),
+                                border: `1px solid ${typeBorder(child.question_type)}`,
                                 display: "flex",
                                 alignItems: "center",
                                 justifyContent: "center",
-                                fontSize: "0.75rem",
+                                fontSize: "var(--font-size-xs)",
                                 fontWeight: 700,
                                 color:
-                                  TYPE_COLORS[child.question_type] ||
-                                  "#475569",
+                                  TYPE_COLORS[child.question_type] || "var(--accent-primary)",
                               }}
                             >
                               {q.startIdx + cIdx}
@@ -721,7 +770,7 @@ export default function ContestDetailPage({
                             <div style={{ flex: 1, minWidth: 0 }}>
                               <div
                                 style={{
-                                  fontSize: "0.825rem",
+                                  fontSize: "var(--font-size-sm)",
                                   color: "var(--text-secondary)",
                                   lineHeight: 1.5,
                                   maxHeight: "6em",
@@ -789,7 +838,7 @@ export default function ContestDetailPage({
                   style={{
                     display: "flex",
                     justifyContent: "space-between",
-                    fontSize: "0.825rem",
+                    fontSize: "var(--font-size-sm)",
                   }}
                 >
                   <span style={{ color: "var(--text-secondary)" }}>
@@ -799,23 +848,59 @@ export default function ContestDetailPage({
                     {contest.time_limit} phút
                   </span>
                 </div>
-                <div style={{ display: "flex", justifyContent: "space-between", gap: ".75rem", fontSize: "0.825rem" }}>
-                  <span style={{ color: "var(--text-secondary)" }}>Mở từ</span>
-                  <span style={{ fontWeight: 600, textAlign: "right" }}>{contest.available_from ? new Date(contest.available_from).toLocaleString("vi-VN") : "Không giới hạn"}</span>
-                </div>
-                <div style={{ display: "flex", justifyContent: "space-between", gap: ".75rem", fontSize: "0.825rem" }}>
-                  <span style={{ color: "var(--text-secondary)" }}>Hạn nộp</span>
-                  <span style={{ fontWeight: 600, textAlign: "right" }}>{contest.due_at ? new Date(contest.due_at).toLocaleString("vi-VN") : "Không giới hạn"}</span>
-                </div>
-                {contest.due_at && <div style={{ display: "flex", justifyContent: "space-between", fontSize: "0.825rem" }}>
-                  <span style={{ color: "var(--text-secondary)" }}>Nộp muộn</span>
-                  <span style={{ fontWeight: 600 }}>{contest.allow_late_submission ? "Cho phép" : "Không"}</span>
-                </div>}
                 <div
                   style={{
                     display: "flex",
                     justifyContent: "space-between",
-                    fontSize: "0.825rem",
+                    gap: ".75rem",
+                    fontSize: "var(--font-size-sm)",
+                  }}
+                >
+                  <span style={{ color: "var(--text-secondary)" }}>Mở từ</span>
+                  <span style={{ fontWeight: 600, textAlign: "right" }}>
+                    {contest.available_from
+                      ? new Date(contest.available_from).toLocaleString("vi-VN")
+                      : "Không giới hạn"}
+                  </span>
+                </div>
+                <div
+                  style={{
+                    display: "flex",
+                    justifyContent: "space-between",
+                    gap: ".75rem",
+                    fontSize: "var(--font-size-sm)",
+                  }}
+                >
+                  <span style={{ color: "var(--text-secondary)" }}>
+                    Hạn nộp
+                  </span>
+                  <span style={{ fontWeight: 600, textAlign: "right" }}>
+                    {contest.due_at
+                      ? new Date(contest.due_at).toLocaleString("vi-VN")
+                      : "Không giới hạn"}
+                  </span>
+                </div>
+                {contest.due_at && (
+                  <div
+                    style={{
+                      display: "flex",
+                      justifyContent: "space-between",
+                      fontSize: "var(--font-size-sm)",
+                    }}
+                  >
+                    <span style={{ color: "var(--text-secondary)" }}>
+                      Nộp muộn
+                    </span>
+                    <span style={{ fontWeight: 600 }}>
+                      {contest.allow_late_submission ? "Cho phép" : "Không"}
+                    </span>
+                  </div>
+                )}
+                <div
+                  style={{
+                    display: "flex",
+                    justifyContent: "space-between",
+                    fontSize: "var(--font-size-sm)",
                   }}
                 >
                   <span style={{ color: "var(--text-secondary)" }}>
@@ -833,6 +918,43 @@ export default function ContestDetailPage({
                     {contest.status === "active" ? "Đang mở" : "Đóng"}
                   </span>
                 </div>
+              </div>
+            </div>
+
+            {/* Actions */}
+            <div className="card" style={{ padding: "1.25rem" }}>
+              <h4 style={{ marginBottom: "0.875rem", fontSize: "0.9rem" }}>
+                {" "}
+                Thao tác
+              </h4>
+              <div
+                style={{
+                  display: "flex",
+                  flexDirection: "column",
+                  gap: "0.5rem",
+                }}
+              >
+                <button
+                  onClick={() => setShowSubmissions(true)}
+                  className="btn btn-primary btn-sm"
+                  style={{ width: "100%" }}
+                >
+                  Danh sách đã nộp ({submissions.length})
+                </button>
+                <button
+                  className="btn btn-secondary btn-sm"
+                  style={{ width: "100%" }}
+                  onClick={openAssignModal}
+                >
+                  Lớp áp dụng
+                </button>
+                <button
+                  className="btn btn-secondary btn-sm"
+                  style={{ width: "100%" }}
+                  onClick={() => setShowExportModal(true)}
+                >
+                  Xuất đề thi
+                </button>
               </div>
             </div>
 
@@ -858,7 +980,7 @@ export default function ContestDetailPage({
                     background: "var(--bg-elevated)",
                     borderRadius: "var(--radius-sm)",
                     padding: "0.625rem 0.75rem",
-                    fontSize: "0.75rem",
+                    fontSize: "var(--font-size-xs)",
                     color: "var(--text-secondary)",
                     wordBreak: "break-all",
                     border: "1px solid var(--border)",
@@ -923,13 +1045,13 @@ export default function ContestDetailPage({
                       <span
                         style={{
                           flex: 1,
-                          fontSize: "0.825rem",
+                          fontSize: "var(--font-size-sm)",
                           color: "var(--text-secondary)",
                         }}
                       >
                         {TYPE_LABELS[type] || type}
                       </span>
-                      <span style={{ fontSize: "0.825rem", fontWeight: 600 }}>
+                      <span style={{ fontSize: "var(--font-size-sm)", fontWeight: 600 }}>
                         {questionCounts[type]}
                       </span>
                     </div>
@@ -953,7 +1075,9 @@ export default function ContestDetailPage({
                 >
                   {["mc", "tf", "sa", "oe"]
                     .filter(
-                      (type) => contest.scoring_config![type] !== undefined,
+                      (type) =>
+                        questionCounts[type] > 0 &&
+                        contest.scoring_config![type] !== undefined,
                     )
                     .map((type) => (
                       <div
@@ -961,7 +1085,7 @@ export default function ContestDetailPage({
                         style={{
                           display: "flex",
                           justifyContent: "space-between",
-                          fontSize: "0.825rem",
+                          fontSize: "var(--font-size-sm)",
                         }}
                       >
                         <span style={{ color: "var(--text-secondary)" }}>
@@ -976,42 +1100,6 @@ export default function ContestDetailPage({
               </div>
             )}
 
-            {/* Actions */}
-            <div className="card" style={{ padding: "1.25rem" }}>
-              <h4 style={{ marginBottom: "0.875rem", fontSize: "0.9rem" }}>
-                {" "}
-                Thao tác
-              </h4>
-              <div
-                style={{
-                  display: "flex",
-                  flexDirection: "column",
-                  gap: "0.5rem",
-                }}
-              >
-                <button
-                  onClick={() => setShowSubmissions(true)}
-                  className="btn btn-primary btn-sm"
-                  style={{ width: "100%" }}
-                >
-                  Xem danh sách đã nộp ({submissions.length})
-                </button>
-                <button
-                  className="btn btn-secondary btn-sm"
-                  style={{ width: "100%" }}
-                  onClick={openAssignModal}
-                >
-                  Giao bài
-                </button>
-                <button
-                  className="btn btn-secondary btn-sm"
-                  style={{ width: "100%" }}
-                  onClick={() => setShowExportModal(true)}
-                >
-                  Xuất đề
-                </button>
-              </div>
-            </div>
           </div>
         </div>
       </main>
@@ -1054,7 +1142,7 @@ export default function ContestDetailPage({
               }}
             >
               <h3 style={{ margin: 0 }}>
-                Danh sách bài thi ({submissions.length})
+                Danh sách bài thi đã nộp ({submissions.length})
               </h3>
               <button
                 onClick={() => setShowSubmissions(false)}
@@ -1074,101 +1162,68 @@ export default function ContestDetailPage({
                 </div>
               ) : (
                 <div style={{ overflowX: "auto" }}>
-                  <table
-                    style={{
-                      width: "100%",
-                      borderCollapse: "collapse",
-                      fontSize: "0.875rem",
-                    }}
-                  >
+                  <table className="problem-table people-table">
+                    <colgroup>
+                      <col style={{ width: "34%" }} />
+                      <col style={{ width: "15%" }} />
+                      <col style={{ width: "18%" }} />
+                      <col style={{ width: "18%" }} />
+                      <col style={{ width: "15%" }} />
+                    </colgroup>
                     <thead>
-                      <tr
-                        style={{
-                          borderBottom: "1px solid var(--border)",
-                          textAlign: "left",
-                        }}
-                      >
-                        <th
-                          style={{
-                            padding: "0.75rem",
-                            color: "var(--text-secondary)",
-                            fontWeight: 600,
-                          }}
-                        >
-                          Thí sinh
-                        </th>
-                        <th
-                          style={{
-                            padding: "0.75rem",
-                            color: "var(--text-secondary)",
-                            fontWeight: 600,
-                          }}
-                        >
-                          Thời gian nộp
-                        </th>
-                        <th
-                          style={{
-                            padding: "0.75rem",
-                            color: "var(--text-secondary)",
-                            fontWeight: 600,
-                          }}
-                        >
-                          Điểm số
-                        </th>
-                        <th
-                          style={{
-                            padding: "0.75rem",
-                            color: "var(--text-secondary)",
-                            fontWeight: 600,
-                          }}
-                        >
-                          Thao tác
-                        </th>
+                      <tr>
+                        <th>Thí sinh</th>
+                        <th>Trạng thái</th>
+                        <th>Thời gian nộp</th>
+                        <th>Điểm số</th>
+                        <th>Thao tác</th>
                       </tr>
                     </thead>
                     <tbody>
                       {submissions.map((sub) => {
                         const endTime = sub.end_time
                           ? new Date(sub.end_time).toLocaleString("vi-VN")
-                          : "Đang làm";
+                          : "—";
                         return (
-                          <tr
-                            key={sub.result_id}
-                            style={{ borderBottom: "1px solid var(--border)" }}
-                          >
-                            <td style={{ padding: "0.75rem", fontWeight: 500 }}>
-                              {sub.student_name}
+                          <tr key={sub.result_id}>
+                            <td className="col-text">
+                              <strong>{sub.student_name}</strong>
+                              <span className="cell-sub">
+                                {sub.student_email || "Thí sinh tự do"}
+                              </span>
                             </td>
-                            <td
-                              style={{
-                                padding: "0.75rem",
-                                color: "var(--text-secondary)",
-                              }}
-                            >
-                              {endTime}
-                              {sub.submitted_late && (
-                                <span className="badge badge-late" style={{ marginLeft: ".5rem" }}>
+                            <td>
+                              {!sub.end_time ? (
+                                <span className="badge badge-inactive">
+                                  Đang làm
+                                </span>
+                              ) : sub.submitted_late ? (
+                                <span className="badge badge-late">
                                   Nộp muộn
+                                </span>
+                              ) : (
+                                <span className="badge badge-active">
+                                  Đã nộp
                                 </span>
                               )}
                             </td>
-                            <td
-                              style={{
-                                padding: "0.75rem",
-                                fontWeight: 600,
-                                color: "var(--accent-primary)",
-                              }}
-                            >
+                            <td>{endTime}</td>
+                            <td className="cell-score">
                               {sub.total_score != null
                                 ? Number(sub.total_score).toFixed(2)
-                                : "-"}
+                                : "—"}
+                              {contestMaxScore != null && (
+                                <small>
+                                  /{Number(contestMaxScore).toFixed(2)}
+                                </small>
+                              )}
                             </td>
-                            <td style={{ padding: "0.75rem" }}>
+                            <td>
                               <Link
                                 href={`/results/${sub.result_id}`}
                                 className="btn btn-secondary btn-sm"
                               >
-                                Xem chi tiết
+                                Chi tiết
                               </Link>
                             </td>
                           </tr>
@@ -1283,7 +1338,7 @@ export default function ContestDetailPage({
                   style={{
                     padding: "0 1.5rem 1rem",
                     color: "var(--accent-danger)",
-                    fontSize: "0.875rem",
+                    fontSize: "var(--font-size-base)",
                   }}
                 >
                   {detailModal.error}
@@ -1352,12 +1407,28 @@ export default function ContestDetailPage({
               padding: "1.5rem",
             }}
           >
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: ".25rem" }}>
+            <div
+              style={{
+                display: "flex",
+                justifyContent: "space-between",
+                alignItems: "center",
+                marginBottom: ".25rem",
+              }}
+            >
               <div>
-                <h3 style={{ margin: 0, fontSize: "1.25rem" }}>Chỉnh sửa thông tin</h3>
-                <p className="page-sub" style={{ margin: ".25rem 0 0" }}>Metadata của đề thi</p>
+                <h3 style={{ margin: 0, fontSize: "var(--font-size-lg)" }}>
+                  Chỉnh sửa thông tin
+                </h3>
+                <p className="page-sub" style={{ margin: ".25rem 0 0" }}>
+                  Metadata của đề thi
+                </p>
               </div>
-              <button className="btn btn-ghost btn-sm" onClick={() => setShowEditContestModal(false)}>✕</button>
+              <button
+                className="btn btn-ghost btn-sm"
+                onClick={() => setShowEditContestModal(false)}
+              >
+                ✕
+              </button>
             </div>
             <div>
               <label
@@ -1394,31 +1465,74 @@ export default function ContestDetailPage({
               >
                 Thời gian làm bài (phút)
               </label>
-              <input
-                type="number"
+              <NumberInput
                 className="input"
                 style={{ width: "100%" }}
                 value={editContestData.time_limit}
-                onChange={(e) =>
+                onChange={(v) =>
                   setEditContestData({
                     ...editContestData,
-                    time_limit: parseInt(e.target.value) || 0,
+                    time_limit: v,
                   })
                 }
               />
             </div>
-            <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr) minmax(0, 1fr)", gap: "1rem" }}>
+            <div
+              style={{
+                display: "grid",
+                gridTemplateColumns: "minmax(0, 1fr) minmax(0, 1fr)",
+                gap: "1rem",
+              }}
+            >
               <label style={{ fontWeight: 600, fontSize: ".9rem" }}>
                 Thời điểm mở
-                <input type="datetime-local" className="input" style={{ width: "100%", minWidth: 0, marginTop: ".5rem" }} value={editContestData.available_from} onChange={(e) => setEditContestData({ ...editContestData, available_from: e.target.value })} />
+                <input
+                  type="datetime-local"
+                  className="input"
+                  style={{ width: "100%", minWidth: 0, marginTop: ".5rem" }}
+                  value={editContestData.available_from}
+                  onChange={(e) =>
+                    setEditContestData({
+                      ...editContestData,
+                      available_from: e.target.value,
+                    })
+                  }
+                />
               </label>
               <label style={{ fontWeight: 600, fontSize: ".9rem" }}>
                 Hạn nộp
-                <input type="datetime-local" className="input" style={{ width: "100%", minWidth: 0, marginTop: ".5rem" }} value={editContestData.due_at} onChange={(e) => setEditContestData({ ...editContestData, due_at: e.target.value })} />
+                <input
+                  type="datetime-local"
+                  className="input"
+                  style={{ width: "100%", minWidth: 0, marginTop: ".5rem" }}
+                  value={editContestData.due_at}
+                  onChange={(e) =>
+                    setEditContestData({
+                      ...editContestData,
+                      due_at: e.target.value,
+                    })
+                  }
+                />
               </label>
             </div>
-            <label style={{ display: "flex", alignItems: "center", gap: ".6rem", fontSize: ".9rem" }}>
-              <input type="checkbox" checked={editContestData.allow_late_submission} onChange={(e) => setEditContestData({ ...editContestData, allow_late_submission: e.target.checked })} />
+            <label
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: ".6rem",
+                fontSize: ".9rem",
+              }}
+            >
+              <input
+                type="checkbox"
+                checked={editContestData.allow_late_submission}
+                onChange={(e) =>
+                  setEditContestData({
+                    ...editContestData,
+                    allow_late_submission: e.target.checked,
+                  })
+                }
+              />
               Cho phép nộp sau hạn
             </label>
             <div
@@ -1448,7 +1562,7 @@ export default function ContestDetailPage({
             position: "fixed",
             inset: 0,
             zIndex: 1200,
-            background: "rgba(15,23,42,.58)",
+            background: "var(--overlay)",
             display: "grid",
             placeItems: "center",
             padding: "2.5vh",
@@ -1481,7 +1595,8 @@ export default function ContestDetailPage({
               <div>
                 <h2 style={{ margin: 0 }}>Giao đề cho lớp</h2>
                 <p className="page-sub" style={{ margin: ".25rem 0 0" }}>
-                  {contest.title}
+                  {contest.title} · tích để giao, bỏ tích để gỡ. Lớp bị gỡ sẽ
+                  không truy cập được đề nữa, bài đã nộp vẫn giữ.
                 </p>
               </div>
               <button
@@ -1494,39 +1609,93 @@ export default function ContestDetailPage({
             <div
               style={{ padding: "1.25rem 1.5rem", overflowY: "auto", flex: 1 }}
             >
-              <div className="assignment-class-list">
-                {classOptions.map((cls) => {
-                  const assigned =
-                    contest.assigned_class_ids?.includes(cls.id) || false;
-                  return (
-                    <label
-                      key={cls.id}
-                      className={`assignment-class-row${assigned ? " is-assigned" : selectedClassIds.includes(cls.id) ? " is-selected" : ""}`}
-                    >
-                      <input
-                        type="checkbox"
-                        disabled={assigned}
-                        checked={assigned || selectedClassIds.includes(cls.id)}
-                        onChange={(e) =>
-                          setSelectedClassIds((ids) =>
-                            e.target.checked
-                              ? [...ids, cls.id]
-                              : ids.filter((id) => id !== cls.id),
-                          )
-                        }
-                      />
-                      <strong>{cls.class_name}</strong>
-                      {assigned && (
-                        <span
-                          className="badge badge-active"
-                          style={{ marginLeft: "auto" }}
+              <div style={{ overflowX: "auto" }}>
+                <table className="problem-table pick-table">
+                  <colgroup>
+                    <col className="pick-col" />
+                    <col style={{ width: "34%" }} />
+                    <col style={{ width: "18%" }} />
+                    <col style={{ width: "14%" }} />
+                    <col style={{ width: "20%" }} />
+                  </colgroup>
+                  <thead>
+                    <tr>
+                      <th>
+                        <input
+                          type="checkbox"
+                          aria-label="Chọn tất cả"
+                          disabled={!classOptions.length}
+                          checked={allClassesSelected}
+                          onChange={(e) =>
+                            setSelectedClassIds(
+                              e.target.checked
+                                ? classOptions.map((cls) => cls.id)
+                                : [],
+                            )
+                          }
+                        />
+                      </th>
+                      <th>Lớp</th>
+                      <th>Ngày giao</th>
+                      <th>Đã nộp</th>
+                      <th>Thay đổi</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {classOptions.map((cls) => {
+                      const selected = selectedClassIds.includes(cls.id);
+                      const willAdd = selected && !cls.assigned;
+                      const willRemove = !selected && cls.assigned;
+                      return (
+                        <tr
+                          key={cls.id}
+                          className={
+                            willRemove
+                              ? "is-removing"
+                              : willAdd
+                                ? "is-selected"
+                                : undefined
+                          }
+                          onClick={() => toggleClassId(cls.id, !selected)}
                         >
-                          Đã giao
-                        </span>
-                      )}
-                    </label>
-                  );
-                })}
+                          <td onClick={(e) => e.stopPropagation()}>
+                            <input
+                              type="checkbox"
+                              checked={selected}
+                              onChange={(e) =>
+                                toggleClassId(cls.id, e.target.checked)
+                              }
+                            />
+                          </td>
+                          <td className="col-text">
+                            <strong>{cls.class_name}</strong>
+                          </td>
+                          <td>
+                            {cls.assigned_at
+                              ? new Date(cls.assigned_at).toLocaleDateString(
+                                  "vi-VN",
+                                )
+                              : "—"}
+                          </td>
+                          <td>
+                            {cls.assigned
+                              ? `${cls.submitted_count}/${cls.student_count}`
+                              : "—"}
+                          </td>
+                          <td>
+                            {willRemove ? (
+                              <span className="badge badge-remove">Sẽ gỡ</span>
+                            ) : willAdd ? (
+                              <span className="badge badge-add">Sẽ giao</span>
+                            ) : (
+                              "—"
+                            )}
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
               </div>
               {classOptions.length === 0 && (
                 <div className="empty-state">
@@ -1546,13 +1715,27 @@ export default function ContestDetailPage({
                 alignItems: "center",
               }}
             >
-              <strong>Đã chọn: {selectedClassIds.length} lớp</strong>
+              <strong>
+                {classesToAdd.length || classesToRemove.length
+                  ? [
+                      classesToAdd.length &&
+                        `Giao thêm ${classesToAdd.length} lớp`,
+                      classesToRemove.length &&
+                        `Gỡ ${classesToRemove.length} lớp`,
+                    ]
+                      .filter(Boolean)
+                      .join(" · ")
+                  : `Đang ở ${selectedClassIds.length} lớp`}
+              </strong>
               <button
                 className="btn btn-primary"
-                disabled={!selectedClassIds.length || assigningClasses}
+                disabled={
+                  (!classesToAdd.length && !classesToRemove.length) ||
+                  assigningClasses
+                }
                 onClick={assignToClasses}
               >
-                {assigningClasses ? "Đang giao…" : "Giao đề"}
+                {assigningClasses ? "Đang lưu…" : "Lưu thay đổi"}
               </button>
             </div>
           </div>

@@ -12,33 +12,48 @@ export default function ExamTimer({
   initialSeconds,
   onExpire,
 }: Props) {
-  const [remaining, setRemaining] = useState(initialSeconds ?? totalSeconds);
+  const startingSeconds = initialSeconds ?? totalSeconds;
+  const deadlineRef = useRef(Date.now() + startingSeconds * 1000);
+  const [remaining, setRemaining] = useState(startingSeconds);
   const expiredRef = useRef(false);
+  const onExpireRef = useRef(onExpire);
 
-  // Đếm ngược: chỉ giảm thời gian, không gọi callback trong updater (tránh setState
-  // khi đang render component khác).
   useEffect(() => {
-    if (remaining <= 0) return;
+    onExpireRef.current = onExpire;
+  }, [onExpire]);
+
+  // Thời gian hiển thị luôn được suy ra từ deadline đã nhận từ backend. Không
+  // trừ dần một biến ở frontend, vì render/lưu đáp án có thể làm interval trễ.
+  useEffect(() => {
+    const syncWithDeadline = () => {
+      const nextRemaining = Math.max(
+        0,
+        Math.ceil((deadlineRef.current - Date.now()) / 1000),
+      );
+      setRemaining((current) =>
+        current === nextRemaining ? current : nextRemaining,
+      );
+    };
+
+    syncWithDeadline();
     const interval = setInterval(() => {
-      setRemaining((prev) => (prev <= 1 ? 0 : prev - 1));
-    }, 1000);
+      syncWithDeadline();
+    }, 250);
     return () => clearInterval(interval);
-  }, [remaining]);
+  }, []);
 
   // Báo hết giờ đúng một lần, sau khi render xong.
   useEffect(() => {
     if (remaining <= 0 && !expiredRef.current) {
       expiredRef.current = true;
-      onExpire?.();
+      onExpireRef.current?.();
     }
-  }, [remaining, onExpire]);
+  }, [remaining]);
 
   const mins = Math.floor(remaining / 60)
     .toString()
     .padStart(2, "0");
   const secs = (remaining % 60).toString().padStart(2, "0");
-  const pct = ((totalSeconds - remaining) / totalSeconds) * 100;
-
   const timerClass =
     remaining < 60 ? "danger" : remaining < 300 ? "warning" : "";
 
@@ -47,18 +62,11 @@ export default function ExamTimer({
       style={{
         display: "flex",
         flexDirection: "column",
-        gap: "0.5rem",
         alignItems: "center",
       }}
     >
       <div className={`exam-timer ${timerClass}`}>
-        <span></span>
-        <span>
-          {mins}:{secs}
-        </span>
-      </div>
-      <div className="progress-bar" style={{ width: "140px" }}>
-        <div className="progress-fill" style={{ width: `${pct}%` }} />
+        {mins}:{secs}
       </div>
     </div>
   );

@@ -106,7 +106,8 @@ export default function AdaptiveOptionGrid({
       ref={ref}
       style={{
         display: "grid",
-        gap: "0.75rem",
+        rowGap: "0.4rem",
+        columnGap: "0.75rem",
         gridTemplateColumns: `repeat(${cols}, minmax(0, 1fr))`,
         alignItems: "baseline",
         ...style,

@@ -6,11 +6,13 @@ import { useRouter } from "next/navigation";
 import Sidebar from "@/components/Sidebar";
 import LatexRenderer from "@/components/LatexRenderer";
 import Combobox from "@/components/Combobox";
+import NumberInput from "@/components/NumberInput";
 import api from "@/lib/api";
+import { toast } from "@/lib/toastStore";
 
 type Question = {
   id: number;
-  content: string;
+  content: any; // cây tài liệu (jsonb) — xem frontend/src/lib/docTree.ts
   question_type: string;
   chapter?: string;
   subject?: string;
@@ -184,6 +186,7 @@ export default function NewContestPage() {
           });
         } catch (err) {
           console.error(err);
+          toast.error("Lỗi khi tải câu hỏi liên quan");
         }
       } else {
         setSelectedQuestions((prev) => [...prev, q]);
@@ -221,7 +224,9 @@ export default function NewContestPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (selectedQuestions.length === 0) {
-      setError("Vui lòng chọn ít nhất 1 câu hỏi");
+      const msg = "Vui lòng chọn ít nhất 1 câu hỏi";
+      setError(msg);
+      toast.error(msg);
       return;
     }
     setLoading(true);
@@ -261,14 +266,18 @@ export default function NewContestPage() {
         scoring_config: parsed,
         question_ids: sortedIds,
         status,
-        available_from: availableFrom ? new Date(availableFrom).toISOString() : null,
+        available_from: availableFrom
+          ? new Date(availableFrom).toISOString()
+          : null,
         due_at: dueAt ? new Date(dueAt).toISOString() : null,
         allow_late_submission: allowLateSubmission,
       });
       setSuccess(` Tạo đề thi thành công! ID: ${res.id}`);
+      toast.success("Tạo đề thi thành công!");
       setTimeout(() => router.push("/contests"), 1500);
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : "Lỗi tạo đề thi");
+      toast.error(err instanceof Error ? err.message : "Lỗi tạo đề thi");
     } finally {
       setLoading(false);
     }
@@ -276,11 +285,15 @@ export default function NewContestPage() {
 
   const handleRandom = async () => {
     if (!title.trim()) {
-      setError("Vui lòng nhập tên đề thi trước khi tạo ngẫu nhiên");
+      const msg = "Vui lòng nhập tên đề thi trước khi tạo ngẫu nhiên";
+      setError(msg);
+      toast.error(msg);
       return;
     }
     if (randomCount < 1) {
-      setError("Số câu ngẫu nhiên phải lớn hơn 0");
+      const msg = "Số câu ngẫu nhiên phải lớn hơn 0";
+      setError(msg);
+      toast.error(msg);
       return;
     }
     setRandomLoading(true);
@@ -293,21 +306,25 @@ export default function NewContestPage() {
         scoring_config: { ...scores },
         count: randomCount,
         status,
-        available_from: availableFrom ? new Date(availableFrom).toISOString() : null,
+        available_from: availableFrom
+          ? new Date(availableFrom).toISOString()
+          : null,
         due_at: dueAt ? new Date(dueAt).toISOString() : null,
         allow_late_submission: allowLateSubmission,
         question_type: randomType || undefined,
       });
       setSuccess(`Đã tạo đề ngẫu nhiên (${res.count} câu)! ID: ${res.id}`);
+      toast.success(`Đã tạo đề ngẫu nhiên (${res.count} câu)!`);
       setTimeout(() => router.push("/contests"), 1500);
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : "Lỗi tạo đề ngẫu nhiên");
+      toast.error(err instanceof Error ? err.message : "Lỗi tạo đề ngẫu nhiên");
     } finally {
       setRandomLoading(false);
     }
   };
 
-  // ===== Tổng hợp số liệu đã chọn =====
+  // Tổng hợp số liệu đã chọn
   const typeCounts: Record<string, number> = { mc: 0, tf: 0, sa: 0, oe: 0 };
   let totalQs = 0;
   selectedQuestions.forEach((q) => {
@@ -352,7 +369,7 @@ export default function NewContestPage() {
       )
     : ["10", "11", "12"];
 
-  // ===== Render nội dung 1 câu (badges + nội dung + đáp án) trong modal =====
+  // Render nội dung 1 câu (badges + nội dung + đáp án) trong modal
   const renderOptions = (node: Question) => {
     if (
       node.question_type === "mc" &&
@@ -453,7 +470,7 @@ export default function NewContestPage() {
           style={{
             marginTop: "0.6rem",
             fontSize: "0.8rem",
-            color: "var(--accent-warning)",
+            color: "var(--accent-primary)",
             fontWeight: 600,
           }}
         >
@@ -487,7 +504,7 @@ export default function NewContestPage() {
           padding: "0.9rem",
           borderRadius: "var(--radius-md)",
           cursor: "pointer",
-          background: selected ? "rgba(37,91,167,0.08)" : "var(--bg-surface)",
+          background: selected ? "rgba(30,63,170,0.08)" : "var(--bg-surface)",
           border: `1px solid ${selected ? "var(--accent-primary)" : "var(--border)"}`,
           transition: "all 0.15s",
         }}
@@ -504,7 +521,7 @@ export default function NewContestPage() {
             display: "flex",
             alignItems: "center",
             justifyContent: "center",
-            color: "white",
+            color: "var(--text-on-accent)",
             fontSize: "0.8rem",
             fontWeight: 700,
           }}
@@ -540,18 +557,18 @@ export default function NewContestPage() {
                 {COMPLEXITY_LABELS[q.complexity]}
               </span>
             )}
-            <span style={{ fontSize: "0.75rem", color: "var(--text-muted)" }}>
+            <span style={{ fontSize: "var(--font-size-xs)", color: "var(--text-muted)" }}>
               ID: {q.id}
             </span>
             {q.subject && (
-              <span style={{ fontSize: "0.75rem", color: "var(--text-muted)" }}>
+              <span style={{ fontSize: "var(--font-size-xs)", color: "var(--text-muted)" }}>
                 {q.subject}
                 {q.grade ? ` · Lớp ${q.grade}` : ""}
               </span>
             )}
             {q.chapter && (
               <span
-                style={{ fontSize: "0.75rem", color: "var(--text-muted)" }}
+                style={{ fontSize: "var(--font-size-xs)", color: "var(--text-muted)" }}
                 title={q.chapter}
               >
                 {q.chapter.slice(0, 40)}
@@ -712,26 +729,53 @@ export default function NewContestPage() {
               </div>
               <div className="form-group">
                 <label className="form-label">Thời gian (phút)</label>
-                <input
+                <NumberInput
                   className="input"
-                  type="number"
                   min={1}
                   max={300}
                   value={timeLimit}
-                  onChange={(e) => setTimeLimit(+e.target.value)}
+                  onChange={setTimeLimit}
                   required
                 />
               </div>
-              <div className="form-group" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "1rem" }}>
-                <label className="form-label">Thời điểm mở
-                  <input className="input" type="datetime-local" style={{ width: "100%" }} value={availableFrom} onChange={(e) => setAvailableFrom(e.target.value)} />
+              <div
+                className="form-group"
+                style={{
+                  display: "grid",
+                  gridTemplateColumns: "1fr 1fr",
+                  gap: "1rem",
+                }}
+              >
+                <label className="form-label">
+                  Thời điểm mở
+                  <input
+                    className="input"
+                    type="datetime-local"
+                    style={{ width: "100%" }}
+                    value={availableFrom}
+                    onChange={(e) => setAvailableFrom(e.target.value)}
+                  />
                 </label>
-                <label className="form-label">Hạn nộp
-                  <input className="input" type="datetime-local" style={{ width: "100%" }} value={dueAt} onChange={(e) => setDueAt(e.target.value)} />
+                <label className="form-label">
+                  Hạn nộp
+                  <input
+                    className="input"
+                    type="datetime-local"
+                    style={{ width: "100%" }}
+                    value={dueAt}
+                    onChange={(e) => setDueAt(e.target.value)}
+                  />
                 </label>
               </div>
-              <label className="form-group" style={{ display: "flex", alignItems: "center", gap: ".6rem" }}>
-                <input type="checkbox" checked={allowLateSubmission} onChange={(e) => setAllowLateSubmission(e.target.checked)} />
+              <label
+                className="form-group"
+                style={{ display: "flex", alignItems: "center", gap: ".6rem" }}
+              >
+                <input
+                  type="checkbox"
+                  checked={allowLateSubmission}
+                  onChange={(e) => setAllowLateSubmission(e.target.checked)}
+                />
                 Cho phép nộp sau hạn
               </label>
               <div className="form-group">
@@ -774,14 +818,11 @@ export default function NewContestPage() {
                     <span style={{ fontSize: "0.85rem", width: "50px" }}>
                       TN:
                     </span>
-                    <input
-                      type="number"
+                    <NumberInput
                       step="0.01"
                       className="input"
                       value={scores.mc}
-                      onChange={(e) =>
-                        setScores({ ...scores, mc: +e.target.value })
-                      }
+                      onChange={(v) => setScores({ ...scores, mc: v })}
                       style={{ padding: "0.4rem", fontSize: "0.9rem" }}
                     />
                   </div>
@@ -795,14 +836,11 @@ export default function NewContestPage() {
                     <span style={{ fontSize: "0.85rem", width: "50px" }}>
                       ĐS:
                     </span>
-                    <input
-                      type="number"
+                    <NumberInput
                       step="0.01"
                       className="input"
                       value={scores.tf}
-                      onChange={(e) =>
-                        setScores({ ...scores, tf: +e.target.value })
-                      }
+                      onChange={(v) => setScores({ ...scores, tf: v })}
                       style={{ padding: "0.4rem", fontSize: "0.9rem" }}
                     />
                   </div>
@@ -816,14 +854,11 @@ export default function NewContestPage() {
                     <span style={{ fontSize: "0.85rem", width: "50px" }}>
                       TLN:
                     </span>
-                    <input
-                      type="number"
+                    <NumberInput
                       step="0.01"
                       className="input"
                       value={scores.sa}
-                      onChange={(e) =>
-                        setScores({ ...scores, sa: +e.target.value })
-                      }
+                      onChange={(v) => setScores({ ...scores, sa: v })}
                       style={{ padding: "0.4rem", fontSize: "0.9rem" }}
                     />
                   </div>
@@ -837,21 +872,18 @@ export default function NewContestPage() {
                     <span style={{ fontSize: "0.85rem", width: "50px" }}>
                       TL:
                     </span>
-                    <input
-                      type="number"
+                    <NumberInput
                       step="0.01"
                       className="input"
                       value={scores.oe}
-                      onChange={(e) =>
-                        setScores({ ...scores, oe: +e.target.value })
-                      }
+                      onChange={(v) => setScores({ ...scores, oe: v })}
                       style={{ padding: "0.4rem", fontSize: "0.9rem" }}
                     />
                   </div>
                 </div>
                 <div
                   style={{
-                    fontSize: "0.75rem",
+                    fontSize: "var(--font-size-xs)",
                     color: "var(--text-muted)",
                     marginTop: "0.5rem",
                   }}
@@ -956,13 +988,12 @@ export default function NewContestPage() {
                   flexWrap: "wrap",
                 }}
               >
-                <input
+                <NumberInput
                   className="input"
-                  type="number"
                   min={1}
                   max={200}
                   value={randomCount}
-                  onChange={(e) => setRandomCount(+e.target.value)}
+                  onChange={setRandomCount}
                   style={{ width: "80px" }}
                 />
                 <span
@@ -1039,8 +1070,8 @@ export default function NewContestPage() {
                   color: "var(--text-muted)",
                 }}
               >
-                <div style={{ fontSize: "1.75rem" }}>＋</div>
-                <div style={{ fontSize: "0.875rem" }}>
+                <div style={{ fontSize: "var(--font-size-xl)" }}>＋</div>
+                <div style={{ fontSize: "var(--font-size-base)" }}>
                   Chưa chọn câu hỏi nào — bấm để mở ngân hàng câu hỏi
                 </div>
               </div>
@@ -1155,7 +1186,7 @@ export default function NewContestPage() {
           </div>
         </div>
 
-        {/* ===== Modal chọn câu (giao diện ngân hàng) ===== */}
+        {/* Modal chọn câu (giao diện ngân hàng) */}
         {pickerOpen && (
           <div
             style={{
@@ -1220,7 +1251,7 @@ export default function NewContestPage() {
                 className="filter-bar"
                 style={{
                   padding: "1rem 1.5rem",
-                  background: "#f8f9fa",
+                  background: "var(--bg-hover)",
                   borderBottom: "1px solid var(--border)",
                 }}
               >

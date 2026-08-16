@@ -7,6 +7,7 @@ import Sidebar from "@/components/Sidebar";
 import api from "@/lib/api";
 import Link from "next/link";
 import useScrollRestoration from "@/lib/useScrollRestoration";
+import { toast } from "@/lib/toastStore";
 
 interface Student {
   id: number;
@@ -24,10 +25,7 @@ interface Contest {
   assignment_type: "contest" | "coding";
 }
 
-/**
- * Không có hạn nộp thì coi như không giới hạn thời gian; có hạn nộp thì ghi
- * thời gian làm bài kèm mốc hết hạn.
- */
+// Không hạn nộp thì ghi không giới hạn, có hạn thì ghi thời gian làm + hạn nộp
 function scheduleLabel(item: Contest) {
   if (!item.due_at) return "Không giới hạn thời gian";
   const due = new Date(item.due_at).toLocaleString("vi-VN", {
@@ -47,7 +45,7 @@ interface AvailableAssignment extends Contest {
   assigned: boolean;
 }
 
-/** Trạng thái làm bài lập trình — coding_assignment_students.status */
+// coding_assignment_students.status
 const CODING_PROGRESS_LABELS: Record<string, string> = {
   not_started: "Chưa bắt đầu",
   in_progress: "Đang làm",
@@ -78,8 +76,7 @@ export default function ClassDetailPage() {
   const [classData, setClassData] = useState<ClassDetail | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
-  // Tab nằm trong URL để khi quay lại trang còn đúng tab cũ, thay vì rơi về
-  // Tổng quan.
+  // giữ tab trong URL, không thì quay lại trang là rơi về Tổng quan
   const [activeTab, setActiveTab] = useState<Tab>(
     (searchParams.get("tab") as Tab) || "overview",
   );
@@ -98,6 +95,7 @@ export default function ClassDetailPage() {
   const [submissionModal, setSubmissionModal] = useState<{
     item: Contest;
     rows: any[];
+    maxScore?: number | null;
     loading: boolean;
     error: string;
   } | null>(null);
@@ -132,6 +130,7 @@ export default function ClassDetailPage() {
         setShowDropdown(true);
       } catch (err) {
         console.error("Search failed", err);
+        toast.error("Lỗi khi tìm học sinh");
       } finally {
         setSearchLoading(false);
       }
@@ -200,8 +199,7 @@ export default function ClassDetailPage() {
     setTimeout(() => setCopied(false), 2000);
   };
 
-  // Gỡ hẳn một đề khỏi lớp: học sinh lớp này không truy cập được nữa, bài đã
-  // nộp vẫn giữ.
+  // Gỡ đề khỏi lớp: học sinh lớp này hết truy cập được, bài đã nộp vẫn giữ
   const removeFromClass = async (item: Contest) => {
     const isCoding = item.assignment_type === "coding";
     if (
@@ -216,8 +214,10 @@ export default function ClassDetailPage() {
     try {
       await api.unassignFromClass(classId, item.assignment_type, item.id);
       await fetchClassData();
+      toast.success("Đã gỡ khỏi lớp");
     } catch (err: any) {
       setError(err.message || "Không thể gỡ khỏi lớp");
+      toast.error(err.message || "Không thể gỡ khỏi lớp");
     } finally {
       setRemovingKey("");
     }
@@ -240,6 +240,7 @@ export default function ClassDetailPage() {
         setSubmissionModal({
           item,
           rows: data.submissions || [],
+          maxScore: data.max_score ?? null,
           loading: false,
           error: "",
         });
@@ -306,16 +307,14 @@ export default function ClassDetailPage() {
   const studentCount = classData?.students?.length || 0;
   const contestCount = classData?.contests?.length || 0;
 
-  // Một học sinh thi nhiều lượt vẫn chỉ là một người đã làm, nên đếm theo
-  // student_id chứ không đếm số bản ghi.
+  // đếm theo student_id, một học sinh thi nhiều lượt vẫn là một người
   const distinctDoerCount = new Set(
     (submissionModal?.rows || []).map(
       (row: any) => row.student_id ?? `result-${row.result_id ?? row.id}`,
     ),
   ).size;
 
-  // Đề đã có trong lớp thì không chọn được nữa, nên "chọn tất cả" chỉ tính
-  // trên những đề còn lại.
+  // "chọn tất cả" chỉ tính trên đề chưa có trong lớp
   const selectableKeys = availableAssignments
     .filter((item) => !item.assigned)
     .map((item) => `${item.assignment_type}-${item.id}`);
@@ -377,6 +376,7 @@ export default function ClassDetailPage() {
                       router.push("/classes");
                     } catch (e: unknown) {
                       setError(e instanceof Error ? e.message : "Lỗi xóa lớp");
+                      toast.error(e instanceof Error ? e.message : "Lỗi xóa lớp");
                     }
                   }}
                 >
@@ -720,7 +720,7 @@ export default function ClassDetailPage() {
                       >
                         <input
                           type="text"
-                          className="form-control"
+                          className="input"
                           placeholder="ID, Tên hoặc Email..."
                           value={studentIdentifier}
                           onChange={(e) => setStudentIdentifier(e.target.value)}
@@ -899,7 +899,7 @@ export default function ClassDetailPage() {
             position: "fixed",
             inset: 0,
             zIndex: 1000,
-            background: "rgba(15,23,42,.58)",
+            background: "var(--overlay)",
             display: "flex",
             alignItems: "center",
             justifyContent: "center",
@@ -1100,7 +1100,7 @@ export default function ClassDetailPage() {
             position: "fixed",
             inset: 0,
             zIndex: 1200,
-            background: "rgba(15,23,42,.58)",
+            background: "var(--overlay)",
             display: "flex",
             alignItems: "center",
             justifyContent: "center",
@@ -1268,6 +1268,11 @@ export default function ClassDetailPage() {
                             {sub.total_score != null
                               ? Number(sub.total_score).toFixed(2)
                               : "—"}
+                            {submissionModal.maxScore != null && (
+                              <small>
+                                /{Number(submissionModal.maxScore).toFixed(2)}
+                              </small>
+                            )}
                           </td>
                           <td>
                             <Link

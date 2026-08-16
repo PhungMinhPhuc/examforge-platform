@@ -8,14 +8,15 @@ import ExamTimer from "@/components/ExamTimer";
 import api from "@/lib/api";
 import Link from "next/link";
 import CodingQuestionNode from "@/components/CodingQuestionNode";
+import { toast } from "@/lib/toastStore";
 
 type Question = {
   id: number;
   question_type: string;
-  content: string;
+  content: any; // cây tài liệu (jsonb) — xem frontend/src/lib/docTree.ts
   layout_type: string;
-  images: { storage_path: string; img_type: string }[];
-  options: { id: number; content: string; order_index: number }[];
+  images: { id?: number; storage_path: string; img_type: string; width?: number }[];
+  options: { id: number; content: any; order_index: number }[];
   original_order: number;
   group_id: number;
   parent_id: number | null;
@@ -42,6 +43,32 @@ const TYPE_LABELS: Record<string, string> = {
 };
 const ROMAN = ["I", "II", "III", "IV", "V", "VI", "VII", "VIII", "IX", "X"];
 
+const hashSeed = (value: string) => {
+  let hash = 2166136261;
+  for (let i = 0; i < value.length; i++) {
+    hash ^= value.charCodeAt(i);
+    hash = Math.imul(hash, 16777619);
+  }
+  return hash >>> 0;
+};
+
+const seededShuffle = <T,>(items: T[], seedText: string) => {
+  const copy = [...items];
+  let state = hashSeed(seedText) || 1;
+  const random = () => {
+    state += 0x6d2b79f5;
+    let value = state;
+    value = Math.imul(value ^ (value >>> 15), value | 1);
+    value ^= value + Math.imul(value ^ (value >>> 7), value | 61);
+    return ((value ^ (value >>> 14)) >>> 0) / 4294967296;
+  };
+  for (let i = copy.length - 1; i > 0; i--) {
+    const j = Math.floor(random() * (i + 1));
+    [copy[i], copy[j]] = [copy[j], copy[i]];
+  }
+  return copy;
+};
+
 export default function ExamPage({
   params,
 }: {
@@ -63,6 +90,12 @@ export default function ExamPage({
   const [error, setError] = useState("");
   const [score, setScore] = useState<number | null>(null);
   const [maxScore, setMaxScore] = useState<number | null>(null);
+  const [submissionSummary, setSubmissionSummary] = useState<{
+    correct_count: number;
+    question_count: number;
+    duration_seconds: number;
+    section_stats: Record<string, { total: number; correct: number }>;
+  } | null>(null);
   const [remainingSeconds, setRemainingSeconds] = useState<number | null>(null);
   const [saveStatus, setSaveStatus] = useState<
     "idle" | "saving" | "saved" | "error"
@@ -71,6 +104,35 @@ export default function ExamPage({
 
   // Answers: question_id -> student_choice string
   const [answers, setAnswers] = useState<Record<number, string>>({});
+  const [questionNavOpen, setQuestionNavOpen] = useState(true);
+  const [markedQuestions, setMarkedQuestions] = useState<number[]>([]);
+  const [persistedDisplayOrder, setPersistedDisplayOrder] = useState("");
+  const [persistedOptionOrders, setPersistedOptionOrders] = useState<
+    Record<string, string>
+  >({});
+  const layoutInitRef = useRef<number | null>(null);
+
+  useEffect(() => {
+    if (!resultId) return;
+    try {
+      const saved = localStorage.getItem(`exam-marked-${resultId}`);
+      setMarkedQuestions(saved ? JSON.parse(saved) : []);
+    } catch {
+      setMarkedQuestions([]);
+    }
+  }, [resultId]);
+
+  const toggleMarkedQuestion = (questionId: number) => {
+    setMarkedQuestions((current) => {
+      const next = current.includes(questionId)
+        ? current.filter((id) => id !== questionId)
+        : [...current, questionId];
+      if (resultId) {
+        localStorage.setItem(`exam-marked-${resultId}`, JSON.stringify(next));
+      }
+      return next;
+    });
+  };
 
   useEffect(() => {
     if (isGuest && user?.name && !guestName) setGuestName(user.name);
@@ -90,15 +152,41 @@ export default function ExamPage({
   const processedQuestions = useMemo(() => {
     let qNum = 1;
 
-    // shuffle function
-    const shuffleArray = (arr: any[]) => {
-      if (user?.role === "teacher") return [...arr]; // Không đảo đối với giáo viên
-      const copy = [...arr];
-      for (let i = copy.length - 1; i > 0; i--) {
-        const j = Math.floor(Math.random() * (i + 1));
-        [copy[i], copy[j]] = [copy[j], copy[i]];
+    const displayRank = new Map(
+      persistedDisplayOrder
+        .split(",")
+        .map(Number)
+        .filter(Number.isFinite)
+        .map((questionId, index) => [questionId, index]),
+    );
+    const orderQuestions = (arr: any[], scope: string) => {
+      if (user?.role === "teacher") return [...arr];
+      if (displayRank.size) {
+        return [...arr].sort(
+          (a, b) =>
+            (displayRank.get(a.id) ?? Number.MAX_SAFE_INTEGER) -
+            (displayRank.get(b.id) ?? Number.MAX_SAFE_INTEGER),
+        );
       }
-      return copy;
+      return seededShuffle(arr, `${resultId || contestId}:${scope}`);
+    };
+    const orderOptions = (options: any[], questionId: number) => {
+      if (user?.role === "teacher") return [...options];
+      const saved = persistedOptionOrders[String(questionId)];
+      if (saved) {
+        const rank = new Map(
+          saved.split(",").map((id, index) => [Number(id), index]),
+        );
+        return [...options].sort(
+          (a, b) =>
+            (rank.get(a.id) ?? Number.MAX_SAFE_INTEGER) -
+            (rank.get(b.id) ?? Number.MAX_SAFE_INTEGER),
+        );
+      }
+      return seededShuffle(
+        options,
+        `${resultId || contestId}:options:${questionId}`,
+      );
     };
 
     const list = questions.map((q) => {
@@ -109,7 +197,7 @@ export default function ExamPage({
         updatedQ.qNum = null;
       }
       if (updatedQ.question_type === "mc" && updatedQ.options) {
-        updatedQ.options = shuffleArray(updatedQ.options);
+        updatedQ.options = orderOptions(updatedQ.options, updatedQ.id);
       }
       return updatedQ;
     });
@@ -184,25 +272,26 @@ export default function ExamPage({
       });
     }
 
+    let globalQNum = 1;
     blocks.forEach((b, idx) => {
       // Shuffle questions within block (stimulus groups treated as atomic units)
-      b.questions = shuffleArray(b.questions);
+      b.questions = orderQuestions(b.questions, `block:${b.id}`);
       // Shuffle children within each stimulus group
       b.questions.forEach((q: any) => {
         if (q.question_type === "st" && q.children) {
-          q.children = shuffleArray(q.children);
+          q.children = orderQuestions(q.children, `children:${q.id}`);
         }
       });
 
-      let blockQNum = 1;
+      const blockStartQNum = globalQNum;
       b.questions.forEach((q) => {
         if (q.question_type === "st") {
-          q.children.forEach((c: any) => (c.qNum = blockQNum++));
+          q.children.forEach((c: any) => (c.qNum = globalQNum++));
         } else {
-          q.qNum = blockQNum++;
+          q.qNum = globalQNum++;
         }
       });
-      const totalInBlock = blockQNum - 1;
+      const blockEndQNum = globalQNum - 1;
 
       const firstRealQ =
         b.questions.find((q) => q.question_type !== "st") ||
@@ -213,20 +302,91 @@ export default function ExamPage({
       b.title = `PHẦN ${ROMAN[idx] || idx + 1}. Câu ${typeStr.toLowerCase()}`;
 
       if (b.id === "mc") {
-        b.instruction = `Thí sinh trả lời từ câu 1 đến câu ${totalInBlock}. Mỗi câu hỏi thí sinh chỉ chọn một phương án.`;
+        b.instruction = `Thí sinh trả lời từ câu ${blockStartQNum} đến câu ${blockEndQNum}. Mỗi câu hỏi thí sinh chỉ chọn một phương án.`;
       } else if (b.id === "tf") {
-        b.instruction = `Thí sinh trả lời từ câu 1 đến câu ${totalInBlock}. Trong mỗi ý a), b), c), d) ở mỗi câu hỏi, thí sinh chọn đúng hoặc sai.`;
+        b.instruction = `Thí sinh trả lời từ câu ${blockStartQNum} đến câu ${blockEndQNum}. Trong mỗi ý a), b), c), d) ở mỗi câu hỏi, thí sinh chọn đúng hoặc sai.`;
       } else if (b.id === "sa") {
-        b.instruction = `Thí sinh trả lời từ câu 1 đến câu ${totalInBlock}.`;
+        b.instruction = `Thí sinh trả lời từ câu ${blockStartQNum} đến câu ${blockEndQNum}.`;
       }
     });
 
     return { list, blocks };
-  }, [questions, user?.role]);
+  }, [
+    questions,
+    user?.role,
+    resultId,
+    contestId,
+    persistedDisplayOrder,
+    persistedOptionOrders,
+  ]);
+
+  useEffect(() => {
+    const mcQuestionCount = processedQuestions.list.filter(
+      (question: any) =>
+        question.question_type === "mc" && question.options?.length,
+    ).length;
+    const hasCompleteLayout =
+      Boolean(persistedDisplayOrder) &&
+      Object.keys(persistedOptionOrders).length >= mcQuestionCount;
+    if (
+      !resultId ||
+      stage !== "exam" ||
+      hasCompleteLayout ||
+      layoutInitRef.current === resultId
+    )
+      return;
+    layoutInitRef.current = resultId;
+    const displayOrder = processedQuestions.blocks
+      .flatMap((block) =>
+        block.questions.flatMap((question: any) =>
+          question.question_type === "st"
+            ? [
+                question.id,
+                ...(question.children || []).map((child: any) => child.id),
+              ]
+            : [question.id],
+        ),
+      )
+      .join(",");
+    const optionOrders = Object.fromEntries(
+      processedQuestions.list
+        .filter(
+          (question: any) =>
+            question.question_type === "mc" && question.options?.length,
+        )
+        .map((question: any) => [
+          String(question.id),
+          question.options.map((option: any) => option.id).join(","),
+        ]),
+    );
+    api
+      .initializeContestLayout(contestId, {
+        contest_result_id: resultId,
+        display_order: displayOrder,
+        option_orders: optionOrders,
+      })
+      .then((layout) => {
+        setPersistedDisplayOrder(layout.display_order || displayOrder);
+        setPersistedOptionOrders(layout.option_orders || optionOrders);
+      })
+      .catch(() => {
+        layoutInitRef.current = null;
+        setSaveStatus("error");
+      });
+  }, [
+    resultId,
+    stage,
+    persistedDisplayOrder,
+    persistedOptionOrders,
+    processedQuestions,
+    contestId,
+  ]);
 
   const handleStart = async () => {
     if (isGuest && !guestName.trim()) {
-      setError("Vui lòng nhập tên của bạn");
+      const msg = "Vui lòng nhập tên của bạn";
+      setError(msg);
+      toast.error(msg);
       return;
     }
     setError("");
@@ -237,6 +397,17 @@ export default function ExamPage({
         access_mode: isGuest ? "guest" : "account",
       });
       setResultId(res.contest_result_id);
+      setPersistedDisplayOrder(res.display_order || "");
+      setPersistedOptionOrders(
+        Object.fromEntries(
+          (res.answers || [])
+            .filter((answer: any) => answer.option_display_order)
+            .map((answer: any) => [
+              String(answer.question_id),
+              answer.option_display_order,
+            ]),
+        ),
+      );
       setRemainingSeconds(
         res.remaining_seconds ?? (contest?.time_limit || 45) * 60,
       );
@@ -253,6 +424,7 @@ export default function ExamPage({
       setStage("exam");
     } catch (e: unknown) {
       setError(e instanceof Error ? e.message : "Lỗi bắt đầu thi");
+      toast.error(e instanceof Error ? e.message : "Lỗi bắt đầu thi");
     }
   };
 
@@ -325,9 +497,16 @@ export default function ExamPage({
         });
         setScore(res.total_score);
         setMaxScore(res.max_score ?? null);
+        setSubmissionSummary({
+          correct_count: res.correct_count ?? 0,
+          question_count: res.question_count ?? submissionAnswers.length,
+          duration_seconds: res.duration_seconds ?? 0,
+          section_stats: res.section_stats ?? {},
+        });
         setStage("done");
       } catch (e: unknown) {
         setError(e instanceof Error ? e.message : "Lỗi nộp bài");
+        toast.error(e instanceof Error ? e.message : "Lỗi nộp bài");
       } finally {
         setSubmitting(false);
       }
@@ -342,6 +521,17 @@ export default function ExamPage({
   const totalQ = processedQuestions.list.filter(
     (q) => q.question_type !== "st",
   ).length;
+  const navigationQuestions = processedQuestions.list
+    .filter((q) => q.question_type !== "st" && q.qNum != null)
+    .sort((a, b) => Number(a.qNum) - Number(b.qNum));
+  const hasAnswer = (questionId: number) =>
+    Boolean(answers[questionId]?.replace(/X/g, "").trim());
+  const goToQuestion = (questionId: number) => {
+    document.getElementById(`question-${questionId}`)?.scrollIntoView({
+      behavior: "smooth",
+      block: "center",
+    });
+  };
 
   if (loading)
     return (
@@ -382,7 +572,7 @@ export default function ExamPage({
       </div>
     );
 
-  /* ── INFO STAGE ─────────────────────────────────────────────────── */
+  /* INFO STAGE */
   if (stage === "info")
     return (
       <div
@@ -395,13 +585,19 @@ export default function ExamPage({
           padding: "2rem",
         }}
       >
-        <div className="card slide-up" style={{ maxWidth: 520, width: "100%" }}>
-          <div style={{ textAlign: "center", marginBottom: "2rem" }}>
-            <div style={{ fontSize: "3rem", marginBottom: "1rem" }}></div>
+        <div className="card slide-up" style={{ maxWidth: 600, width: "100%" }}>
+          <div style={{ textAlign: "center", marginBottom: "1rem" }}>
+            <p
+              style={{
+                color: "var(--text-secondary)",
+                marginBottom: "0.5rem",
+              }}
+            >
+              Đề thi trực tuyến
+            </p>
             <h1 style={{ fontSize: "1.5rem", marginBottom: "0.5rem" }}>
               {contest?.title}
             </h1>
-            <p style={{ color: "var(--text-secondary)" }}>Đề thi trực tuyến</p>
           </div>
 
           <div
@@ -409,16 +605,18 @@ export default function ExamPage({
               display: "grid",
               gridTemplateColumns: "1fr 1fr",
               gap: "1rem",
-              marginBottom: "2rem",
+              marginBottom: "1.25rem",
             }}
           >
             {[
               {
-                icon: "",
                 label: "Thời gian",
                 value: `${contest?.time_limit} phút`,
               },
-              { icon: "", label: "Số câu", value: `${totalQ} câu` },
+              {
+                label: "Số câu",
+                value: `${totalQ} câu`,
+              },
             ].map((s, i) => (
               <div
                 key={i}
@@ -429,15 +627,16 @@ export default function ExamPage({
                   textAlign: "center",
                 }}
               >
-                <div style={{ fontSize: "1.5rem", marginBottom: "0.25rem" }}>
-                  {s.icon}
-                </div>
-                <div style={{ fontWeight: 700 }}>{s.value}</div>
                 <div
-                  style={{ fontSize: "0.75rem", color: "var(--text-muted)" }}
+                  style={{
+                    fontSize: "var(--font-size-xs)",
+                    color: "var(--text-muted)",
+                    marginBottom: "0.25rem",
+                  }}
                 >
                   {s.label}
                 </div>
+                <div style={{ fontWeight: 700 }}>{s.value}</div>
               </div>
             ))}
           </div>
@@ -446,7 +645,7 @@ export default function ExamPage({
 
           {isGuest && (
             <div className="form-group">
-              <label className="form-label">Họ tên của bạn</label>
+              <label className="form-label">Họ và tên</label>
               <input
                 id="guest-name"
                 className="input"
@@ -495,8 +694,23 @@ export default function ExamPage({
       </div>
     );
 
-  /* ── DONE STAGE ─────────────────────────────────────────────────── */
-  if (stage === "done")
+  /* DONE STAGE */
+  if (stage === "done") {
+    const formatDuration = (totalSeconds: number) => {
+      const hours = Math.floor(totalSeconds / 3600);
+      const minutes = Math.floor((totalSeconds % 3600) / 60);
+      const seconds = totalSeconds % 60;
+      return [hours, minutes, seconds]
+        .map((value) => String(value).padStart(2, "0"))
+        .join(":");
+    };
+    const sectionLabels: Record<string, string> = {
+      mc: "Trắc nghiệm",
+      tf: "Đúng/Sai",
+      sa: "Trả lời ngắn",
+      oe: "Tự luận",
+      cd: "Lập trình",
+    };
     return (
       <div
         style={{
@@ -509,86 +723,113 @@ export default function ExamPage({
         }}
       >
         <div
-          className="card slide-up"
-          style={{ maxWidth: 480, width: "100%", textAlign: "center" }}
+          className="card slide-up exam-result-summary"
+          style={{ maxWidth: 680, width: "100%" }}
         >
-          <div style={{ fontSize: "4rem", marginBottom: "1rem" }}></div>
-          <h2 style={{ marginBottom: "0.5rem" }}>Nộp bài thành công!</h2>
-          <p style={{ color: "var(--text-secondary)", marginBottom: "2rem" }}>
-            {contest?.title}
-          </p>
-          {score !== null && (
-            <div
-              style={{
-                background: "rgba(37,91,167,0.06)",
-                border: "1px solid rgba(37,91,167,0.15)",
-                borderRadius: "var(--radius-lg)",
-                padding: "2rem",
-                marginBottom: "2rem",
-              }}
-            >
-              <div
-                style={{
-                  fontSize: "3.5rem",
-                  fontWeight: 800,
-                  color: "var(--accent-primary)",
-                }}
-              >
-                {score.toFixed(2)}
-                {maxScore !== null && (
-                  <span
-                    style={{
-                      fontSize: "1.75rem",
-                      color: "var(--text-secondary)",
-                    }}
-                  >
-                    /{maxScore.toFixed(2)}
-                  </span>
+          <div className="exam-result-kicker">Kết quả bài thi</div>
+          <h1 className="exam-result-title">Thông tin bài thi</h1>
+          <div className="exam-result-details">
+            <span>Họ và tên</span>
+            <strong>{isGuest ? guestName : user?.name}</strong>
+            <span>Đề thi</span>
+            <strong>{contest?.title}</strong>
+            <span>Thời gian</span>
+            <strong>
+              {contest?.time_limit
+                ? `${contest.time_limit} phút`
+                : "Không giới hạn"}
+            </strong>
+            <span>Thời gian làm bài thực tế</span>
+            <strong>
+              {formatDuration(submissionSummary?.duration_seconds ?? 0)}
+            </strong>
+            <span>Tổng số câu</span>
+            <strong>{submissionSummary?.question_count ?? totalQ}</strong>
+            <span>Số câu trả lời đúng</span>
+            <strong>
+              {submissionSummary?.correct_count ?? 0}/
+              {submissionSummary?.question_count ?? totalQ}
+            </strong>
+          </div>
+
+          {submissionSummary &&
+            Object.keys(submissionSummary.section_stats).length > 0 && (
+              <div className="exam-result-sections">
+                {Object.entries(submissionSummary.section_stats).map(
+                  ([type, stats]) => (
+                    <div key={type}>
+                      <span>▸ {sectionLabels[type] || "Phần khác"}</span>
+                      <strong>
+                        {stats.correct}/{stats.total}
+                      </strong>
+                    </div>
+                  ),
                 )}
               </div>
-              <div
-                style={{ color: "var(--text-secondary)", fontSize: "0.875rem" }}
-              >
-                Điểm của bạn
-              </div>
+            )}
+
+          {score !== null && (
+            <div className="exam-result-score-row">
+              <span>Điểm số</span>
+              <strong>
+                {score.toFixed(2)}
+                {maxScore !== null && <small>/{maxScore.toFixed(2)}</small>}
+              </strong>
             </div>
           )}
           {resultId && (
             <Link
               href={`/results/${resultId}`}
-              className="btn btn-primary btn-lg"
-              style={{ marginBottom: "0.75rem", display: "block" }}
+              className="btn btn-primary btn-lg exam-result-detail-button"
             >
-              Xem chi tiết kết quả
+              Xem chi tiết bài làm
             </Link>
           )}
-          <Link href="/" className="btn btn-ghost">
-            Về trang chủ
+          {isGuest ? (
+            <p className="exam-result-note">
+              Thí sinh tự do chỉ có thể mở chi tiết bài làm từ màn hình kết quả
+              này.
+            </p>
+          ) : (
+            <p className="exam-result-note">
+              Bạn có thể xem lại bài làm bất cứ lúc nào trong trang Đề thi và
+              bài tập.
+            </p>
+          )}
+          <Link
+            href={isGuest ? "/" : "/contests"}
+            className="btn btn-ghost exam-result-back"
+          >
+            {isGuest ? "Về trang chủ" : "Về Đề thi và bài tập"}
           </Link>
         </div>
       </div>
     );
+  }
 
-  /* ── EXAM STAGE ─────────────────────────────────────────────────── */
+  /* EXAM STAGE */
   return (
-    <div style={{ minHeight: "100vh", background: "var(--bg-base)" }}>
+    <div
+      className="exam-workspace"
+      style={{ minHeight: "100vh", background: "var(--bg-base)" }}
+    >
       {/* Header */}
       <div
+        className="exam-sticky-header"
         style={{
           position: "sticky",
           top: 0,
           zIndex: 100,
           background: "var(--bg-surface)",
-          borderBottom: "1px solid var(--border)",
+          borderBottom: "none",
+          boxShadow: "0 1px 8px rgba(15, 23, 42, 0.07)",
           padding: "0.875rem 2rem",
-          display: "flex",
           alignItems: "center",
-          justifyContent: "space-between",
           gap: "1rem",
         }}
       >
         <div>
-          <div style={{ fontWeight: 700, fontSize: "1rem" }}>
+          <div style={{ fontWeight: 700, fontSize: "var(--font-size-md)" }}>
             {contest?.title}
           </div>
           <div style={{ fontSize: "0.8rem", color: "var(--text-secondary)" }}>
@@ -615,291 +856,411 @@ export default function ExamPage({
           className="btn btn-primary"
           onClick={() => handleSubmit(false)}
           disabled={submitting}
+          style={{ justifySelf: "end" }}
         >
           {submitting ? <span className="spinner" /> : "Nộp bài"}
         </button>
       </div>
 
-      <div style={{ maxWidth: 900, margin: "0 auto", padding: "2rem" }}>
-        {/* Progress */}
-        <div className="progress-bar" style={{ marginBottom: "2rem" }}>
-          <div
-            className="progress-fill"
-            style={{ width: `${(answeredCount / Math.max(1, totalQ)) * 100}%` }}
-          />
-        </div>
+      <div
+        className={`exam-body-layout ${questionNavOpen ? "nav-open" : "nav-closed"}`}
+      >
+        <main className="exam-question-column">
+          {error && <div className="alert alert-error">{error}</div>}
 
-        {error && <div className="alert alert-error">{error}</div>}
-
-        {/* Blocks of Questions */}
-        {processedQuestions.blocks.map((block: any) => (
-          <div key={block.id} style={{ marginBottom: "3rem" }}>
-            <div
-              style={{
-                marginBottom: "1.5rem",
-                paddingBottom: "0.5rem",
-                borderBottom: "2px solid var(--border)",
-              }}
-            >
-              <h2
-                style={{ color: "var(--accent-primary)", fontSize: "1.25rem" }}
+          {/* Blocks of Questions */}
+          {processedQuestions.blocks.map((block: any) => (
+            <div key={block.id} style={{ marginBottom: "3rem" }}>
+              <div
+                style={{
+                  marginBottom: "1.5rem",
+                  paddingBottom: "0.5rem",
+                  borderBottom: "2px solid var(--border)",
+                }}
               >
-                {block.title}
-              </h2>
-              {block.instruction && (
-                <div
+                <h2
                   style={{
-                    fontStyle: "italic",
-                    color: "var(--text-secondary)",
-                    marginTop: "0.25rem",
+                    color: "var(--accent-primary)",
+                    fontSize: "var(--font-size-lg)",
                   }}
                 >
-                  {block.instruction}
-                </div>
-              )}
-            </div>
+                  {block.title}
+                </h2>
+                {block.instruction && (
+                  <div
+                    style={{
+                      fontStyle: "italic",
+                      color: "var(--text-secondary)",
+                      marginTop: "0.25rem",
+                    }}
+                  >
+                    {block.instruction}
+                  </div>
+                )}
+              </div>
 
-            {block.questions.map((q: any) => {
-              const renderQuestionNode = (node: any, isNested: boolean) => {
-                const ans = answers[node.id] || "";
+              {block.questions.map((q: any) => {
+                const renderQuestionNode = (node: any, isNested: boolean) => {
+                  const ans = answers[node.id] || "";
 
-                if (node.question_type === "cd") {
+                  if (node.question_type === "cd") {
+                    return (
+                      <div key={node.id} id={`question-${node.id}`}>
+                        <CodingQuestionNode
+                          node={node}
+                          ans={ans}
+                          onCodeChange={(code, lang) => {
+                            setAnswers((prev) => ({
+                              ...prev,
+                              [node.id]: JSON.stringify({ code, lang }),
+                            }));
+                          }}
+                        />
+                      </div>
+                    );
+                  }
+
                   return (
-                    <CodingQuestionNode
+                    <div
                       key={node.id}
-                      node={node}
-                      ans={ans}
-                      onCodeChange={(code, lang) => {
-                        setAnswers((prev) => ({
-                          ...prev,
-                          [node.id]: JSON.stringify({ code, lang }),
-                        }));
+                      id={`question-${node.id}`}
+                      className="question-card fade-in"
+                      style={{
+                        marginBottom: isNested ? "1rem" : "1.5rem",
+                        padding: isNested ? "1.25rem" : "1.5rem",
+                        border: "1px solid var(--border)",
+                        background: isNested
+                          ? "var(--bg-elevated)"
+                          : "var(--bg-card)",
+                        borderRadius: "var(--radius-md)",
+                        boxShadow: isNested ? "none" : "var(--shadow-sm)",
                       }}
-                    />
+                    >
+                      <div className="question-header">
+                        <div className="exam-question-marker">
+                          <div className="question-num">{node.qNum}</div>
+                          <button
+                            type="button"
+                            className={`exam-bookmark-button ${markedQuestions.includes(node.id) ? "active" : ""}`}
+                            onClick={() => toggleMarkedQuestion(node.id)}
+                            title={
+                              markedQuestions.includes(node.id)
+                                ? "Bỏ đánh dấu"
+                                : "Đánh dấu câu đang phân vân"
+                            }
+                            aria-label={
+                              markedQuestions.includes(node.id)
+                                ? `Bỏ đánh dấu câu ${node.qNum}`
+                                : `Đánh dấu câu ${node.qNum}`
+                            }
+                          >
+                            <svg
+                              width="15"
+                              height="15"
+                              viewBox="0 0 24 24"
+                              fill={
+                                markedQuestions.includes(node.id)
+                                  ? "currentColor"
+                                  : "none"
+                              }
+                            >
+                              <path
+                                d="M6 4.75A1.75 1.75 0 0 1 7.75 3h8.5A1.75 1.75 0 0 1 18 4.75V21l-6-3.6L6 21V4.75Z"
+                                stroke="currentColor"
+                                strokeWidth="1.8"
+                                strokeLinejoin="round"
+                              />
+                            </svg>
+                          </button>
+                        </div>
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                          <LatexRenderer
+                            content={node.content}
+                            layoutType={node.layout_type}
+                            images={node.images}
+                            className="question-content"
+                            imageZoomable
+                          />
+                        </div>
+                      </div>
+
+                      {/* MC options */}
+                      {node.question_type === "mc" && (
+                        <div
+                          className="options-list"
+                          style={{ marginLeft: "3rem" }}
+                        >
+                          {node.options.map((opt: any, oi: number) => (
+                            <div
+                              key={opt.id}
+                              id={`q${node.id}-opt-${oi}`}
+                              className={`option-item ${ans === String(opt.id) || ans === opt.content ? "selected" : ""}`}
+                              onClick={() =>
+                                setMCAnswer(node.id, String(opt.id))
+                              }
+                            >
+                              <div className="option-label">
+                                {String.fromCharCode(65 + oi)}
+                              </div>
+                              <LatexRenderer
+                                content={opt.content}
+                                images={node.images}
+                                imageZoomable
+                              />
+                            </div>
+                          ))}
+                        </div>
+                      )}
+
+                      {/* TF options */}
+                      {node.question_type === "tf" && (
+                        <div
+                          style={{
+                            marginLeft: "3rem",
+                            display: "flex",
+                            flexDirection: "column",
+                            gap: "0.5rem",
+                          }}
+                        >
+                          {node.options.map((opt: any, oi: number) => {
+                            const cur = ans[oi];
+                            return (
+                              <div
+                                key={opt.id}
+                                className={`tf-item ${cur === "T" ? "true-sel" : cur === "F" ? "false-sel" : ""}`}
+                              >
+                                <span
+                                  style={{
+                                    fontWeight: 700,
+                                    minWidth: "1.5rem",
+                                  }}
+                                >
+                                  {String.fromCharCode(97 + oi)})
+                                </span>
+                                <div style={{ flex: 1 }}>
+                                  <LatexRenderer
+                                    content={opt.content}
+                                    images={node.images}
+                                    imageZoomable
+                                  />
+                                </div>
+                                <div className="tf-toggle">
+                                  <button
+                                    id={`q${node.id}-tf-${oi}-T`}
+                                    className={cur === "T" ? "active-T" : ""}
+                                    onClick={() =>
+                                      setTFAnswer(node.id, oi, "T")
+                                    }
+                                  >
+                                    Đ
+                                  </button>
+                                  <button
+                                    id={`q${node.id}-tf-${oi}-F`}
+                                    className={cur === "F" ? "active-F" : ""}
+                                    onClick={() =>
+                                      setTFAnswer(node.id, oi, "F")
+                                    }
+                                  >
+                                    S
+                                  </button>
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      )}
+
+                      {/* Short answer */}
+                      {node.question_type === "sa" && (
+                        <div style={{ marginLeft: "3rem" }}>
+                          <label className="form-label">Đáp án:</label>
+                          <input
+                            id={`q${node.id}-answer`}
+                            className="input"
+                            style={{ maxWidth: 200 }}
+                            placeholder="Nhập đáp án..."
+                            value={ans}
+                            onChange={(e) =>
+                              setMCAnswer(node.id, e.target.value, 800)
+                            }
+                          />
+                        </div>
+                      )}
+
+                      {/* Open-ended */}
+                      {node.question_type === "oe" && (
+                        <div style={{ marginLeft: "3rem" }}>
+                          <label className="form-label">Câu trả lời:</label>
+                          <textarea
+                            id={`q${node.id}-answer`}
+                            className="textarea"
+                            placeholder="Viết câu trả lời của bạn..."
+                            value={ans}
+                            onChange={(e) =>
+                              setMCAnswer(node.id, e.target.value, 1500)
+                            }
+                          />
+                        </div>
+                      )}
+                    </div>
+                  );
+                };
+
+                if (q.question_type === "st") {
+                  const children = q.children || [];
+                  const stRange =
+                    children.length > 0
+                      ? `Dựa vào thông tin dưới đây để trả lời từ câu ${children[0].qNum} đến câu ${children[children.length - 1].qNum}`
+                      : null;
+
+                  return (
+                    <div
+                      key={q.id}
+                      className="st-container fade-in"
+                      style={{
+                        marginBottom: "2rem",
+                        border: "1px solid var(--border)",
+                        borderRadius: "var(--radius-lg)",
+                        background: "var(--bg-card)",
+                        overflow: "hidden",
+                        boxShadow: "var(--shadow-md)",
+                      }}
+                    >
+                      <div
+                        style={{
+                          padding: "1.5rem",
+                          background: "var(--bg-surface)",
+                          borderBottom: "2px dashed var(--border)",
+                          borderLeft: "4px solid var(--accent-primary)",
+                        }}
+                      >
+                        {stRange && (
+                          <div
+                            style={{
+                              fontWeight: 700,
+                              marginBottom: "0.75rem",
+                              color: "var(--accent-primary)",
+                              fontSize: "1.1rem",
+                            }}
+                          >
+                            {stRange}
+                          </div>
+                        )}
+                        <LatexRenderer
+                          content={q.content}
+                          layoutType={q.layout_type}
+                          images={q.images}
+                          className="question-content"
+                          imageZoomable
+                        />
+                      </div>
+                      <div
+                        style={{
+                          padding: "1.5rem",
+                          background: "var(--bg-card)",
+                        }}
+                      >
+                        {children.map((child: any) =>
+                          renderQuestionNode(child, true),
+                        )}
+                      </div>
+                    </div>
                   );
                 }
 
-                return (
-                  <div
-                    key={node.id}
-                    id={`question-${node.id}`}
-                    className="question-card fade-in"
-                    style={{
-                      marginBottom: isNested ? "1rem" : "1.5rem",
-                      padding: isNested ? "1.25rem" : "1.5rem",
-                      border: "1px solid var(--border)",
-                      background: isNested
-                        ? "var(--bg-elevated)"
-                        : "var(--bg-card)",
-                      borderRadius: "var(--radius-md)",
-                      boxShadow: isNested ? "none" : "var(--shadow-sm)",
-                    }}
-                  >
-                    <div className="question-header">
-                      <div className="question-num">{node.qNum}</div>
-                      <div style={{ flex: 1 }}>
-                        <LatexRenderer
-                          content={node.content}
-                          layoutType={node.layout_type}
-                          images={node.images}
-                          className="question-content"
-                        />
-                      </div>
-                    </div>
+                return renderQuestionNode(q, false);
+              })}
+            </div>
+          ))}
+        </main>
 
-                    {/* MC options */}
-                    {node.question_type === "mc" && (
-                      <div
-                        className="options-list"
-                        style={{ marginLeft: "3rem" }}
-                      >
-                        {node.options.map((opt: any, oi: number) => (
-                          <div
-                            key={opt.id}
-                            id={`q${node.id}-opt-${oi}`}
-                            className={`option-item ${ans === String(opt.id) || ans === opt.content ? "selected" : ""}`}
-                            onClick={() => setMCAnswer(node.id, String(opt.id))}
-                          >
-                            <div className="option-label">
-                              {String.fromCharCode(65 + oi)}
-                            </div>
-                            <LatexRenderer
-                              content={opt.content}
-                              images={node.images}
-                            />
-                          </div>
-                        ))}
-                      </div>
-                    )}
-
-                    {/* TF options */}
-                    {node.question_type === "tf" && (
-                      <div
-                        style={{
-                          marginLeft: "3rem",
-                          display: "flex",
-                          flexDirection: "column",
-                          gap: "0.5rem",
-                        }}
-                      >
-                        {node.options.map((opt: any, oi: number) => {
-                          const cur = ans[oi];
-                          return (
-                            <div
-                              key={opt.id}
-                              className={`tf-item ${cur === "T" ? "true-sel" : cur === "F" ? "false-sel" : ""}`}
-                            >
-                              <span
-                                style={{ fontWeight: 700, minWidth: "1.5rem" }}
-                              >
-                                {String.fromCharCode(97 + oi)})
-                              </span>
-                              <div style={{ flex: 1 }}>
-                                <LatexRenderer
-                                  content={opt.content}
-                                  images={node.images}
-                                />
-                              </div>
-                              <div className="tf-toggle">
-                                <button
-                                  id={`q${node.id}-tf-${oi}-T`}
-                                  className={cur === "T" ? "active-T" : ""}
-                                  onClick={() => setTFAnswer(node.id, oi, "T")}
-                                >
-                                  Đ
-                                </button>
-                                <button
-                                  id={`q${node.id}-tf-${oi}-F`}
-                                  className={cur === "F" ? "active-F" : ""}
-                                  onClick={() => setTFAnswer(node.id, oi, "F")}
-                                >
-                                  S
-                                </button>
-                              </div>
-                            </div>
-                          );
-                        })}
-                      </div>
-                    )}
-
-                    {/* Short answer */}
-                    {node.question_type === "sa" && (
-                      <div style={{ marginLeft: "3rem" }}>
-                        <label className="form-label">Đáp án:</label>
-                        <input
-                          id={`q${node.id}-answer`}
-                          className="input"
-                          style={{ maxWidth: 200 }}
-                          placeholder="Nhập đáp án..."
-                          value={ans}
-                          onChange={(e) =>
-                            setMCAnswer(node.id, e.target.value, 800)
-                          }
-                        />
-                      </div>
-                    )}
-
-                    {/* Open-ended */}
-                    {node.question_type === "oe" && (
-                      <div style={{ marginLeft: "3rem" }}>
-                        <label className="form-label">Câu trả lời:</label>
-                        <textarea
-                          id={`q${node.id}-answer`}
-                          className="textarea"
-                          placeholder="Viết câu trả lời của bạn..."
-                          value={ans}
-                          onChange={(e) =>
-                            setMCAnswer(node.id, e.target.value, 1500)
-                          }
-                        />
-                      </div>
-                    )}
-                  </div>
-                );
-              };
-
-              if (q.question_type === "st") {
-                const children = q.children || [];
-                const stRange =
-                  children.length > 0
-                    ? `Dựa vào thông tin dưới đây để trả lời từ câu ${children[0].qNum} đến câu ${children[children.length - 1].qNum}`
-                    : null;
-
-                return (
-                  <div
-                    key={q.id}
-                    className="st-container fade-in"
-                    style={{
-                      marginBottom: "2rem",
-                      border: "1px solid var(--border)",
-                      borderRadius: "var(--radius-lg)",
-                      background: "var(--bg-card)",
-                      overflow: "hidden",
-                      boxShadow: "var(--shadow-md)",
-                    }}
-                  >
-                    <div
-                      style={{
-                        padding: "1.5rem",
-                        background: "rgba(78,205,196,0.05)",
-                        borderBottom: "2px dashed var(--border)",
-                        borderLeft: "4px solid var(--accent-primary)",
-                      }}
-                    >
-                      {stRange && (
-                        <div
-                          style={{
-                            fontWeight: 700,
-                            marginBottom: "0.75rem",
-                            color: "var(--accent-primary)",
-                            fontSize: "1.1rem",
-                          }}
-                        >
-                          {stRange}
-                        </div>
-                      )}
-                      <LatexRenderer
-                        content={q.content}
-                        layoutType={q.layout_type}
-                        images={q.images}
-                        className="question-content"
-                      />
-                    </div>
-                    <div
-                      style={{
-                        padding: "1.5rem",
-                        background: "var(--bg-card)",
-                      }}
-                    >
-                      {children.map((child: any) =>
-                        renderQuestionNode(child, true),
-                      )}
-                    </div>
-                  </div>
-                );
-              }
-
-              return renderQuestionNode(q, false);
-            })}
-          </div>
-        ))}
-
-        {/* Bottom submit */}
-        <div style={{ textAlign: "center", marginTop: "2rem" }}>
+        <aside
+          className={`exam-question-nav ${questionNavOpen ? "open" : "closed"}`}
+        >
           <button
-            className="btn btn-primary btn-lg"
-            onClick={() => handleSubmit(false)}
-            disabled={submitting}
+            type="button"
+            className="exam-question-nav-toggle"
+            onClick={() => setQuestionNavOpen((open) => !open)}
+            aria-label={
+              questionNavOpen
+                ? "Thu gọn danh sách câu hỏi"
+                : "Mở danh sách câu hỏi"
+            }
+            title={questionNavOpen ? "Thu gọn" : "Mở danh sách câu hỏi"}
           >
-            {submitting ? (
-              <>
-                <span className="spinner" /> Đang nộp...
-              </>
-            ) : (
-              " Nộp bài"
-            )}
+            {questionNavOpen ? "›" : "‹"}
           </button>
-        </div>
+
+          {questionNavOpen && (
+            <div className="exam-question-nav-content">
+              <div className="exam-candidate-info">
+                <div className="exam-candidate-info-title">
+                  Thông tin thí sinh
+                </div>
+                <dl>
+                  <dt>Họ và tên</dt>
+                  <dd>{isGuest ? guestName : user?.name || "Chưa xác định"}</dd>
+                  {user?.email && !isGuest && (
+                    <>
+                      <dt>Email</dt>
+                      <dd>{user.email}</dd>
+                    </>
+                  )}
+                  <dt>Hình thức</dt>
+                  <dd>{isGuest ? "Thí sinh tự do" : "Tài khoản học sinh"}</dd>
+                </dl>
+              </div>
+              <div className="exam-question-nav-heading">Danh sách câu hỏi</div>
+              <div className="exam-question-nav-summary">
+                <span>
+                  <i className="answered-dot" />
+                  Đã làm {answeredCount}
+                </span>
+                <span>
+                  <i className="unanswered-dot" />
+                  Chưa làm {totalQ - answeredCount}
+                </span>
+                <span>
+                  <i className="marked-dot" />
+                  Đánh dấu {markedQuestions.length}
+                </span>
+              </div>
+              <div className="exam-question-grid">
+                {navigationQuestions.map((question) => {
+                  const answered = hasAnswer(question.id);
+                  const marked = markedQuestions.includes(question.id);
+                  return (
+                    <button
+                      key={question.id}
+                      type="button"
+                      className={`exam-question-jump ${answered ? "answered" : ""} ${marked ? "marked" : ""}`}
+                      onClick={() => goToQuestion(question.id)}
+                      aria-label={`Đi đến câu ${question.qNum}${answered ? ", đã làm" : ", chưa làm"}`}
+                    >
+                      {question.qNum}
+                    </button>
+                  );
+                })}
+              </div>
+              <div className="exam-question-nav-progress">
+                <div>
+                  <span>Tiến độ</span>
+                  <strong>
+                    {answeredCount}/{totalQ} câu
+                  </strong>
+                </div>
+                <div className="progress-bar">
+                  <div
+                    className="progress-fill"
+                    style={{
+                      width: `${(answeredCount / Math.max(1, totalQ)) * 100}%`,
+                    }}
+                  />
+                </div>
+              </div>
+            </div>
+          )}
+        </aside>
       </div>
     </div>
   );

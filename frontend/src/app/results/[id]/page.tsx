@@ -6,18 +6,23 @@ import { useAuth } from "@/lib/auth-context";
 import Sidebar from "@/components/Sidebar";
 import LatexRenderer from "@/components/LatexRenderer";
 import AdaptiveOptionGrid from "@/components/AdaptiveOptionGrid";
+import TrueFalseOptionList from "@/components/TrueFalseOptionList";
+import DetailsMenu from "@/components/DetailsMenu";
+import { hasAppHistory } from "@/lib/appHistory";
+import { mcCorrectLabel } from "@/lib/docTree";
 import api from "@/lib/api";
 import Link from "next/link";
+import { toast } from "@/lib/toastStore";
 
 type Submission = {
   question_id: number;
-  content: string;
+  content: any; // cây tài liệu (jsonb) — xem frontend/src/lib/docTree.ts
   question_type: string;
   student_choice: string;
   is_correct: boolean;
   earned_point: string;
   option_display_order: string | null;
-  solution?: string;
+  solution?: any;
 };
 type Result = {
   id: number;
@@ -67,6 +72,12 @@ export default function ResultPage({
   }, [id]);
 
   const correctCount = submissions.filter((s) => s.is_correct).length;
+
+  // giáo viên quay về đề đã chấm, học sinh quay về danh sách đề
+  const backHref =
+    user?.role === "teacher" && result?.contest_id
+      ? `/contests/${result.contest_id}`
+      : "/contests";
 
   let durationStr = "0 phút 0 giây";
   let submitTimeStr = "";
@@ -192,16 +203,17 @@ export default function ResultPage({
     }
 
     const ROMAN = ["I", "II", "III", "IV", "V"];
+    let globalQNum = 1;
     blocks.forEach((b, idx) => {
-      let blockQNum = 1;
+      const blockStartQNum = globalQNum;
       b.questions.forEach((q) => {
         if (q.question_type === "st") {
-          q.children.forEach((c: any) => (c.qNum = blockQNum++));
+          q.children.forEach((c: any) => (c.qNum = globalQNum++));
         } else {
-          q.qNum = blockQNum++;
+          q.qNum = globalQNum++;
         }
       });
-      const totalInBlock = blockQNum - 1;
+      const blockEndQNum = globalQNum - 1;
 
       const firstRealQ =
         b.questions.find((q) => q.question_type !== "st") ||
@@ -212,13 +224,13 @@ export default function ResultPage({
       b.title = `PHẦN ${ROMAN[idx] || idx + 1}. Câu ${typeStr.toLowerCase()}`;
 
       if (b.id === "mc") {
-        b.instruction = `Thí sinh trả lời từ câu 1 đến câu ${totalInBlock}. Mỗi câu hỏi thí sinh chỉ chọn một phương án.`;
+        b.instruction = `Thí sinh trả lời từ câu ${blockStartQNum} đến câu ${blockEndQNum}. Mỗi câu hỏi thí sinh chỉ chọn một phương án.`;
       } else if (b.id === "tf") {
-        b.instruction = `Thí sinh trả lời từ câu 1 đến câu ${totalInBlock}. Trong mỗi ý a), b), c), d) ở mỗi câu hỏi, thí sinh chọn đúng hoặc sai.`;
+        b.instruction = `Thí sinh trả lời từ câu ${blockStartQNum} đến câu ${blockEndQNum}. Trong mỗi ý a), b), c), d) ở mỗi câu hỏi, thí sinh chọn đúng hoặc sai.`;
       } else if (b.id === "sa") {
-        b.instruction = `Thí sinh trả lời từ câu 1 đến câu ${totalInBlock}.`;
+        b.instruction = `Thí sinh trả lời từ câu ${blockStartQNum} đến câu ${blockEndQNum}.`;
       } else if (b.id === "oe") {
-        b.instruction = `Thí sinh trả lời từ câu 1 đến câu ${totalInBlock}.`;
+        b.instruction = `Thí sinh trả lời từ câu ${blockStartQNum} đến câu ${blockEndQNum}.`;
       }
     });
 
@@ -242,171 +254,93 @@ export default function ResultPage({
   return (
     <div className="page-wrapper">
       {user && <Sidebar />}
-      <main className="main-content">
+      <main className="main-content result-page-content">
         {/* Header */}
-        <div
-          style={{
-            background: "#f0f9ff",
-            border: "1px solid #bae6fd",
-            borderRadius: "var(--radius-xl)",
-            padding: "2rem",
-            marginBottom: "2rem",
-          }}
-        >
-          <div
-            style={{
-              display: "flex",
-              alignItems: "center",
-              gap: "1rem",
-              marginBottom: "1.5rem",
-            }}
-          >
-            <div style={{ fontSize: "3rem" }}></div>
-            <div>
-              <h1 style={{ marginBottom: "0.25rem" }}>{result?.title}</h1>
-              <p
-                style={{ color: "var(--text-secondary)", fontSize: "0.875rem" }}
-              >
-                Kết quả chi tiết
-              </p>
-            </div>
-          </div>
-
-          <div
-            style={{
-              background: "var(--bg-card)",
-              border: "1px solid var(--border)",
-              borderRadius: "var(--radius-lg)",
-              padding: "2rem",
-              marginBottom: "2rem",
-            }}
-          >
-            <h2
-              style={{
-                fontSize: "1.25rem",
-                color: "var(--accent-primary)",
-                marginBottom: "1.5rem",
-                display: "flex",
-                alignItems: "center",
-                gap: "0.5rem",
-              }}
-            >
-              Thông tin chi tiết
-            </h2>
-
-            <div
-              style={{
-                display: "flex",
-                flexDirection: "column",
-                gap: "1rem",
-                fontSize: "0.95rem",
-              }}
-            >
-              <div>
-                <span
-                  style={{
-                    color: "var(--text-secondary)",
-                    display: "inline-block",
-                    width: "150px",
-                  }}
-                >
-                  Họ và tên:
-                </span>{" "}
-                <strong>
-                  {result?.student_name || result?.guest_name || "Khách"}
-                </strong>
-              </div>
-              <div>
-                <span
-                  style={{
-                    color: "var(--text-secondary)",
-                    display: "inline-block",
-                    width: "150px",
-                  }}
-                >
-                  Điểm:
-                </span>{" "}
-                <strong
-                  style={{ color: "var(--accent-primary)", fontSize: "1.1rem" }}
-                >
-                  {result?.total_score?.toFixed(2)}/
-                  {(result?.max_score ?? 10).toFixed(2)}
-                </strong>
-              </div>
-              <div
-                style={{
-                  height: "1px",
-                  background: "var(--border)",
-                  margin: "0.5rem 0",
+        <div className="page-header result-page-header">
+          <div>
+            <div className="page-breadcrumb">
+              <Link
+                href={backHref}
+                onClick={(e) => {
+                  // lùi lịch sử để giữ đúng trang và vị trí cuộn cũ; vào thẳng
+                  // bằng link thì mới đi tới backHref
+                  if (hasAppHistory()) {
+                    e.preventDefault();
+                    router.back();
+                  }
                 }}
-              ></div>
-
-              <div>
-                <span
-                  style={{
-                    color: "var(--text-secondary)",
-                    display: "inline-block",
-                    width: "150px",
+              >
+                Đề thi và bài tập
+              </Link>
+              <span className="sep">/</span>
+              <span className="current">Kết quả chi tiết</span>
+            </div>
+            <h1>{result?.title}</h1>
+          </div>
+          {user?.role === "teacher" && (
+            <DetailsMenu className="result-actions">
+              <summary className="btn btn-secondary btn-sm">Thao tác</summary>
+              <div className="result-actions-menu">
+                <button
+                  className="btn btn-ghost btn-sm"
+                  onClick={() => {
+                    if (!result) return;
+                    if (confirm("Bạn có chắc chắn muốn xóa bài thi này?")) {
+                      api
+                        .deleteResult(result.id)
+                        .then(() => router.back())
+                        .catch((e: any) => toast.error(e.message));
+                    }
                   }}
                 >
-                  Thời gian làm bài:
-                </span>{" "}
+                  Xóa bài thi
+                </button>
+              </div>
+            </DetailsMenu>
+          )}
+        </div>
+
+        <section className="card result-overview-card">
+          <div className="result-overview-main">
+            <h2>Thông tin bài làm</h2>
+            <div className="result-info-grid">
+              <div>
+                <span>Họ và tên</span>
+                <strong>
+                  {result?.student_name ||
+                    result?.guest_name ||
+                    "Thí sinh ẩn danh"}
+                </strong>
+              </div>
+              <div>
+                <span>Thời gian làm bài</span>
                 <strong>{durationStr}</strong>
               </div>
               <div>
-                <span
-                  style={{
-                    color: "var(--text-secondary)",
-                    display: "inline-block",
-                    width: "150px",
-                  }}
-                >
-                  Thời gian nộp bài:
-                </span>{" "}
+                <span>Thời gian nộp bài</span>
                 <strong>{submitTimeStr}</strong>
               </div>
-              <div
-                style={{
-                  height: "1px",
-                  background: "var(--border)",
-                  margin: "0.5rem 0",
-                }}
-              ></div>
-
-              {user?.role === "teacher" && (
-                <div
-                  style={{
-                    display: "flex",
-                    flexDirection: "column",
-                    gap: "0.75rem",
-                    marginTop: "0.5rem",
-                  }}
-                >
-                  <button
-                    className="btn btn-danger"
-                    style={{ alignSelf: "flex-start" }}
-                    onClick={() => {
-                      if (!result) return;
-                      if (confirm("Bạn có chắc chắn muốn xóa bài thi này?")) {
-                        api
-                          .deleteResult(result.id)
-                          .then(() => {
-                            router.back();
-                          })
-                          .catch((e: any) => alert(e.message));
-                      }
-                    }}
-                  >
-                    Xóa bài thi
-                  </button>
-                </div>
-              )}
             </div>
           </div>
-        </div>
+          <div className="result-score-panel">
+            <span>Điểm số</span>
+            <strong>
+              {result?.total_score?.toFixed(2)}
+              <small>/{(result?.max_score ?? 10).toFixed(2)}</small>
+            </strong>
+            <div className="result-counts">
+              <span>
+                <b>{correctCount}</b> câu đúng
+              </span>
+              <span>
+                <b>{result?.count_wrong_answers ?? 0}</b> câu sai
+              </span>
+            </div>
+          </div>
+        </section>
 
         {/* Submissions detail */}
-        <div style={{ display: "flex", flexDirection: "column", gap: "3rem" }}>
+        <div className="result-block-list">
           {processedBlocks.map((block: any) => (
             <div key={block.id} className="card">
               <div
@@ -419,7 +353,7 @@ export default function ResultPage({
                 <h2
                   style={{
                     color: "var(--accent-primary)",
-                    fontSize: "1.25rem",
+                    fontSize: "var(--font-size-lg)",
                   }}
                 >
                   {block.title}
@@ -456,17 +390,16 @@ export default function ResultPage({
                           isNested
                             ? {
                                 padding: "1.25rem",
-                                background: sub.is_correct
-                                  ? "rgba(107,203,119,0.05)"
-                                  : "rgba(255,107,107,0.05)",
+                                background: "var(--bg-surface)",
+                                borderLeft: `3px solid ${sub.is_correct ? "var(--accent-success)" : "var(--accent-danger)"}`,
                               }
                             : {
                                 padding: "1.25rem",
-                                background: sub.is_correct
-                                  ? "rgba(107,203,119,0.05)"
-                                  : "rgba(255,107,107,0.05)",
-                                border: `1px solid ${sub.is_correct ? "rgba(107,203,119,0.2)" : "rgba(255,107,107,0.2)"}`,
+                                background: "var(--bg-surface)",
+                                border: "1px solid var(--border)",
+                                borderLeft: `3px solid ${sub.is_correct ? "var(--accent-success)" : "var(--accent-danger)"}`,
                                 borderRadius: "var(--radius-md)",
+                                boxShadow: "var(--shadow-sm)",
                               }
                         }
                       >
@@ -479,8 +412,8 @@ export default function ResultPage({
                         >
                           <div
                             style={{
-                              width: 36,
-                              height: 36,
+                              width: 32,
+                              height: 32,
                               borderRadius: "var(--radius-sm)",
                               flexShrink: 0,
                               display: "flex",
@@ -488,15 +421,46 @@ export default function ResultPage({
                               justifyContent: "center",
                               fontWeight: 700,
                               background: sub.is_correct
-                                ? "rgba(107,203,119,0.15)"
-                                : "rgba(255,107,107,0.15)",
+                                ? "var(--answer-correct-bg)"
+                                : "var(--answer-wrong-bg)",
                               color: sub.is_correct
                                 ? "var(--accent-success)"
                                 : "var(--accent-danger)",
-                              fontSize: "1rem",
+                              fontSize: "var(--font-size-md)",
                             }}
                           >
-                            {sub.is_correct ? "✓" : "✗"}
+                            {sub.is_correct ? (
+                              <svg
+                                width="17"
+                                height="17"
+                                viewBox="0 0 24 24"
+                                fill="none"
+                                aria-label="Đúng"
+                              >
+                                <path
+                                  d="M5 12.5l4.2 4.2L19 7"
+                                  stroke="currentColor"
+                                  strokeWidth="2.5"
+                                  strokeLinecap="round"
+                                  strokeLinejoin="round"
+                                />
+                              </svg>
+                            ) : (
+                              <svg
+                                width="17"
+                                height="17"
+                                viewBox="0 0 24 24"
+                                fill="none"
+                                aria-label="Sai"
+                              >
+                                <path
+                                  d="M7 7l10 10M17 7L7 17"
+                                  stroke="currentColor"
+                                  strokeWidth="2.5"
+                                  strokeLinecap="round"
+                                />
+                              </svg>
+                            )}
                           </div>
                           <div style={{ flex: 1, minWidth: 0 }}>
                             <div
@@ -514,7 +478,7 @@ export default function ResultPage({
                                 style={{
                                   fontWeight: 600,
                                   color: "var(--text-secondary)",
-                                  fontSize: "0.875rem",
+                                  fontSize: "var(--font-size-base)",
                                 }}
                               >
                                 Điểm: {Number(sub.earned_point).toFixed(2)}
@@ -524,6 +488,7 @@ export default function ResultPage({
                               content={node.content}
                               layoutType={node.layout_type}
                               images={node.images}
+                              imageZoomable
                               className="question-content"
                             />
 
@@ -531,30 +496,30 @@ export default function ResultPage({
                             {node.question_type === "mc" && node.options && (
                               <AdaptiveOptionGrid
                                 count={node.options.length}
-                                style={{
-                                  marginLeft: "1rem",
-                                  marginTop: "1rem",
-                                }}
+                                style={{ marginTop: "0.75rem" }}
                               >
                                 {node.options.map((opt: any, oi: number) => {
                                   const storedChoice =
                                     sub.student_choice?.trim() || "";
+                                  // opt.content giờ là cây tài liệu (object), không còn
+                                  // là chuỗi — nhánh so chuỗi cũ chỉ còn áp dụng được
+                                  // với dữ liệu rất cũ (opt.content vẫn là string).
                                   const isSelected =
                                     storedChoice === String(opt.id) ||
-                                    storedChoice === opt.content.trim();
+                                    (typeof opt.content === "string" && storedChoice === opt.content.trim());
                                   const isCorrectOption = opt.is_correct;
 
-                                  let bg = "var(--bg-elevated)";
-                                  let border = "transparent";
+                                  let bg = "var(--bg-surface)";
+                                  let border = "var(--border)";
                                   let textColor = "var(--text-secondary)";
 
                                   if (isCorrectOption) {
-                                    bg = "rgba(107,203,119,0.1)";
-                                    border = "var(--accent-success)";
+                                    bg = "var(--answer-correct-bg)";
+                                    border = "var(--answer-correct-border)";
                                     textColor = "var(--accent-success)";
                                   } else if (isSelected) {
-                                    bg = "rgba(255,107,107,0.1)";
-                                    border = "var(--accent-danger)";
+                                    bg = "var(--answer-wrong-bg)";
+                                    border = "var(--answer-wrong-border)";
                                     textColor = "var(--accent-danger)";
                                   }
 
@@ -593,6 +558,7 @@ export default function ResultPage({
                                         <LatexRenderer
                                           content={opt.content}
                                           images={node.images}
+                                          imageZoomable
                                         />
                                       </div>
                                     </div>
@@ -602,22 +568,14 @@ export default function ResultPage({
                             )}
 
                             {node.question_type === "tf" && node.options && (
-                              <div
-                                style={{
-                                  marginLeft: "1rem",
-                                  marginTop: "1rem",
-                                  display: "flex",
-                                  flexDirection: "column",
-                                  gap: "0.5rem",
-                                }}
-                              >
+                              <TrueFalseOptionList>
                                 {node.options.map((opt: any, oi: number) => {
                                   const choicesStr = sub.student_choice || "";
                                   let userChoice: any = choicesStr[oi];
                                   if (userChoice !== "T" && userChoice !== "F")
                                     userChoice = null;
 
-                                  let bg = "var(--bg-elevated)";
+                                  let bg = "var(--bg-surface)";
                                   let border = "var(--border)";
 
                                   if (userChoice !== null) {
@@ -625,11 +583,11 @@ export default function ResultPage({
                                       userChoice ===
                                       (opt.is_correct ? "T" : "F");
                                     if (isCorrectChoice) {
-                                      bg = "rgba(107,203,119,0.1)";
-                                      border = "rgba(107,203,119,0.4)";
+                                      bg = "var(--answer-correct-bg)";
+                                      border = "var(--answer-correct-border)";
                                     } else {
-                                      bg = "rgba(255,107,107,0.1)";
-                                      border = "rgba(255,107,107,0.4)";
+                                      bg = "var(--answer-wrong-bg)";
+                                      border = "var(--answer-wrong-border)";
                                     }
                                   }
 
@@ -658,6 +616,7 @@ export default function ResultPage({
                                         <LatexRenderer
                                           content={opt.content}
                                           images={node.images}
+                                          imageZoomable
                                         />
                                       </div>
                                     </div>
@@ -744,22 +703,34 @@ export default function ResultPage({
                                     )}
                                   </div>
                                 </div>
-                              </div>
+                              </TrueFalseOptionList>
                             )}
 
                             {node.question_type === "sa" &&
                               (() => {
-                                let boxes: string[] = ["", "", "", ""];
-                                if (node.options && node.options.length > 0) {
-                                  const rawAns = node.options[0].content
-                                    .replace(/\$/g, "")
-                                    .replace(/[{}]/g, "")
-                                    .trim();
-                                  const chars = rawAns.split("");
-                                  boxes = Array.from({
+                                const correctAnswer =
+                                  node.options && node.options.length > 0
+                                    ? node.options[0].content
+                                        .replace(/\$/g, "")
+                                        .replace(/[{}]/g, "")
+                                        .trim()
+                                    : "";
+                                const answerBoxes = (value: string) => {
+                                  const chars = Array.from(value);
+                                  return Array.from({
                                     length: Math.max(4, chars.length),
-                                  }).map((_, i) => chars[i] || "");
-                                }
+                                  }).map((_, index) => chars[index] || "");
+                                };
+                                const studentBoxes = answerBoxes(
+                                  sub.student_choice || "",
+                                );
+                                const correctBoxes = answerBoxes(correctAnswer);
+                                const studentColor = sub.is_correct
+                                  ? "var(--accent-success)"
+                                  : "var(--accent-danger)";
+                                const studentBackground = sub.is_correct
+                                  ? "var(--answer-correct-bg)"
+                                  : "var(--answer-wrong-bg)";
 
                                 return (
                                   <div
@@ -768,9 +739,7 @@ export default function ResultPage({
                                       display: "flex",
                                       flexDirection: "column",
                                       gap: "1rem",
-                                      background: "var(--bg-elevated)",
-                                      padding: "1rem",
-                                      borderRadius: "var(--radius-sm)",
+                                      alignItems: "flex-start",
                                     }}
                                   >
                                     <div
@@ -778,40 +747,77 @@ export default function ResultPage({
                                         display: "flex",
                                         gap: "0.5rem",
                                         alignItems: "center",
+                                        minHeight: 58,
+                                        width: "fit-content",
+                                        maxWidth: "100%",
+                                        padding: "0.65rem 0.8rem",
+                                        border: `1px solid ${sub.is_correct ? "var(--answer-correct-border)" : "var(--answer-wrong-border)"}`,
+                                        borderRadius: "var(--radius-md)",
+                                        background: studentBackground,
                                       }}
                                     >
                                       <strong
                                         style={{
-                                          color: "var(--text-secondary)",
-                                          fontSize: "0.875rem",
+                                          color: studentColor,
+                                          fontSize: "var(--font-size-base)",
                                           marginRight: "0.25rem",
+                                          minWidth: 126,
                                         }}
                                       >
                                         Đáp án của bạn:
                                       </strong>
-                                      <strong
+                                      <div
                                         style={{
-                                          color: sub.is_correct
-                                            ? "var(--accent-success)"
-                                            : "var(--accent-danger)",
-                                          fontSize: "1rem",
+                                          display: "flex",
+                                          gap: "0.3rem",
+                                          flexWrap: "wrap",
                                         }}
                                       >
-                                        {sub.student_choice || "(Bỏ qua)"}
-                                      </strong>
+                                        {studentBoxes.map(
+                                          (character, index) => (
+                                            <span
+                                              key={index}
+                                              style={{
+                                                width: 36,
+                                                height: 36,
+                                                display: "inline-flex",
+                                                alignItems: "center",
+                                                justifyContent: "center",
+                                                border: `2px solid ${studentColor}`,
+                                                borderRadius: 6,
+                                                background: studentBackground,
+                                                color: "var(--text-primary)",
+                                                fontWeight: 750,
+                                              }}
+                                            >
+                                              {character}
+                                            </span>
+                                          ),
+                                        )}
+                                      </div>
                                     </div>
                                     <div
                                       style={{
                                         display: "flex",
                                         gap: "0.5rem",
                                         alignItems: "center",
+                                        minHeight: 58,
+                                        width: "fit-content",
+                                        maxWidth: "100%",
+                                        padding: "0.65rem 0.8rem",
+                                        border:
+                                          "1px solid var(--accent-primary-border)",
+                                        borderRadius: "var(--radius-md)",
+                                        background:
+                                          "var(--accent-primary-soft)",
                                       }}
                                     >
                                       <strong
                                         style={{
-                                          color: "var(--text-secondary)",
-                                          fontSize: "0.875rem",
+                                          color: "var(--accent-primary)",
+                                          fontSize: "var(--font-size-base)",
                                           marginRight: "0.25rem",
+                                          minWidth: 126,
                                         }}
                                       >
                                         Đáp án đúng:
@@ -822,25 +828,25 @@ export default function ResultPage({
                                           gap: "0.25rem",
                                         }}
                                       >
-                                        {boxes.map((c, i) => (
-                                          <div
+                                        {correctBoxes.map((c, i) => (
+                                          <span
                                             key={i}
                                             style={{
-                                              width: "25px",
-                                              height: "27px",
+                                              width: 36,
+                                              height: 36,
                                               border:
-                                                "2px solid var(--accent-warning)",
-                                              display: "flex",
+                                                "2px solid var(--accent-primary)",
+                                              display: "inline-flex",
                                               alignItems: "center",
                                               justifyContent: "center",
-                                              fontWeight: 600,
-                                              borderRadius: "0px",
-                                              background: "#fff",
+                                              fontWeight: 750,
+                                              borderRadius: 6,
+                                              background: "var(--bg-surface)",
                                               color: "var(--text-primary)",
                                             }}
                                           >
                                             {c}
-                                          </div>
+                                          </span>
                                         ))}
                                       </div>
                                     </div>
@@ -870,7 +876,7 @@ export default function ResultPage({
                                   <strong
                                     style={{
                                       color: "var(--text-secondary)",
-                                      fontSize: "0.875rem",
+                                      fontSize: "var(--font-size-base)",
                                     }}
                                   >
                                     Bài làm của bạn:
@@ -891,17 +897,17 @@ export default function ResultPage({
                               </div>
                             )}
 
-                            {((sub.solution && node.question_type !== "tf") ||
-                              (node.question_type === "tf" &&
-                                node.options)) && (
+                            {node.question_type !== "st" &&
+                              ((sub.solution && node.question_type !== "tf") ||
+                                (node.question_type === "tf" &&
+                                  node.options)) && (
                               <div
                                 style={{
                                   marginTop: "1.5rem",
                                   marginLeft: "1rem",
                                   padding: "1rem",
                                   background: "var(--bg-surface)",
-                                  borderLeft:
-                                    "4px solid var(--accent-secondary)",
+                                  borderLeft: "4px solid var(--accent-primary)",
                                   borderRadius:
                                     "0 var(--radius-sm) var(--radius-sm) 0",
                                 }}
@@ -910,7 +916,7 @@ export default function ResultPage({
                                   style={{
                                     fontWeight: 700,
                                     marginBottom: "0.5rem",
-                                    color: "var(--accent-secondary)",
+                                    color: "var(--accent-primary)",
                                   }}
                                 >
                                   Lời giải:
@@ -950,6 +956,7 @@ export default function ResultPage({
                                                 <LatexRenderer
                                                   content={opt.explaination}
                                                   images={node.images}
+                                                  imageZoomable
                                                 />
                                               )}
                                             </div>
@@ -962,8 +969,20 @@ export default function ResultPage({
                                   <LatexRenderer
                                     content={sub.solution}
                                     images={node.images}
+                                    imageZoomable
                                   />
                                 )}
+                                {node.question_type === "mc" &&
+                                  mcCorrectLabel(node.options) && (
+                                    <div
+                                      style={{
+                                        fontWeight: 700,
+                                        marginTop: "0.5rem",
+                                      }}
+                                    >
+                                      Chọn {mcCorrectLabel(node.options)}
+                                    </div>
+                                  )}
                               </div>
                             )}
                           </div>
@@ -991,7 +1010,7 @@ export default function ResultPage({
                         <div
                           style={{
                             padding: "1.5rem",
-                            background: "rgba(78,205,196,0.05)",
+                            background: "var(--bg-surface)",
                             borderBottom: "2px dashed var(--border)",
                             borderLeft: "4px solid var(--accent-primary)",
                           }}
@@ -1012,6 +1031,7 @@ export default function ResultPage({
                             content={q.content}
                             layoutType={q.layout_type}
                             images={q.images}
+                            imageZoomable
                             className="question-content"
                           />
                         </div>

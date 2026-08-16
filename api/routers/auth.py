@@ -97,9 +97,9 @@ def get_dashboard_stats(current_user: dict = __import__("fastapi").Depends(__imp
     
     with get_cursor() as (cur, conn):
         if role == "teacher":
-            # Fast count for questions
-            cur.execute("SELECT COUNT(*) as total FROM questions WHERE teacher_id = %s AND deleted_at IS NULL AND parent_id IS NULL", (user_id,))
-            q_total = cur.fetchone()["total"]
+            # Bộ đếm được backend cập nhật khi thêm/xóa câu hỏi.
+            cur.execute("SELECT question_count AS total FROM teachers WHERE id = %s", (user_id,))
+            q_total = (cur.fetchone() or {"total": 0})["total"]
             
             # Fast count for classes
             cur.execute("SELECT COUNT(*) as total FROM classes WHERE teacher_id = %s", (user_id,))
@@ -112,10 +112,12 @@ def get_dashboard_stats(current_user: dict = __import__("fastapi").Depends(__imp
             # 5 recent contests
             cur.execute(
                 """
-                SELECT ct.id, ct.title, ct.status, cl.class_name,
-                       (SELECT COUNT(*) FROM contests_questions cq WHERE cq.contest_id = ct.id) as question_count
+                SELECT ct.id, ct.title, ct.status,
+                       (SELECT string_agg(c.class_name, ', ' ORDER BY c.class_name)
+                          FROM class_contests cc JOIN classes c ON c.id=cc.class_id
+                         WHERE cc.contest_id=ct.id) AS class_name,
+                       ct.question_count
                 FROM contests ct
-                LEFT JOIN classes cl ON cl.id = ct.class_id
                 WHERE ct.teacher_id = %s AND ct.status != 'deleted'
                 ORDER BY ct.id DESC
                 LIMIT 5
@@ -129,9 +131,10 @@ def get_dashboard_stats(current_user: dict = __import__("fastapi").Depends(__imp
             
             # Fast count for active contests student is in
             cur.execute("""
-                SELECT COUNT(ct.id) as total 
+                SELECT COUNT(DISTINCT ct.id) as total
                 FROM contests ct
-                JOIN students_classes sc ON sc.class_id = ct.class_id
+                JOIN class_contests cc ON cc.contest_id=ct.id
+                JOIN students_classes sc ON sc.class_id=cc.class_id
                 WHERE sc.student_id = %s AND ct.status = 'active'
             """, (user_id,))
             ct_total = cur.fetchone()["total"]
@@ -139,11 +142,11 @@ def get_dashboard_stats(current_user: dict = __import__("fastapi").Depends(__imp
             
             # 5 recent contests for student
             cur.execute("""
-                SELECT ct.id, ct.title, ct.status, cl.class_name,
-                       (SELECT COUNT(*) FROM contests_questions cq WHERE cq.contest_id = ct.id) as question_count
+                SELECT DISTINCT ct.id, ct.title, ct.status, cl.class_name, ct.question_count
                 FROM contests ct
-                JOIN classes cl ON cl.id = ct.class_id
-                JOIN students_classes sc ON sc.class_id = cl.id
+                JOIN class_contests cc ON cc.contest_id=ct.id
+                JOIN students_classes sc ON sc.class_id=cc.class_id
+                JOIN classes cl ON cl.id=sc.class_id
                 WHERE sc.student_id = %s AND ct.status = 'active'
                 ORDER BY ct.id DESC
                 LIMIT 5

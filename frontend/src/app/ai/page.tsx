@@ -1,12 +1,21 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import Sidebar from '@/components/Sidebar';
+import { useAuth } from '@/lib/auth-context';
+import { toast } from '@/lib/toastStore';
 
 export default function AISettingsPage() {
+  const router = useRouter();
+  const { user, isLoading } = useAuth();
   const [provider, setProvider] = useState('gemini');
   const [geminiApiKeys, setGeminiApiKeys] = useState<string[]>(['']);
   const [geminiModel, setGeminiModel] = useState('gemini-3.5-flash');
+
+  useEffect(() => {
+    if (!isLoading && user?.role !== 'teacher') router.replace('/dashboard');
+  }, [isLoading, user?.role, router]);
   
   const [localBaseUrl, setLocalBaseUrl] = useState('');
   const [localApiKey, setLocalApiKey] = useState('');
@@ -73,9 +82,11 @@ export default function AISettingsPage() {
     localStorage.removeItem('ai_base_url');
     localStorage.removeItem('ai_api_key');
     localStorage.removeItem('ai_model');
-    alert('Đã xóa toàn bộ cấu hình AI!');
-    window.location.reload();
+    toast.success('Đã xóa toàn bộ cấu hình AI!');
+    setTimeout(() => window.location.reload(), 600);
   };
+
+  if (isLoading || user?.role !== 'teacher') return null;
 
   return (
     <div className="page-wrapper">
@@ -156,7 +167,7 @@ export default function AISettingsPage() {
                               setGeminiApiKeys(['']);
                             }
                           }}
-                          style={{ background: '#fee2e2', color: '#b91c1c', border: 'none', borderRadius: '4px', padding: '0 0.75rem', cursor: 'pointer', fontWeight: 'bold' }}
+                          style={{ background: 'var(--tone-danger-bg)', color: 'var(--accent-danger)', border: 'none', borderRadius: '4px', padding: '0 0.75rem', cursor: 'pointer', fontWeight: 'bold' }}
                         >
                           ✕
                         </button>
@@ -176,7 +187,7 @@ export default function AISettingsPage() {
                       <option value="gemini-3-flash-preview">Gemini 3 Flash</option>
                     </select>
                     <svg
-                      style={{ position: 'absolute', right: '0.75rem', top: '50%', transform: 'translateY(-50%)', width: '16px', height: '16px', pointerEvents: 'none', color: '#6b7280' }}
+                      style={{ position: 'absolute', right: '0.75rem', top: '50%', transform: 'translateY(-50%)', width: '16px', height: '16px', pointerEvents: 'none', color: 'var(--text-muted)' }}
                       fill="none" viewBox="0 0 24 24" stroke="currentColor"
                     >
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
@@ -237,7 +248,7 @@ export default function AISettingsPage() {
                 <button
                   onClick={handleClear}
                   className="btn"
-                  style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', backgroundColor: '#fee2e2', color: '#b91c1c' }}
+                  style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', backgroundColor: 'var(--tone-danger-bg)', color: 'var(--accent-danger)' }}
                 >
                   Xóa cấu hình
                 </button>

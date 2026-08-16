@@ -7,6 +7,7 @@ import Sidebar from "@/components/Sidebar";
 import useScrollRestoration from "@/lib/useScrollRestoration";
 import api from "@/lib/api";
 import Link from "next/link";
+import { toast } from "@/lib/toastStore";
 
 type Class = {
   id: number;
@@ -55,12 +56,14 @@ export default function ClassesPage() {
     try {
       await api.createClass({ class_name: className, description: desc });
       setSuccess("Tạo lớp thành công!");
+      toast.success("Tạo lớp thành công!");
       setShowCreate(false);
       setClassName("");
       setDesc("");
       fetchClasses();
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : "Lỗi");
+      toast.error(err instanceof Error ? err.message : "Lỗi");
     }
   };
 
@@ -70,11 +73,13 @@ export default function ClassesPage() {
     try {
       await api.joinClass(joinCode);
       setSuccess("Tham gia lớp thành công!");
+      toast.success("Tham gia lớp thành công!");
       setShowJoin(false);
       setJoinCode("");
       fetchClasses();
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : "Lỗi");
+      toast.error(err instanceof Error ? err.message : "Lỗi");
     }
   };
 
@@ -92,9 +97,11 @@ export default function ClassesPage() {
     try {
       await api.deleteClass(cls.id);
       setSuccess("Đã xóa lớp");
+      toast.success("Đã xóa lớp");
       fetchClasses();
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : "Lỗi xóa lớp");
+      toast.error(err instanceof Error ? err.message : "Lỗi xóa lớp");
     }
   };
 
@@ -207,7 +214,7 @@ export default function ClassesPage() {
                     >
                       <span
                         style={{
-                          fontSize: "0.7rem",
+                          fontSize: "var(--font-size-2xs)",
                           color: "var(--text-muted)",
                           fontFamily: "monospace",
                           background: "var(--bg-elevated)",
@@ -232,7 +239,7 @@ export default function ClassesPage() {
                     <p
                       style={{
                         color: "var(--text-secondary)",
-                        fontSize: "0.875rem",
+                        fontSize: "var(--font-size-base)",
                         marginBottom: "1rem",
                       }}
                     >
@@ -263,7 +270,7 @@ export default function ClassesPage() {
                       <div style={{ fontWeight: 700 }}>{cls.student_count}</div>
                       <div
                         style={{
-                          fontSize: "0.7rem",
+                          fontSize: "var(--font-size-2xs)",
                           color: "var(--text-muted)",
                         }}
                       >
@@ -274,7 +281,7 @@ export default function ClassesPage() {
                       <div style={{ fontWeight: 700 }}>{cls.contest_count}</div>
                       <div
                         style={{
-                          fontSize: "0.7rem",
+                          fontSize: "var(--font-size-2xs)",
                           color: "var(--text-muted)",
                         }}
                       >
