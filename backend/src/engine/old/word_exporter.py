@@ -1,12 +1,146 @@
 import os
-import re
 from typing import List, Dict, Any
 from .common import (
-    fix_soft_newlines,
     get_image_storage_root,
     get_svg_native_width_inches,
     resolve_image_file,
 )
+from doctree.adapt import content_len as _content_len, has_image as _has_image
+
+
+def _split_inline_images(blocks):
+    """Word cần mỗi ảnh — kể cả ảnh chèn giữa câu — đứng ra một đoạn riêng và
+    căn giữa, đúng hành vi bản pandoc cũ (mọi thẻ `![]()` đều bị tách dòng bất
+    kể nằm ở đâu trong chuỗi)."""
+    out = []
+    for b in blocks:
+        if b.get("type") != "paragraph":
+            out.append(b)
+            continue
+        cur = []
+        for n in b.get("content", []):
+            if n["type"] == "image_inline":
+                if cur:
+                    out.append({"type": "paragraph", "content": cur})
+                    cur = []
+                out.append({"type": "image", "figure_id": n["figure_id"]})
+            else:
+                cur.append(n)
+        if cur:
+            out.append({"type": "paragraph", "content": cur})
+    return out
+
+
+def _word_image_tex(row: dict) -> str:
+    """Hình -> `\\includegraphics` cho pandoc. TikZ không dựng được trong Word
+    nên luôn dùng file đã dựng (SVG/PNG), không bao giờ chèn mã TikZ thô."""
+    storage_path = row.get('storage_path') or ''
+    abs_path, _matched = resolve_image_file(storage_path, [row])
+    width = row.get('width')  # None = chưa đặt tỉ lệ — lấy kích thước gốc
+
+    if abs_path.lower().endswith('.svg'):
+        pdf_path = abs_path.replace('.svg', '.pdf')
+        png_path = abs_path.replace('.svg', '.png')
+        if os.path.exists(pdf_path) and not os.path.exists(png_path):
+            import subprocess
+            try:
+                subprocess.run(["pdftocairo", "-png", "-singlefile", "-r", "300",
+                               pdf_path, png_path.replace('.png', '')],
+                              check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+            except Exception as e:
+                print(f"Failed to convert PDF to PNG for Word export: {e}")
+        if os.path.exists(png_path):
+            abs_path = png_path
+        native_in = get_svg_native_width_inches(abs_path.replace('.png', '.svg'))
+        # `width` đặt tường minh: giữ nguyên công thức cũ (đã hiệu chỉnh bằng
+        # hệ số 1.5 cho khớp cách pdftocairo/Word render). Không đặt: dùng
+        # đúng kích thước gốc, không nhân thêm hệ số nào.
+        final_width = native_in * float(width) * 1.5 if width is not None else native_in
+        return f"\\includegraphics[width={final_width:.2f}in]{{{abs_path}}}"
+
+    if width is not None:
+        return f"\\includegraphics[width={float(width):.2f}\\textwidth]{{{abs_path}}}"
+    return f"\\includegraphics{{{abs_path}}}"
+
+
+def _word_figures(images: list) -> dict:
+    """`[q_images...]` -> `{figure_id: row}`, `raw_code` luôn là văn bản Word
+    dựng sẵn (ghi đè mã TikZ nếu có — TikZ chỉ dành cho đường xelatex)."""
+    out = {}
+    for img in images or []:
+        row = dict(img)
+        row['raw_code'] = _word_image_tex(row)
+        out[row['id']] = row
+    return out
+
+
+MARK_MACRO = {"bold": "textbf", "italic": "textit", "underline": "underline"}
+
+
+def _w_inline(nodes, figures) -> str:
+    parts = []
+    for n in nodes or []:
+        t = n["type"]
+        if t == "text":
+            s = n["text"].replace("_", r"\_").replace("%", r"\%")
+            for mark in n.get("marks", []):
+                s = f"\\{MARK_MACRO[mark]}{{{s}}}"
+            parts.append(s)
+        elif t == "math":
+            if parts and parts[-1].endswith("$"):
+                parts.append(" ")
+            parts.append(f"${n['tex']}$")
+        elif t == "hard_break":
+            # pandoc -f latex NUỐT MẤT \\ (đã đo, xem docs/quy-uoc-noi-dung.md
+            # mục 6) — phải dùng \newline, khác với bộ ghi xelatex dùng \\.
+            parts.append("\\newline ")
+        elif t == "image_inline":
+            parts.append((figures or {}).get(n["figure_id"], {}).get("raw_code", ""))
+    return "".join(parts)
+
+
+def _w_block(nodes, figures) -> str:
+    out = []
+    for n in nodes or []:
+        t = n["type"]
+        if t == "paragraph":
+            out.append(_w_inline(n["content"], figures))
+        elif t == "math_block":
+            out.append(f"$${n['tex']}$$")
+        elif t == "image":
+            code = (figures or {}).get(n["figure_id"], {}).get("raw_code", "")
+            out.append(f"[CENTER]{code}")
+        elif t == "table":
+            ncol = max(len(r) for r in n["rows"])
+            spec = "|" + "|".join(n.get("align") or ["l"] * ncol) + "|"
+            rows = []
+            for r in n["rows"]:
+                cells = []
+                for c in r:
+                    body = _w_inline(c["content"], figures)
+                    if c.get("colspan"):
+                        body = f"\\multicolumn{{{c['colspan']}}}{{|c|}}{{{body}}}"
+                    cells.append(body)
+                rows.append(" & ".join(cells) + r" \\ \hline")
+            out.append(f"\\begin{{tabular}}{{{spec}}}\n\\hline\n" + "\n".join(rows)
+                      + "\n\\end{tabular}")
+        elif t == "list":
+            env = "enumerate" if n.get("ordered") else "itemize"
+            items = "\n".join("\\item " + _w_block(it, figures).strip() for it in n["items"])
+            out.append(f"\\begin{{{env}}}\n{items}\n\\end{{{env}}}")
+    return "\n\n".join(out)
+
+
+def _field_text(doc, figures) -> str:
+    """`content_doc`/`solution_doc` -> văn bản có nhãn `[CENTER]` cho pandoc.
+
+    Không phân biệt `side` (đặt bên): bản Word cũ cũng chưa từng làm chữ trôi
+    quanh ảnh theo cách này, luôn coi ảnh là khối riêng căn giữa.
+    """
+    if not isinstance(doc, dict):
+        return ""
+    return _w_block(_split_inline_images(doc.get("content", [])), figures)
+
 
 def _render_word_question_body(contest: dict, questions: List[dict], include_solution: bool = True) -> List[str]:
     total_mc = sum(1 for q in questions if q.get('question_type') == 'mc')
@@ -20,17 +154,17 @@ def _render_word_question_body(contest: dict, questions: List[dict], include_sol
     printed_tf = False
     printed_sa = False
     printed_oe = False
-    
+
     for q in questions:
         q_type = q.get('question_type')
-        
+
         effective_type = q_type
         if q_type == 'st':
             for c in questions:
                 if c.get('parent_id') == q['id']:
                     effective_type = c.get('question_type')
                     break
-                    
+
         if effective_type == 'mc' and not printed_mc:
             lines.append(f"\\textbf{{PHẦN I. Câu trắc nghiệm nhiều phương án lựa chọn.}} Thí sinh trả lời từ câu 1 đến câu {total_mc}. Mỗi câu hỏi thí sinh chỉ chọn một phương án.\n\n")
             printed_mc = True
@@ -47,47 +181,12 @@ def _render_word_question_body(contest: dict, questions: List[dict], include_sol
             lines.append(f"\\textbf{{PHẦN IV. Câu tự luận.}} Thí sinh trả lời từ câu 1 đến câu {total_oe}.\n\n")
             printed_oe = True
             question_counter = 1
-            
-        def fix_mismatched_environments(text: str) -> str:
-            # Sửa lỗi phổ biến của các công cụ OCR: \begin{table} nhưng đóng bằng \end{center}
-            return re.sub(r'(\\begin\{table\}(?:(?!\\begin\{center\}).)*?\\end\{tabular\}\s*)\\end\{center\}', r'\1\\end{table}', text, flags=re.DOTALL)
 
-        content = fix_mismatched_environments(fix_soft_newlines(q.get('content', '') or ''))
-        solution = fix_mismatched_environments(fix_soft_newlines(q.get('solution', '') or ''))
+        figures = _word_figures(q.get('images') or [])
+        content = _field_text(q.get('content'), figures)
+        solution = _field_text(q.get('solution'), figures)
         options = q.get('options', [])
-        
-        def replace_img(match):
-            url = match.group(1)
-            abs_path, matched_image = resolve_image_file(url, q.get('images', []))
-            scale_factor = 0.4
-            if matched_image and matched_image.get('img_scale') is not None:
-                try:
-                    scale_factor = float(matched_image['img_scale'])
-                except (ValueError, TypeError):
-                    pass
-            
-            if abs_path.lower().endswith('.svg'):
-                pdf_path = abs_path.replace('.svg', '.pdf')
-                png_path = abs_path.replace('.svg', '.png')
-                if os.path.exists(pdf_path) and not os.path.exists(png_path):
-                    import subprocess
-                    try:
-                        subprocess.run(["pdftocairo", "-png", "-singlefile", "-r", "300", pdf_path, png_path.replace('.png', '')], check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-                    except Exception as e:
-                        print(f"Failed to convert PDF to PNG for Word export: {e}")
-                
-                if os.path.exists(png_path):
-                    abs_path = png_path
-                    
-                native_in = get_svg_native_width_inches(abs_path.replace('.png', '.svg'))
-                final_width = native_in * scale_factor * 1.5
-                return f"\n\n[CENTER]\\includegraphics[width={final_width:.2f}in]{{{abs_path}}}\n\n"
-            
-            return f"\n\n[CENTER]\\includegraphics[width={scale_factor:.2f}\\textwidth]{{{abs_path}}}\n\n"
-            
-        content = re.sub(r'!\[.*?\]\((.*?)\)', replace_img, content)
-        solution = re.sub(r'!\[.*?\]\((.*?)\)', replace_img, solution)
-        
+
         # Check parent info if stimulus
         if q_type == 'st':
             child_count = sum(1 for c in questions if c.get('parent_id') == q['id'])
@@ -98,9 +197,9 @@ def _render_word_question_body(contest: dict, questions: List[dict], include_sol
             else:
                 lines.append(f"\\textit{{Sử dụng dữ kiện sau:}}\n\n{content}\n\n")
             continue
-            
+
         lines.append(f"\\textbf{{Câu {question_counter}:}} {content}\n\n")
-        
+
         if q_type == 'mc':
             # Decide layout: 4, 2, or 1 per line based on length
             opts_text = []
@@ -108,19 +207,13 @@ def _render_word_question_body(contest: dict, questions: List[dict], include_sol
             max_len = 0
             for idx, opt in enumerate(options):
                 label = chr(65 + idx)
-                opt_content = fix_soft_newlines(opt.get('content', '') or '')
-                if '![' in opt_content: has_image = True
-                
-                # Estimate visible length by stripping math and latex tags
-                s = re.sub(r'!\[.*?\]\(.*?\)', '', opt_content)
-                s = re.sub(r'\\[a-zA-Z]+', '', s)
-                s = re.sub(r'[\$\{\}\\_^]', '', s)
-                s = re.sub(r'\s+', ' ', s).strip()
-                max_len = max(max_len, len(s))
-                
-                opt_content = re.sub(r'!\[.*?\]\((.*?)\)', replace_img, opt_content).strip()
+                opt_doc = opt.get('content') or {}
+                if _has_image(opt_doc):
+                    has_image = True
+                max_len = max(max_len, _content_len(opt_doc))
+                opt_content = _field_text(opt_doc, figures).strip()
                 opts_text.append(f"\\textbf{{{label}.}} {opt_content}")
-                
+
             layout_type = str(q.get('layout_type', ''))
             
             if layout_type == '1':
@@ -160,10 +253,9 @@ def _render_word_question_body(contest: dict, questions: List[dict], include_sol
         elif q_type == 'tf':
             for idx, opt in enumerate(options):
                 label = chr(97 + idx) # a, b, c, d
-                opt_content = fix_soft_newlines(opt.get('content', '') or '')
-                opt_content = re.sub(r'!\[.*?\]\((.*?)\)', replace_img, opt_content)
+                opt_content = _field_text(opt.get('content'), figures)
                 lines.append(f"\\textbf{{{label})}} {opt_content}\n\n")
-            
+
             if include_solution:
                 lines.append("[CENTER]\\textbf{Lời giải}\n\n")
                 if solution.strip():
@@ -171,8 +263,7 @@ def _render_word_question_body(contest: dict, questions: List[dict], include_sol
                 for idx, opt in enumerate(options):
                     label = chr(97 + idx)
                     tf_status = "Đúng" if opt.get('is_correct') else "Sai"
-                    explain = fix_soft_newlines(opt.get('explaination', '') or '')
-                    explain = re.sub(r'!\[.*?\]\((.*?)\)', replace_img, explain)
+                    explain = _field_text(opt.get('explaination'), figures)
                     lines.append(f"\\textbf{{{label}) {tf_status}.}} {explain}\n\n")
                 
         elif q_type == 'sa':
