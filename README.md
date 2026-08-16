@@ -78,12 +78,17 @@ database_question_dataset/
 3. **Cài đặt thư viện Python (API & Engine):**
    ```bash
    cd api
-   # Cài đặt từ requirements.txt
+   # File này include requirements/api.txt và requirements/engine.txt ở gốc repo.
    pip install -r requirements.txt
-   
-   # Một số thư viện khác có thể cần thiết cho engine (nếu bạn chạy engine độc lập):
-   pip install python-docx pandoc Wand pdf2image ultrytics streamlit psycopg2-binary dotenv
+   # Cài Chromium dùng để preview/xuất PDF HTML.
+   playwright install chromium
    ```
+   Khi phát triển toàn bộ backend từ thư mục gốc, có thể dùng
+   `pip install -r requirements/dev.txt`.
+
+   Các chương trình hệ thống như XeLaTeX, Pandoc, Poppler, ImageMagick và
+   LibreOffice không phải package Python; cần cài riêng trên máy/container
+   nếu sử dụng luồng xuất tương ứng.
    Sau đó chạy API:
    ```bash
    uvicorn main:app --reload

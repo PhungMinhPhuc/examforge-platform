@@ -1,14 +1,4 @@
-fastapi==0.115.0
-uvicorn[standard]==0.30.0
-psycopg2-binary==2.9.9
-python-dotenv==1.0.1
-python-jose[cryptography]==3.3.0
-passlib[bcrypt]==1.7.4
-python-multipart==0.0.9
-aiofiles==23.2.1
-openpyxl
-pypdf
-
-ultralytics
-doclayout-yolo
-pymupdf
+# File tương thích cho lệnh cũ: `cd api && pip install -r requirements.txt`.
+# Nguồn dependency thật nằm tập trung trong thư mục requirements/ ở gốc repo.
+-r ../requirements/api.txt
+-r ../requirements/engine.txt

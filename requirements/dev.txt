@@ -1,0 +1,6 @@
+-r api.txt
+-r engine.txt
+
+# Công cụ chỉ dùng khi phát triển/kiểm thử.
+pytest>=8,<9
+ruff>=0.9,<1
