@@ -20,7 +20,7 @@ def tikz_to_svg(tikz_code, output_path):
 \usepackage{unicode-math}
 \setmathfont{CambriaMath.ttf}[Path=__MATH_FONT_PATH__]
 \setmathrm{CambriaMath.ttf}[Path=__MATH_FONT_PATH__]
-\setmathfont{XITS Math}[range={cal,bfcal}]
+\setmathfont{XITSMath-Regular.otf}[Path=__MATH_FONT_PATH__,range={cal,bfcal}]
 \usepackage{tikz,tikz-3dplot,tkz-tab}
 \usetikzlibrary{arrows,calc,intersections,patterns,angles,shapes.geometric,arrows.meta,shapes.symbols,quotes,decorations.markings,decorations.pathmorphing}
 \usepackage{graphicx}

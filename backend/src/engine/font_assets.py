@@ -25,5 +25,6 @@ def validate_font_package() -> list[str]:
         DOCUMENT_FONT_DIR / "timesbi.ttf",
         DOCUMENT_FONT_DIR / "Cambria.ttf",
         MATH_FONT_DIR / "CambriaMath.ttf",
+        MATH_FONT_DIR / "XITSMath-Regular.otf",
     )
     return [str(path) for path in required if not path.is_file()]

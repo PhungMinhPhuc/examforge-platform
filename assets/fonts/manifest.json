@@ -37,6 +37,16 @@
       "sha256": "529635d0238cf192137664910463d95fd5d38974bca632c1149fa84933aaba72"
     },
     {
+      "path": "math/LICENSE-XITS.txt",
+      "size": 4998,
+      "sha256": "10c83acb7bf240c6e263906e0905c8e419f3483c89141e83243465c221d322ad"
+    },
+    {
+      "path": "math/XITSMath-Regular.otf",
+      "size": 548096,
+      "sha256": "3025792adb0b7072ace08bf5726d341de32f2254612ddec6dd98271a8dd29689"
+    },
+    {
       "path": "vector/DejaVuMathTeXGyre.ttf",
       "size": 577708,
       "sha256": "40da67c0b6b03076504fbda4bf3e7b4f20b35999c98063019a3392fe9b1294fe"
