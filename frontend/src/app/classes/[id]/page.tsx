@@ -376,7 +376,9 @@ export default function ClassDetailPage() {
                       router.push("/classes");
                     } catch (e: unknown) {
                       setError(e instanceof Error ? e.message : "Lỗi xóa lớp");
-                      toast.error(e instanceof Error ? e.message : "Lỗi xóa lớp");
+                      toast.error(
+                        e instanceof Error ? e.message : "Lỗi xóa lớp",
+                      );
                     }
                   }}
                 >
