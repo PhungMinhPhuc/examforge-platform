@@ -15,7 +15,12 @@ type Question = {
   question_type: string;
   content: any; // cây tài liệu (jsonb) — xem frontend/src/lib/docTree.ts
   layout_type: string;
-  images: { id?: number; storage_path: string; img_type: string; width?: number }[];
+  images: {
+    id?: number;
+    storage_path: string;
+    img_type: string;
+    width?: number;
+  }[];
   options: { id: number; content: any; order_index: number }[];
   original_order: number;
   group_id: number;
