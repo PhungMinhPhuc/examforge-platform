@@ -1,4 +1,13 @@
-# Tổng quan dự án: Hệ thống CSDL Ngân hàng Câu hỏi
+# ExamForge Platform
+
+> ExamForge là phiên bản sản phẩm được tiếp tục phát triển từ đồ án môn Cơ sở dữ liệu
+> [question-dataset](https://github.com/PhungMinhPhuc/question-dataset). Repository này
+> là nơi duy trì phiên bản phần mềm hiện tại và các tính năng mới.
+
+ExamForge là nền tảng xây dựng, quản lý và xuất bản ngân hàng câu hỏi và đề thi, hỗ trợ
+nội dung đa định dạng, công thức toán học, hình ảnh, nhập dữ liệu và xuất tài liệu.
+
+## Tổng quan hệ thống
 
 Dự án này là một hệ thống quản lý cơ sở dữ liệu ngân hàng câu hỏi, cho phép xử lý, lưu trữ, và trích xuất câu hỏi từ nhiều định dạng khác nhau (DOCX, JSON, v.v.) và cung cấp giao diện người dùng thông qua ứng dụng web.
 
