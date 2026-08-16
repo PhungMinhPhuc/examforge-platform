@@ -25,7 +25,12 @@ type QuestionInContest = {
   complexity?: number;
   parent_id?: number | null;
   children?: QuestionInContest[];
-  images?: { id?: number; storage_path: string; width?: number; img_type?: string }[];
+  images?: {
+    id?: number;
+    storage_path: string;
+    width?: number;
+    img_type?: string;
+  }[];
 };
 
 type Contest = {
@@ -75,7 +80,9 @@ const TYPE_BORDER: Record<string, string> = {
 };
 
 const typeBackground = (type: string) =>
-  type === "st" ? "var(--tone-purple-bg)" : TYPE_SOFT[type] || "var(--type-mc-soft)";
+  type === "st"
+    ? "var(--tone-purple-bg)"
+    : TYPE_SOFT[type] || "var(--type-mc-soft)";
 const typeBorder = (type: string) =>
   type === "st"
     ? "var(--tone-purple-border)"
@@ -264,7 +271,9 @@ export default function ContestDetailPage({
       );
     } catch (e) {
       setError(e instanceof Error ? e.message : "Không thể tải danh sách lớp");
-      toast.error(e instanceof Error ? e.message : "Không thể tải danh sách lớp");
+      toast.error(
+        e instanceof Error ? e.message : "Không thể tải danh sách lớp",
+      );
     }
   };
 
@@ -535,7 +544,9 @@ export default function ContestDetailPage({
         >
           {/* Question list */}
           <div className="card">
-            <h3 style={{ marginBottom: "1rem", fontSize: "var(--font-size-md)" }}>
+            <h3
+              style={{ marginBottom: "1rem", fontSize: "var(--font-size-md)" }}
+            >
               Danh sách câu hỏi ({topLevelQs.length} mục -{" "}
               {actualQuestions.length} câu)
             </h3>
@@ -762,7 +773,8 @@ export default function ContestDetailPage({
                                 fontSize: "var(--font-size-xs)",
                                 fontWeight: 700,
                                 color:
-                                  TYPE_COLORS[child.question_type] || "var(--accent-primary)",
+                                  TYPE_COLORS[child.question_type] ||
+                                  "var(--accent-primary)",
                               }}
                             >
                               {q.startIdx + cIdx}
@@ -1051,7 +1063,12 @@ export default function ContestDetailPage({
                       >
                         {TYPE_LABELS[type] || type}
                       </span>
-                      <span style={{ fontSize: "var(--font-size-sm)", fontWeight: 600 }}>
+                      <span
+                        style={{
+                          fontSize: "var(--font-size-sm)",
+                          fontWeight: 600,
+                        }}
+                      >
                         {questionCounts[type]}
                       </span>
                     </div>
@@ -1099,7 +1116,6 @@ export default function ContestDetailPage({
                 </div>
               </div>
             )}
-
           </div>
         </div>
       </main>

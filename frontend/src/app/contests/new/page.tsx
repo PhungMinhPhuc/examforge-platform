@@ -557,18 +557,31 @@ export default function NewContestPage() {
                 {COMPLEXITY_LABELS[q.complexity]}
               </span>
             )}
-            <span style={{ fontSize: "var(--font-size-xs)", color: "var(--text-muted)" }}>
+            <span
+              style={{
+                fontSize: "var(--font-size-xs)",
+                color: "var(--text-muted)",
+              }}
+            >
               ID: {q.id}
             </span>
             {q.subject && (
-              <span style={{ fontSize: "var(--font-size-xs)", color: "var(--text-muted)" }}>
+              <span
+                style={{
+                  fontSize: "var(--font-size-xs)",
+                  color: "var(--text-muted)",
+                }}
+              >
                 {q.subject}
                 {q.grade ? ` · Lớp ${q.grade}` : ""}
               </span>
             )}
             {q.chapter && (
               <span
-                style={{ fontSize: "var(--font-size-xs)", color: "var(--text-muted)" }}
+                style={{
+                  fontSize: "var(--font-size-xs)",
+                  color: "var(--text-muted)",
+                }}
                 title={q.chapter}
               >
                 {q.chapter.slice(0, 40)}
