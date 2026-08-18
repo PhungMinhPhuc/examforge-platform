@@ -6,7 +6,7 @@ import { useAuth } from "@/lib/auth-context";
 import api from "@/lib/api";
 import { toast } from "@/lib/toastStore";
 import Combobox from "@/components/Combobox";
-import { GoogleIcon, Icon } from "@/components/icons";
+import { GoogleIcon, Icon, MicrosoftIcon } from "@/components/icons";
 
 type AuthTab = "login" | "register" | "guest";
 
@@ -16,17 +16,6 @@ const EYE_PATH = (
     <circle cx="12" cy="12" r="3" />
   </>
 );
-function MicrosoftLogo() {
-  return (
-    <span className="ms-logo" aria-hidden="true">
-      <i style={{ background: "#F25022" }} />
-      <i style={{ background: "#7FBA00" }} />
-      <i style={{ background: "#00A4EF" }} />
-      <i style={{ background: "#FFB900" }} />
-    </span>
-  );
-}
-
 /** Google/Microsoft chưa nối OAuth thật ở backend — nút hiện đúng chuẩn
  * thương hiệu để chốt UI trước, bấm vào chỉ báo cho biết đang chờ triển khai. */
 function OAuthRow({ mode }: { mode: "Đăng nhập" | "Đăng ký" }) {
@@ -47,7 +36,7 @@ function OAuthRow({ mode }: { mode: "Đăng nhập" | "Đăng ký" }) {
         className="btn-oauth btn-microsoft"
         onClick={() => notify("Microsoft")}
       >
-        <MicrosoftLogo />
+        <MicrosoftIcon size={18} />
         {mode} bằng Microsoft
       </button>
     </div>
