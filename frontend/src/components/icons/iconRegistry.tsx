@@ -3,8 +3,6 @@
  * Markup is static, trusted project data; no runtime DOM scanning is used.
  */
 export const strokeIconPaths = {
-  account:
-    '<path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/>',
   "alert-circle":
     '<circle cx="12" cy="12" r="9"/><path d="M12 8v4M12 16h.01"/>',
   "align-center": '<path d="M4 6h16M7 12h10M5.5 18h13"/>',
@@ -89,6 +87,8 @@ export const strokeIconPaths = {
   paste:
     '<path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><rect x="8" y="2" width="8" height="4" rx="1"/><path d="M9 12h6M9 16h6"/>',
   plus: '<path d="M12 5v14M5 12h14"/>',
+  profile:
+    '<path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/>',
   redo: '<path d="M15 14l5-5-5-5"/><path d="M4 20v-7a4 4 0 0 1 4-4h12"/>',
   roster:
     '<rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="9" cy="10" r="2.3"/><path d="M5.6 17a3.4 3.4 0 0 1 6.8 0"/><path d="M14.5 9h3.5M14.5 13h3.5"/>',
