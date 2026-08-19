@@ -35,6 +35,8 @@ export const strokeIconPaths = {
   dashboard:
     '<rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M9 21V9"/>',
   edit: '<path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5Z"/>',
+  "empty-state":
+    '<path d="M3 8a2 2 0 0 1 2-2h5l2 2h7a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8Z"/><path d="M9 15h6"/>',
   "exam-paper":
     '<path d="M12 22h6a2 2 0 0 0 2-2V7l-5-5H6a2 2 0 0 0-2 2v10"/><path d="M14 2v4a2 2 0 0 0 2 2h4"/><path d="M10.4 12.6a2 2 0 1 1 2.83 2.83L8 20l-4 1 1-4Z"/>',
   eye: '<path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/>',
@@ -42,6 +44,8 @@ export const strokeIconPaths = {
     '<path d="M3 3l18 18"/><path d="M10.6 5.1A10 10 0 0 1 22 12s-1.2 2.4-3.4 4.3M6.2 6.2C4 8 2 12 2 12s3.5 7 10 7c1.4 0 2.7-.3 3.8-.8"/>',
   "file-plus":
     '<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/><path d="M12 12v6M9 15h6"/>',
+  "float-right":
+    '<path d="M3 5h18M3 9h8M3 13h8M3 17h18M3 21h14"/><rect x="14" y="8" width="7" height="6" rx="1"/>',
   "hard-drive":
     '<rect x="2" y="7" width="20" height="10" rx="2"/><circle cx="6.5" cy="12" r="1" fill="currentColor" stroke="none"/><path d="M10 12h8"/>',
   highlight:
@@ -51,14 +55,20 @@ export const strokeIconPaths = {
   home: '<path d="M3 9 12 2l9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><path d="M9 22v-10h6v10"/>',
   image:
     '<rect x="3" y="4" width="18" height="16" rx="2"/><circle cx="8.5" cy="9.5" r="1.5"/><path d="m4 18 5-5 3 3 2-2 6 6"/>',
+  "image-centered":
+    '<path d="M3 5h18M3 17h18M3 21h18"/><rect x="8.5" y="8" width="7" height="6" rx="1"/>',
   inbox:
     '<path d="M4 12V6a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v6"/><path d="M4 12l2.5 6h11L20 12"/><path d="M4 12h5l1.3 3h3.4L15 12h5"/>',
+  import:
+    '<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8Z"/><path d="M14 2v6h6M12 18v-6M9 15l3 3 3-3"/>',
   info: '<circle cx="12" cy="12" r="9"/><path d="M12 8h.01M11 12h1v5h1"/>',
   italic: '<path d="M10 4h6M6 20h6M14 4l-4 16"/>',
+  library:
+    '<path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2Z"/><path d="M8 7h8M8 11h6"/>',
   "list-bullet":
     '<path d="M9 6h12M9 12h12M9 18h12"/><circle cx="4.5" cy="6" r="1.4" fill="currentColor" stroke="none"/><circle cx="4.5" cy="12" r="1.4" fill="currentColor" stroke="none"/><circle cx="4.5" cy="18" r="1.4" fill="currentColor" stroke="none"/>',
   "list-ordered":
-    '<path d="M9 6h12M9 12h12M9 18h12"/><path d="M4.5 5.5h1v3.5M4.2 12c.4-.6 1.6-.6 1.7.1.1.5-.3.8-.8 1.2l-1.1 1h2"/>',
+    '<path d="M9 5h12M9 12h12M9 19h12"/><path d="m3.7 4 1.2-.8v3.6M3.6 10.5c.3-.8 2.2-.9 2.2.2 0 .6-.4.9-.9 1.3l-1.3 1.3h2.3M3.6 17h1c1.5 0 1.6 1.8.1 1.8h-.8M4.7 18.8c1.6 0 1.6 2 0 2H3.6" stroke-width="1.35"/>',
   lock: '<rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/>',
   "login-arrow":
     '<path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"/><path d="M10 17l5-5-5-5"/><path d="M15 12H3"/>',
@@ -66,7 +76,7 @@ export const strokeIconPaths = {
     '<path d="M12 3 3 8l9 5 9-5-9-5Z"/><path d="M3 12l9 5 9-5"/><path d="M3 16l9 5 9-5"/>',
   mail: '<path d="M4 5h16v14H4z"/><path d="m4 6 8 7 8-7"/>',
   merge:
-    '<rect x="3" y="4" width="18" height="16" rx="1"/><rect x="3" y="9" width="18" height="6" fill="var(--accent-primary,var(--brand))" stroke="none"/><path d="M12 4v5M12 15v5M3 9h18M3 15h18" stroke="var(--accent-primary,var(--brand))"/>',
+    '<rect x="3" y="4" width="18" height="16" rx="1"/><rect x="3" y="9" width="18" height="6" fill="var(--accent-primary,var(--brand))" fill-opacity=".2" stroke="none"/><path d="M12 4v5M12 15v5M3 9h18M3 15h18"/>',
   moon: '<path d="M20 14.5A8.5 8.5 0 1 1 9.5 4a7 7 0 0 0 10.5 10.5Z"/>',
   "more-horizontal":
     '<circle cx="5" cy="12" r="1.6" fill="currentColor" stroke="none"/><circle cx="12" cy="12" r="1.6" fill="currentColor" stroke="none"/><circle cx="19" cy="12" r="1.6" fill="currentColor" stroke="none"/>',
@@ -92,7 +102,7 @@ export const strokeIconPaths = {
   sparkle:
     '<path d="M12 3l1.2 3.8L17 8l-3.8 1.2L12 13l-1.2-3.8L7 8l3.8-1.2zM5 14l.8 2.2L8 17l-2.2.8L5 20l-.8-2.2L2 17l2.2-.8zM18 14l1 3 3 1-3 1-1 3-1-3-3-1 3-1z"/>',
   split:
-    '<rect x="3" y="4" width="18" height="16" rx="1"/><path d="M3 9h18M3 15h18M12 4v5M12 15v5"/><path d="M7.5 9v6M12 9v6M16.5 9v6" stroke="var(--accent-primary,var(--brand))"/>',
+    '<path d="M7.5 9v6M16.5 9v6" stroke="var(--accent-primary,var(--brand))"/><rect x="3" y="4" width="18" height="16" rx="1"/><path d="M3 9h18M3 15h18M12 4v5M12 15v5M12 9v6"/>',
   "student-exam":
     '<rect x="9" y="2" width="6" height="3" rx="1"/><rect x="5" y="4" width="14" height="18" rx="2"/><circle cx="8.5" cy="10" r="1.1"/><path d="M12 10h6"/><circle cx="8.5" cy="14" r="1.1" fill="currentColor" stroke="none"/><path d="M12 14h6"/><circle cx="8.5" cy="18" r="1.1"/><path d="M12 18h6"/>',
   sun: '<circle cx="12" cy="12" r="4"/><path d="M12 2v2.2M12 19.8V22M4.9 4.9l1.5 1.5M17.6 17.6l1.5 1.5M2 12h2.2M19.8 12H22M4.9 19.1l1.5-1.5M17.6 6.4l1.5-1.5"/>',
@@ -108,6 +118,7 @@ export const strokeIconPaths = {
   users:
     '<path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/>',
   warning: '<path d="M12 3 21 19H3Z"/><path d="M12 9.5v4M12 16.5h.01"/>',
+  x: '<path d="M6 6l12 12M18 6 6 18"/>',
   "x-circle": '<circle cx="12" cy="12" r="9"/><path d="m9 9 6 6M15 9l-6 6"/>',
   "zoom-in":
     '<circle cx="10.5" cy="10.5" r="7"/><path d="m21 21-4.4-4.4M10.5 7.5v6M7.5 10.5h6"/>',
