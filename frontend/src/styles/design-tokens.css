@@ -76,6 +76,12 @@
   --control-min-width-lg: 96px;
   --control-icon-size: 14px;
   --control-icon-gap: 6px;
+  --control-affix-size-sm: 16px;
+  --control-affix-size-md: 20px;
+  --control-affix-size-lg: 24px;
+  --control-line-height-sm: 16px;
+  --control-line-height-md: 20px;
+  --control-line-height-lg: 22px;
 
   /* Shared control shape */
   --control-radius-sm: var(--radius-sm);
@@ -87,6 +93,8 @@
   --control-border-width: var(--border-width);
   --focus-outline-width: 3px;
   --focus-outline-offset: 2px;
+  --focus-halo-width: 4px;
+  --focus-transparent-outline-width: 2px;
 
   /* Elevation */
   --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.05);
