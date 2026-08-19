@@ -52,7 +52,7 @@ export function Icon({
       stroke={strokeIcon ? "currentColor" : undefined}
       strokeLinecap={strokeIcon ? "round" : undefined}
       strokeLinejoin={strokeIcon ? "round" : undefined}
-      strokeWidth={strokeIcon ? 1.8 : undefined}
+      strokeWidth={strokeIcon ? 1.5 : undefined}
       viewBox="0 0 24 24"
       width={resolvedSize}
     >
