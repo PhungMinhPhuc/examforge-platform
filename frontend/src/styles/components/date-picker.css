@@ -1,0 +1,30 @@
+/* DatePicker and TimePicker compose Input/Combobox with a popup surface. */
+
+:root {
+  --picker-popup-z-index: 20;
+  --picker-popup-min-width: 280px;
+}
+
+.ui-date-picker,
+.ui-time-picker {
+  position: relative;
+  min-width: 0;
+}
+
+.ui-picker__popup {
+  position: absolute;
+  top: calc(100% + var(--space-1));
+  left: 0;
+  z-index: var(--picker-popup-z-index);
+  min-width: var(--picker-popup-min-width);
+  padding: var(--space-3);
+  border: var(--control-border-width) solid var(--border);
+  border-radius: var(--radius-xl);
+  background: var(--bg-elevated);
+  color: var(--text-primary);
+  box-shadow: var(--shadow-lg);
+}
+
+.ui-picker__popup[hidden] {
+  display: none;
+}

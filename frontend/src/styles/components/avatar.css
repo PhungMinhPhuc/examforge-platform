@@ -1,0 +1,131 @@
+/* Avatar and presence component tokens and styles. Not imported by the app yet. */
+
+:root {
+  --avatar-size-sm: var(--control-height-sm);
+  --avatar-size-md: var(--control-height-md);
+  --avatar-size-lg: var(--control-height-lg);
+  --avatar-size-xl: 48px;
+  --avatar-font-scale: 0.36;
+  --avatar-presence-scale: 0.3;
+  --avatar-presence-min-size: var(--space-2);
+  --avatar-presence-border-width: 2px;
+  --avatar-stack-overlap-scale: -0.28;
+  --avatar-group-pie-size: var(--control-height-lg);
+  --avatar-group-pie-item-size: 26px;
+}
+
+.ui-avatar {
+  --avatar-size: var(--avatar-size-md);
+
+  position: relative;
+  width: var(--avatar-size);
+  height: var(--avatar-size);
+  display: inline-grid;
+  flex: none;
+  place-items: center;
+  overflow: visible;
+  border-radius: var(--radius-full);
+  background: var(--accent-primary-soft);
+  color: var(--accent-primary);
+  font-family: var(--font-family-ui);
+  font-size: calc(var(--avatar-size) * var(--avatar-font-scale));
+  font-weight: var(--font-weight-semibold);
+  line-height: 1;
+  text-transform: uppercase;
+}
+
+.ui-avatar--sm {
+  --avatar-size: var(--avatar-size-sm);
+}
+.ui-avatar--lg {
+  --avatar-size: var(--avatar-size-lg);
+}
+.ui-avatar--xl {
+  --avatar-size: var(--avatar-size-xl);
+}
+.ui-avatar--square {
+  border-radius: var(--control-radius-sm);
+}
+
+.ui-avatar--brand {
+  background: var(--accent-primary);
+  color: var(--text-on-accent);
+}
+
+.ui-avatar--purple {
+  background: var(--tone-purple-bg);
+  color: var(--tone-purple-text);
+}
+
+.ui-avatar--danger {
+  background: var(--accent-danger-soft);
+  color: var(--accent-danger);
+}
+
+.ui-avatar--neutral {
+  background: var(--bg-pressed);
+  color: var(--text-secondary);
+}
+
+.ui-avatar__presence {
+  position: absolute;
+  right: calc(var(--border-width) * -1);
+  bottom: calc(var(--border-width) * -1);
+  width: calc(var(--avatar-size) * var(--avatar-presence-scale));
+  height: calc(var(--avatar-size) * var(--avatar-presence-scale));
+  min-width: var(--avatar-presence-min-size);
+  min-height: var(--avatar-presence-min-size);
+  border: var(--avatar-presence-border-width) solid var(--bg-surface);
+  border-radius: var(--radius-full);
+  background: var(--accent-success);
+}
+
+.ui-avatar__presence--busy {
+  background: var(--accent-danger);
+}
+.ui-avatar__presence--away {
+  background: var(--accent-warning);
+}
+.ui-avatar__presence--offline {
+  background: var(--text-muted);
+}
+
+.ui-avatar-group {
+  display: flex;
+  align-items: center;
+}
+
+.ui-avatar-group--stack .ui-avatar + .ui-avatar {
+  margin-inline-start: calc(
+    var(--avatar-size) * var(--avatar-stack-overlap-scale)
+  );
+}
+
+.ui-avatar-group--stack .ui-avatar {
+  box-shadow: 0 0 0 var(--avatar-presence-border-width) var(--bg-base);
+}
+
+.ui-avatar-group--spread {
+  gap: var(--space-2);
+}
+
+.ui-avatar-group--pie {
+  position: relative;
+  width: var(--avatar-group-pie-size);
+  height: var(--avatar-group-pie-size);
+}
+
+.ui-avatar-group--pie .ui-avatar {
+  --avatar-size: var(--avatar-group-pie-item-size);
+  position: absolute;
+}
+
+.ui-avatar-group--pie .ui-avatar:nth-child(1) {
+  inset: 0 auto auto 0;
+}
+.ui-avatar-group--pie .ui-avatar:nth-child(2) {
+  inset: 0 0 auto auto;
+}
+.ui-avatar-group--pie .ui-avatar:nth-child(3) {
+  inset: auto auto 0 7px;
+}

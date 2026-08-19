@@ -1,0 +1,31 @@
+/* SearchBox extends input.css. Not imported yet. */
+
+.ui-searchbox__input {
+  appearance: none;
+}
+
+.ui-searchbox__input::-webkit-search-cancel-button {
+  appearance: none;
+}
+
+.ui-searchbox__dismiss {
+  width: var(--control-affix-size-md);
+  height: var(--control-affix-size-md);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 0;
+  background: transparent;
+  color: var(--text-secondary);
+  cursor: pointer;
+}
+
+.ui-input--small .ui-searchbox__dismiss {
+  width: var(--control-affix-size-sm);
+  height: var(--control-affix-size-sm);
+}
+
+.ui-input--large .ui-searchbox__dismiss {
+  width: var(--control-affix-size-lg);
+  height: var(--control-affix-size-lg);
+}

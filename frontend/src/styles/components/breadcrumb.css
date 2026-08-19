@@ -1,0 +1,139 @@
+/* Breadcrumb component tokens and styles. Not imported by the app yet. */
+
+:root {
+  --breadcrumb-padding-inline-md: 6px;
+  --breadcrumb-truncated-width: 180px;
+}
+
+.ui-breadcrumb__list {
+  list-style: none;
+  display: flex;
+  align-items: center;
+  margin: 0;
+  padding: 0;
+}
+
+.ui-breadcrumb__item {
+  display: flex;
+  align-items: center;
+  box-sizing: border-box;
+  color: var(--text-secondary);
+  white-space: nowrap;
+}
+
+.ui-breadcrumb__button {
+  appearance: none;
+  min-width: unset;
+  height: var(--control-height-md);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding-inline: var(--breadcrumb-padding-inline-md);
+  border: var(--control-border-width) solid transparent;
+  border-radius: var(--control-radius-sm);
+  background: transparent;
+  color: var(--text-secondary);
+  font: var(--font-weight-regular) var(--font-size-base) /
+    var(--control-line-height-md) var(--font-family-ui);
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.ui-breadcrumb__button:hover:not(:disabled):not([aria-disabled="true"]) {
+  background: var(--bg-hover);
+  color: var(--text-primary);
+}
+
+.ui-breadcrumb__button:active:not(:disabled):not([aria-disabled="true"]) {
+  background: var(--bg-pressed);
+}
+
+.ui-breadcrumb__button:focus-visible {
+  border-color: var(--border-focus);
+  outline: var(--focus-outline-width) solid var(--focus-outline-color);
+  outline-offset: var(--focus-outline-offset);
+}
+
+.ui-breadcrumb__button[aria-current="page"] {
+  background: transparent;
+  color: var(--text-secondary);
+  font-weight: var(--font-weight-semibold);
+  cursor: auto;
+}
+
+.ui-breadcrumb__button:disabled,
+.ui-breadcrumb__button[aria-disabled="true"] {
+  color: var(--text-muted);
+  cursor: not-allowed;
+}
+
+.ui-breadcrumb--sm .ui-breadcrumb__button {
+  height: var(--control-height-sm);
+  padding-inline: var(--control-icon-gap);
+  font-size: var(--control-font-size-sm);
+  line-height: var(--control-line-height-sm);
+}
+
+.ui-breadcrumb--lg .ui-breadcrumb__button {
+  height: var(--control-height-lg);
+  padding-inline: var(--space-2);
+  font-size: var(--font-size-lg);
+  line-height: var(--control-line-height-lg);
+}
+
+.ui-breadcrumb__icon {
+  width: var(--control-affix-size-sm);
+  height: var(--control-affix-size-sm);
+  display: block;
+  margin-inline-end: var(--space-1);
+}
+
+.ui-breadcrumb--sm .ui-breadcrumb__icon {
+  width: var(--space-3);
+  height: var(--space-3);
+}
+
+.ui-breadcrumb--lg .ui-breadcrumb__icon {
+  width: var(--control-affix-size-md);
+  height: var(--control-affix-size-md);
+}
+
+.ui-breadcrumb__icon svg,
+.ui-breadcrumb__divider svg {
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+
+.ui-breadcrumb__divider {
+  width: var(--control-affix-size-sm);
+  height: var(--control-affix-size-sm);
+  display: flex;
+  color: var(--text-secondary);
+}
+
+.ui-breadcrumb--sm .ui-breadcrumb__divider {
+  width: var(--space-3);
+  height: var(--space-3);
+}
+
+.ui-breadcrumb--lg .ui-breadcrumb__divider {
+  width: var(--control-affix-size-md);
+  height: var(--control-affix-size-md);
+}
+
+.ui-breadcrumb__button--truncated {
+  width: var(--breadcrumb-truncated-width);
+  max-width: var(--breadcrumb-truncated-width);
+  min-width: 0;
+  justify-content: flex-start;
+  text-align: start;
+}
+
+.ui-breadcrumb__label {
+  display: block;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}

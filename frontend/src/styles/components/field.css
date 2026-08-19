@@ -1,0 +1,39 @@
+/* Field layout shared by Input, Combobox, Select and related controls. */
+
+:root {
+  --field-gap: var(--space-1);
+}
+
+.ui-field {
+  min-width: 0;
+  display: grid;
+  gap: var(--field-gap);
+  color: var(--text-primary);
+  font-family: var(--font-family-ui);
+}
+
+.ui-field__label {
+  color: var(--text-secondary);
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-semibold);
+}
+
+.ui-field__required {
+  margin-left: var(--space-1);
+  color: var(--accent-danger);
+}
+
+.ui-field__hint,
+.ui-field__validation {
+  color: var(--text-muted);
+  font-size: var(--font-size-xs);
+  line-height: var(--line-height-normal);
+}
+
+.ui-field__validation--error {
+  color: var(--accent-danger);
+}
+
+.ui-field__validation--warning {
+  color: var(--tone-warning-text);
+}

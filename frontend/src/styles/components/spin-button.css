@@ -1,0 +1,39 @@
+/* SpinButton extends input.css. Not imported yet. */
+
+:root {
+  --spin-button-action-width: var(--control-height-sm);
+}
+
+.ui-spin-button {
+  display: inline-grid;
+  grid-template-columns: minmax(0, 1fr) var(--spin-button-action-width);
+  grid-template-rows: 1fr 1fr;
+}
+
+.ui-spin-button__input {
+  grid-row: 1 / 3;
+}
+
+.ui-spin-button__increment,
+.ui-spin-button__decrement {
+  min-width: var(--spin-button-action-width);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--text-secondary);
+  cursor: pointer;
+}
+
+.ui-spin-button__increment:hover,
+.ui-spin-button__decrement:hover {
+  background: var(--bg-hover);
+  color: var(--text-primary);
+}
+
+.ui-spin-button--disabled .ui-spin-button__increment,
+.ui-spin-button--disabled .ui-spin-button__decrement {
+  cursor: not-allowed;
+}
