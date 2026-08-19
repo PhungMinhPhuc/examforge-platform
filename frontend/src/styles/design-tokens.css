@@ -1,0 +1,103 @@
+/*
+ * DESIGN TOKENS
+ *
+ * File độc lập dành cho các token không phải màu. Chưa được import vào
+ * frontend; globals.css vẫn là nguồn đang chạy cho đến bước migration.
+ */
+
+:root {
+  /* Radius */
+  --radius-none: 0;
+  --radius-xs: 2px;
+  --radius-sm: 4px;
+  --radius-md: 6px;
+  --radius-lg: 8px;
+  --radius-xl: 12px;
+  --radius-2xl: 16px;
+  --radius-full: 9999px;
+
+  /* Spacing */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-question-card: 15px;
+  --space-4: 16px;
+  --space-6: 24px;
+  --space-8: 32px;
+  --space-10: 40px;
+
+  /* Motion */
+  --duration-fast: 100ms;
+  --duration-normal: 160ms;
+  --duration-slow: 400ms;
+  --ease-standard: cubic-bezier(0.33, 0, 0.67, 1);
+  --transition-fast: var(--duration-fast) var(--ease-standard);
+  --transition-normal: var(--duration-normal) var(--ease-standard);
+  --transition-slow: var(--duration-slow) var(--ease-standard);
+  /* Alias tương thích cho các component đang gọi tên cũ. */
+  --transition: var(--transition-normal);
+
+  /* Typography */
+  --font-family-ui: "Database Noto Sans", "Noto Sans", sans-serif;
+  --font-family-code: Consolas, "Courier New", monospace;
+
+  --font-size-2xs: 0.6875rem;
+  --font-size-xs: 0.75rem;
+  --font-size-sm: 0.78125rem;
+  --font-size-md: 0.84375rem;
+  --font-size-base: 0.875rem;
+  --font-size-lg: 1rem;
+  --font-size-xl: 1.2rem;
+  --font-size-2xl: 1.375rem;
+  --font-size-3xl: clamp(1.8rem, 4vw, 3rem);
+
+  --font-weight-regular: 400;
+  --font-weight-medium: 500;
+  --font-weight-semibold: 600;
+  --font-weight-bold: 700;
+  --font-weight-extrabold: 800;
+
+  --line-height-tight: 1.25;
+  --line-height-normal: 1.4;
+  --line-height-content: 1.7;
+
+  /* Form controls and buttons */
+  --control-height-sm: 24px;
+  --control-height-md: 32px;
+  --control-height-lg: 40px;
+  --control-font-size-sm: 12px;
+  --control-font-size-md: 13px;
+  --control-font-size-lg: 14px;
+  --control-padding-inline-sm: 8px;
+  --control-padding-inline-md: 12px;
+  --control-padding-inline-lg: 16px;
+  --control-min-width-sm: 64px;
+  --control-min-width-md: 96px;
+  --control-min-width-lg: 96px;
+  --control-icon-size: 14px;
+  --control-icon-gap: 6px;
+
+  /* Shared control shape */
+  --control-radius-sm: var(--radius-sm);
+  --control-radius-md: var(--radius-md);
+  --control-radius-lg: var(--radius-lg);
+
+  /* Borders and focus */
+  --border-width: 1px;
+  --control-border-width: var(--border-width);
+  --focus-outline-width: 3px;
+  --focus-outline-offset: 2px;
+
+  /* Elevation */
+  --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.05);
+  --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+  --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+  --shadow-glow: 0 0 20px rgba(30, 63, 170, 0.15);
+}
+
+:root[data-theme="dark"] {
+  --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.3);
+  --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.35);
+  --shadow-lg: 0 10px 20px -3px rgba(0, 0, 0, 0.45);
+  --shadow-glow: 0 0 20px rgba(138, 180, 248, 0.2);
+}
