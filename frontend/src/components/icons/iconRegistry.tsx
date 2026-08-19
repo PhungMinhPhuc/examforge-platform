@@ -3,6 +3,8 @@
  * Markup is static, trusted project data; no runtime DOM scanning is used.
  */
 export const strokeIconPaths = {
+  account:
+    '<path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/>',
   "alert-circle":
     '<circle cx="12" cy="12" r="9"/><path d="M12 8v4M12 16h.01"/>',
   "align-center": '<path d="M4 6h16M7 12h10M5.5 18h13"/>',
