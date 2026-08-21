@@ -1,0 +1,88 @@
+/* TagPicker control. List/popup behavior can reuse combobox primitives. */
+
+:root {
+  --tag-picker-width: var(--combobox-min-width);
+}
+
+.ui-tag-picker {
+  width: min(100%, var(--tag-picker-width));
+  display: grid;
+  gap: var(--space-1);
+}
+
+.ui-tag-picker__control {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-1);
+  min-height: var(--control-height-lg);
+  padding: var(--space-1) var(--space-2);
+  border: var(--control-border-width) solid var(--border-control);
+  border-radius: var(--control-radius-md);
+  background: var(--bg-surface);
+}
+
+.ui-tag-picker__control:focus-within {
+  outline: var(--focus-outline-width) solid var(--focus-outline-color);
+  outline-offset: var(--focus-outline-offset);
+  border-color: var(--border-focus);
+}
+
+.ui-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  padding: var(--space-1) var(--space-2);
+  border: var(--border-width) solid var(--accent-primary-border);
+  border-radius: var(--radius-full);
+  background: var(--accent-primary-soft);
+  color: var(--accent-primary);
+  font: var(--font-size-xs)/var(--line-height-normal) var(--font-family-ui);
+}
+
+.ui-tag button {
+  display: grid;
+  place-items: center;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+}
+
+.ui-tag button:focus-visible {
+  outline: var(--focus-outline-width) solid var(--focus-outline-color);
+  outline-offset: var(--focus-outline-offset);
+}
+
+.ui-tag svg {
+  width: var(--icon-size-xs);
+  height: var(--icon-size-xs);
+  display: block;
+  stroke-width: var(--icon-stroke-regular);
+}
+
+.ui-tag-picker__input {
+  flex: 1;
+  min-width: var(--control-min-width-sm);
+  border: 0;
+  outline: 0;
+  background: transparent;
+  color: var(--text-primary);
+  font: var(--control-font-size-md)/var(--line-height-normal)
+    var(--font-family-ui);
+}
+
+.ui-tag-picker__input::placeholder {
+  color: var(--text-placeholder);
+}
+
+.ui-tag-picker--disabled {
+  opacity: 0.46;
+}
+.ui-tag-picker--disabled .ui-tag-picker__control {
+  background: var(--bg-hover);
+}
+.ui-tag-picker--disabled .ui-tag-picker__input {
+  cursor: not-allowed;
+}

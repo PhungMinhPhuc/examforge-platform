@@ -1,0 +1,106 @@
+/* Toolbar and ribbon layout primitives. Buttons use button.css. */
+
+:root {
+  --toolbar-gap: var(--space-1);
+  --toolbar-padding-sm: 0 var(--space-1);
+  --toolbar-padding-md: var(--space-1) var(--space-2);
+  --toolbar-padding-lg: var(--space-1) var(--space-6);
+  --ribbon-row-height: calc(var(--control-height-md) + var(--space-1));
+  --ribbon-tool-size: calc(var(--control-height-sm) + var(--space-1));
+  --ribbon-layer: 2;
+
+  /* Rich editor ribbon decisions; kept here with the shared toolbar contract. */
+  --editor-ribbon-row-height: var(--ribbon-row-height);
+  --editor-ribbon-button-size: var(--ribbon-tool-size);
+  --editor-ribbon-icon-size: var(--control-affix-size-sm);
+  --editor-ribbon-button-radius: var(--control-radius-md);
+  --editor-ribbon-button-border-color: transparent;
+  --editor-ribbon-button-shadow: var(--shadow-sm);
+  --editor-ribbon-tab-padding-block: var(--space-1);
+  --editor-ribbon-tab-padding-inline: var(--space-2);
+  --editor-ribbon-font-size: var(--font-size-base);
+  --editor-ribbon-group-gap: var(--toolbar-gap);
+}
+
+.ui-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--toolbar-gap);
+  padding: var(--toolbar-padding-md);
+  border: var(--control-border-width) solid var(--border);
+  border-radius: var(--control-radius-md);
+  background: var(--bg-surface);
+  color: var(--text-primary);
+  font-family: var(--font-family-ui);
+}
+
+.ui-toolbar--small {
+  padding: var(--toolbar-padding-sm);
+}
+.ui-toolbar--large {
+  padding: var(--toolbar-padding-lg);
+}
+
+.ui-toolbar__group {
+  display: flex;
+  align-items: center;
+  gap: var(--toolbar-gap);
+}
+
+.ui-toolbar__divider {
+  width: var(--border-width);
+  align-self: stretch;
+  margin-inline: var(--space-1);
+  background: var(--border);
+}
+
+.ui-ribbon {
+  position: relative;
+  z-index: var(--ribbon-layer);
+  border-bottom: var(--border-width) solid var(--border-strong);
+  background: var(--bg-surface);
+  color: var(--text-primary);
+  font: var(--font-size-base)/var(--line-height-normal) var(--font-family-ui);
+}
+
+.ui-ribbon__row {
+  min-height: var(--ribbon-row-height);
+  display: flex;
+  align-items: center;
+  gap: var(--toolbar-gap);
+  padding-inline: var(--space-2);
+  border-bottom: var(--border-width) solid var(--border-strong);
+}
+
+.ui-ribbon__row:last-child {
+  border-bottom: 0;
+}
+
+.ui-ribbon__tabs,
+.ui-ribbon__tools,
+.ui-ribbon__group {
+  display: flex;
+  align-items: center;
+  gap: var(--toolbar-gap);
+}
+
+.ui-ribbon__tools {
+  min-height: var(--ribbon-row-height);
+}
+
+.ui-ribbon__group {
+  padding-inline: var(--space-2);
+  border-inline-end: var(--border-width) solid var(--border-strong);
+}
+
+.ui-ribbon__group:last-child {
+  border-inline-end: 0;
+}
+
+.ui-ribbon .ui-button--icon {
+  min-width: var(--ribbon-tool-size);
+  width: var(--ribbon-tool-size);
+  min-height: var(--ribbon-tool-size);
+  height: var(--ribbon-tool-size);
+}

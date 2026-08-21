@@ -1,0 +1,74 @@
+/* Slider component. The host updates --slider-progress from the input value. */
+
+:root {
+  --slider-thumb-size: var(--control-affix-size-md);
+  --slider-thumb-size-sm: var(--control-affix-size-sm);
+  --slider-rail-size: var(--space-1);
+  --slider-rail-size-sm: var(--radius-xs);
+  --slider-min-width: var(--combobox-compact-width);
+}
+
+.ui-slider {
+  --slider-progress: 0%;
+  position: relative;
+  min-width: var(--slider-min-width);
+  min-height: var(--control-height-md);
+  display: inline-grid;
+  align-items: center;
+  touch-action: none;
+}
+
+.ui-slider__rail {
+  grid-area: 1 / 1;
+  height: var(--slider-rail-size);
+  border-radius: var(--radius-lg);
+  background: linear-gradient(
+    to right,
+    var(--accent-primary) 0,
+    var(--accent-primary) var(--slider-progress),
+    var(--bg-pressed) var(--slider-progress)
+  );
+}
+
+.ui-slider__thumb {
+  position: absolute;
+  left: clamp(
+    calc(var(--slider-thumb-size) / 2),
+    var(--slider-progress),
+    calc(100% - var(--slider-thumb-size) / 2)
+  );
+  width: var(--slider-thumb-size);
+  height: var(--slider-thumb-size);
+  transform: translateX(-50%);
+  border: var(--control-border-width) solid var(--border-control);
+  border-radius: var(--radius-full);
+  background: var(--accent-primary);
+  box-shadow: inset 0 0 0 calc(var(--slider-thumb-size) * 0.2) var(--bg-surface);
+  pointer-events: none;
+}
+
+.ui-slider__input {
+  grid-area: 1 / 1;
+  width: 100%;
+  margin: 0;
+  opacity: 0;
+  cursor: pointer;
+}
+
+.ui-slider:has(.ui-slider__input:focus-visible) .ui-slider__thumb {
+  outline: var(--focus-outline-width) solid var(--focus-outline-color);
+  outline-offset: var(--focus-outline-offset);
+}
+
+.ui-slider:has(.ui-slider__input:disabled) {
+  opacity: 0.46;
+}
+.ui-slider__input:disabled {
+  cursor: not-allowed;
+}
+
+.ui-slider--small {
+  --slider-thumb-size: var(--slider-thumb-size-sm);
+  --slider-rail-size: var(--slider-rail-size-sm);
+  min-height: var(--control-height-sm);
+}

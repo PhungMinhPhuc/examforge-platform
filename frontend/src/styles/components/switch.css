@@ -1,0 +1,135 @@
+/* Switch component. Requires global color and design tokens. */
+
+:root {
+  --switch-track-width: var(--control-height-lg);
+  --switch-track-height: var(--control-affix-size-md);
+  --switch-track-width-sm: var(--space-8);
+  --switch-track-height-sm: var(--space-4);
+}
+
+.ui-switch {
+  position: relative;
+  max-width: fit-content;
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  color: var(--text-secondary);
+  font: var(--control-font-size-md)/var(--line-height-normal)
+    var(--font-family-ui);
+  cursor: pointer;
+}
+
+.ui-switch:hover {
+  color: var(--text-primary);
+}
+
+.ui-switch__input {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  opacity: 0;
+  cursor: inherit;
+}
+
+.ui-switch__indicator {
+  --switch-thumb-size: calc(
+    var(--switch-track-height) - 2 * var(--control-border-width)
+  );
+  --switch-thumb-inset: calc(var(--switch-thumb-size) * 0.1);
+  display: flex;
+  align-items: center;
+  flex: none;
+  width: var(--switch-track-width);
+  height: var(--switch-track-height);
+  padding-inline: var(--switch-thumb-inset);
+  border: var(--control-border-width) solid var(--border-control);
+  border-radius: var(--radius-full);
+  background: var(--bg-surface);
+  transition:
+    background-color var(--transition-normal),
+    border-color var(--transition-normal);
+}
+
+/* The visible circle occupies 80% of Fluent's 18/14px thumb box. */
+.ui-switch__indicator::before {
+  content: "";
+  flex: none;
+  width: calc(var(--switch-thumb-size) * 0.8);
+  height: calc(var(--switch-thumb-size) * 0.8);
+  border-radius: var(--radius-full);
+  background: var(--border-control);
+  transition:
+    transform var(--transition-normal),
+    background-color var(--transition-normal);
+}
+
+.ui-switch__label {
+  color: inherit;
+  cursor: inherit;
+}
+.ui-switch:hover .ui-switch__indicator {
+  border-color: var(--border-control-hover);
+}
+
+.ui-switch__input:checked ~ .ui-switch__indicator {
+  border-color: var(--accent-primary);
+  background: var(--accent-primary);
+}
+
+.ui-switch__input:checked ~ .ui-switch__indicator::before {
+  background: var(--text-on-accent);
+  transform: translateX(
+    calc(
+      var(--switch-track-width) - var(--switch-thumb-size) - 2 *
+        var(--control-border-width)
+    )
+  );
+}
+
+.ui-switch__input:focus-visible ~ .ui-switch__indicator {
+  outline: var(--focus-outline-width) solid var(--focus-outline-color);
+  outline-offset: var(--focus-outline-offset);
+  border-color: var(--border-focus);
+}
+
+.ui-switch--disabled,
+.ui-switch--disabled:hover {
+  color: var(--text-muted);
+  cursor: not-allowed;
+}
+
+.ui-switch--disabled .ui-switch__indicator,
+.ui-switch--disabled:hover .ui-switch__indicator {
+  border-color: var(--border);
+  background: var(--bg-hover);
+}
+
+.ui-switch--disabled .ui-switch__indicator::before {
+  background: var(--text-muted);
+}
+
+.ui-switch--disabled .ui-switch__input:checked ~ .ui-switch__indicator {
+  border-color: var(--border);
+  background: var(--bg-pressed);
+}
+
+.ui-switch--small {
+  font-size: var(--control-font-size-sm);
+}
+
+.ui-switch--small .ui-switch__indicator {
+  --switch-track-width: var(--switch-track-width-sm);
+  --switch-track-height: var(--switch-track-height-sm);
+}
+
+.ui-switch--label-before {
+  flex-direction: row-reverse;
+}
+
+.ui-switch--label-above {
+  flex-direction: column-reverse;
+  align-items: flex-start;
+  gap: var(--space-1);
+}

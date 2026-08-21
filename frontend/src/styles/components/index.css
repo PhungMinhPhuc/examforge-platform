@@ -1,8 +1,15 @@
-/* Component stylesheet bundle. This file is not imported by the app yet. */
+/* Shared component stylesheet bundle, loaded after global design tokens. */
 
 @import url("./button.css");
+@import url("./toolbar.css");
 @import url("./input.css");
 @import url("./combobox.css");
+@import url("./checkbox.css");
+@import url("./switch.css");
+@import url("./radio.css");
+@import url("./slider.css");
+@import url("./tabs.css");
+@import url("./tag-picker.css");
 @import url("./dropdown.css");
 @import url("./searchbox.css");
 @import url("./select.css");
