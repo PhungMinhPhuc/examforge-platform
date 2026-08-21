@@ -1,0 +1,46 @@
+/* Global icon geometry and immutable file-format artwork colors. */
+
+:root {
+  --icon-size-xs: 14px;
+  --icon-size-compact: 15px;
+  --icon-size-sm: 16px;
+  --icon-size-control: 17px;
+  --icon-size-action: 18px;
+  --icon-size-md: 20px;
+  --icon-size-lg: 24px;
+  --icon-size-file: 32px;
+  --icon-size-illustration: 48px;
+
+  --icon-stroke-thin: 1;
+  --icon-stroke-subtle: 1.35;
+  --icon-stroke-regular: 1.5;
+  --icon-stroke-emphasis: 1.8;
+  --icon-stroke-strong: 2;
+  --icon-stroke-status: 2.5;
+  --icon-stroke-marker: 2.6;
+
+  --icon-file-paper: #ffffff;
+  --icon-file-border: #d0d0d0;
+  --icon-file-label: #ffffff;
+  --icon-file-docx: #2b579a;
+  --icon-file-pdf: #d93025;
+  --icon-file-pptx: #c43e1c;
+  --icon-file-tex: #3d6117;
+  --icon-file-xlsx: #185c37;
+  --icon-file-zip: #6b6b6b;
+  --icon-color-empty-state: #d1d5db;
+
+  /* Immutable official brand artwork colors. */
+  --icon-brand-google-red: #ea4335;
+  --icon-brand-google-blue: #4285f4;
+  --icon-brand-google-yellow: #fbbc05;
+  --icon-brand-google-green: #34a853;
+  --icon-brand-microsoft-red: #f25022;
+  --icon-brand-microsoft-green: #7fba00;
+  --icon-brand-microsoft-blue: #00a4ef;
+  --icon-brand-microsoft-yellow: #ffb900;
+}
+
+:root[data-theme="dark"] {
+  --icon-color-empty-state: #454c59;
+}
