@@ -27,8 +27,7 @@ export const strokeIconPaths = {
     '<path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><rect x="8" y="2" width="8" height="4" rx="1"/>',
   close: '<path d="M6 6l12 12M18 6 6 18"/>',
   code: '<path d="m9 8-4 4 4 4M15 8l4 4-4 4M13 5l-2 14"/>',
-  copy:
-    '<rect x="8" y="3" width="13" height="16" rx="3"/><path d="M5 8v11a3 3 0 0 0 3 3h8"/>',
+  copy: '<rect x="8" y="3" width="13" height="16" rx="3"/><path d="M5 8v11a3 3 0 0 0 3 3h8"/>',
   create:
     '<rect x="3" y="3" width="18" height="18" rx="2"/><path d="M12 8v8M8 12h8"/>',
   crop: '<path d="M6 2v14a2 2 0 0 0 2 2h14"/><path d="M18 22V8a2 2 0 0 0-2-2H2"/>',
@@ -65,7 +64,7 @@ export const strokeIconPaths = {
   "list-bullet":
     '<path d="M9 6h12M9 12h12M9 18h12"/><circle cx="4.5" cy="6" r="1.4" fill="currentColor" stroke="none"/><circle cx="4.5" cy="12" r="1.4" fill="currentColor" stroke="none"/><circle cx="4.5" cy="18" r="1.4" fill="currentColor" stroke="none"/>',
   "list-ordered":
-    '<path d="M9 5h12M9 12h12M9 19h12"/><path d="m3.7 4 1.2-.8v3.6M3.6 10.5c.3-.8 2.2-.9 2.2.2 0 .6-.4.9-.9 1.3l-1.3 1.3h2.3M3.6 17h1c1.5 0 1.6 1.8.1 1.8h-.8M4.7 18.8c1.6 0 1.6 2 0 2H3.6" stroke-width="1.35"/>',
+    '<path d="M9 5h12M9 12h12M9 19h12"/><path d="m3.7 4 1.2-.8v3.6M3.6 10.5c.3-.8 2.2-.9 2.2.2 0 .6-.4.9-.9 1.3l-1.3 1.3h2.3M3.6 17h1c1.5 0 1.6 1.8.1 1.8h-.8M4.7 18.8c1.6 0 1.6 2 0 2H3.6" stroke-width="var(--icon-stroke-subtle)"/>',
   lock: '<rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/>',
   "login-arrow":
     '<path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"/><path d="M10 17l5-5-5-5"/><path d="M15 12H3"/>',
@@ -73,7 +72,7 @@ export const strokeIconPaths = {
     '<path d="M12 3 3 8l9 5 9-5-9-5Z"/><path d="M3 12l9 5 9-5"/><path d="M3 16l9 5 9-5"/>',
   mail: '<path d="M4 5h16v14H4z"/><path d="m4 6 8 7 8-7"/>',
   merge:
-    '<rect x="3" y="4" width="18" height="16" rx="1"/><rect x="3" y="9" width="18" height="6" fill="var(--accent-primary,var(--brand))" fill-opacity=".2" stroke="none"/><path d="M12 4v5M12 15v5M3 9h18M3 15h18"/>',
+    '<rect x="3" y="4" width="18" height="16" rx="1"/><rect x="3" y="9" width="18" height="6" fill="var(--accent-primary)" fill-opacity=".2" stroke="none"/><path d="M12 4v5M12 15v5M3 9h18M3 15h18"/>',
   moon: '<path d="M20 14.5A8.5 8.5 0 1 1 9.5 4a7 7 0 0 0 10.5 10.5Z"/>',
   "more-horizontal":
     '<circle cx="5" cy="12" r="1.6" fill="currentColor" stroke="none"/><circle cx="12" cy="12" r="1.6" fill="currentColor" stroke="none"/><circle cx="19" cy="12" r="1.6" fill="currentColor" stroke="none"/>',
@@ -99,12 +98,12 @@ export const strokeIconPaths = {
   sparkle:
     '<path d="M12 3l1.2 3.8L17 8l-3.8 1.2L12 13l-1.2-3.8L7 8l3.8-1.2zM5 14l.8 2.2L8 17l-2.2.8L5 20l-.8-2.2L2 17l2.2-.8zM18 14l1 3 3 1-3 1-1 3-1-3-3-1 3-1z"/>',
   split:
-    '<path d="M7.5 9v6M16.5 9v6" stroke="var(--accent-primary,var(--brand))"/><rect x="3" y="4" width="18" height="16" rx="1"/><path d="M3 9h18M3 15h18M12 4v5M12 15v5M12 9v6"/>',
+    '<path d="M7.5 9v6M16.5 9v6" stroke="var(--accent-primary)"/><rect x="3" y="4" width="18" height="16" rx="1"/><path d="M3 9h18M3 15h18M12 4v5M12 15v5M12 9v6"/>',
   "student-exam":
     '<path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><rect x="8" y="2" width="8" height="4" rx="1"/><circle cx="8.5" cy="10" r="1.1"/><path d="M12 10h6"/><circle cx="8.5" cy="14" r="1.1" fill="currentColor" stroke="none"/><path d="M12 14h6"/><circle cx="8.5" cy="18" r="1.1"/><path d="M12 18h6"/>',
   sun: '<circle cx="12" cy="12" r="4"/><path d="M12 2v2.2M12 19.8V22M4.9 4.9l1.5 1.5M17.6 17.6l1.5 1.5M2 12h2.2M19.8 12H22M4.9 19.1l1.5-1.5M17.6 6.4l1.5-1.5"/>',
   "text-color":
-    '<path d="M9 15h6M6 19l5-13h2l5 13"/><path d="M4 21h16" stroke-width="2.6"/>',
+    '<path d="M9 15h6M6 19l5-13h2l5 13"/><path d="M4 21h16" stroke-width="var(--icon-stroke-marker)"/>',
   trash:
     '<path d="M4 7h16M9 7V4h6v3M6 7l1 13a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2l1-13"/><path d="M10 11v6M14 11v6"/>',
   undo: '<path d="M9 14 4 9l5-5"/><path d="M20 20v-7a4 4 0 0 0-4-4H4"/>',
@@ -123,8 +122,7 @@ export const strokeIconPaths = {
 } as const;
 
 export const filledIconMarkup = {
-  bold:
-    '<path d="M6.94 4.44A1.5 1.5 0 0 1 8 4h4.38a4.64 4.64 0 0 1 3.75 7.3A4.7 4.7 0 0 1 18 15.13c0 3.11-2.7 4.88-4.88 4.88H8a1.5 1.5 0 0 1-1.5-1.5v-13q0-.62.44-1.06m2.56 5.81h2.88c.9 0 1.62-.76 1.62-1.62S13.28 7 12.38 7H9.5zm0 3V17h3.62c.87 0 1.88-.75 1.88-1.88a1.9 1.9 0 0 0-1.88-1.87z"/>',
+  bold: '<path d="M6.94 4.44A1.5 1.5 0 0 1 8 4h4.38a4.64 4.64 0 0 1 3.75 7.3A4.7 4.7 0 0 1 18 15.13c0 3.11-2.7 4.88-4.88 4.88H8a1.5 1.5 0 0 1-1.5-1.5v-13q0-.62.44-1.06m2.56 5.81h2.88c.9 0 1.62-.76 1.62-1.62S13.28 7 12.38 7H9.5zm0 3V17h3.62c.87 0 1.88-.75 1.88-1.88a1.9 1.9 0 0 0-1.88-1.87z"/>',
   highlight:
     '<path d="M20.26 2c.38 0 .7.29.74.65v4.6c0 1.16-.87 2.11-2 2.24v2.26c0 1.19-.92 2.16-2.1 2.24h-.4v2.8c0 .81-.44 1.56-1.14 1.96l-.15.08-6.64 3.1a.75.75 0 0 1-1.06-.58V14h-.26c-1.2 0-2.17-.93-2.24-2.1L5 11.75V9.49A2.25 2.25 0 0 1 3 7.4V2.75a.75.75 0 0 1 1.5-.1v4.6c0 .38.28.7.65.74l.1.01h13.5c.38 0 .7-.28.75-.65v-4.6c0-.41.34-.75.76-.75M15 14H9v6.07l5.57-2.6c.23-.11.39-.33.42-.57l.01-.11zm2.5-4.5h-11v2.25c0 .38.28.69.65.74h9.6c.38 0 .7-.28.75-.64V9.5"/>',
   italic:
@@ -135,8 +133,7 @@ export const filledIconMarkup = {
     '<path d="M18.74 3.5c-.55 0-.99.5-.99 1.02a.75.75 0 0 1-1.5 0 2.53 2.53 0 0 1 4.64-1.4c.49.75.5 1.72-.06 2.67-.29.48-.67.85-1.05 1.14q-.28.22-.55.41l-.08.06-.43.3q-.54.4-.78.8h2.51a.75.75 0 0 1 0 1.5H17a.75.75 0 0 1-.75-.75c0-1.4.82-2.18 1.56-2.74l.48-.34.07-.05.5-.37q.45-.35.68-.72c.3-.53.23-.89.09-1.1a1 1 0 0 0-.9-.43m-3.48 1.21c.06.56.38 1.04.85 1.32L10.99 12l5.58 6.51a.75.75 0 1 1-1.14.98L10 13.15 4.57 19.5a.75.75 0 0 1-1.14-.98L9.01 12 3.43 5.49a.75.75 0 1 1 1.14-.98L10 10.85z"/>',
   underline:
     '<path d="M6.75 19h10.5a.75.75 0 0 1 .1 1.5H6.75a.75.75 0 0 1-.1-1.5zh10.5zm10.5-15c.38 0 .7.28.74.65l.01.1v6c0 4.4-2.06 6.75-6 6.75-3.86 0-5.91-2.26-6-6.47V4.75a.75.75 0 0 1 1.5-.1v6.1C7.5 14.35 8.93 16 12 16c2.98 0 4.43-1.56 4.5-4.98V4.75c0-.41.34-.75.75-.75"/>',
-  cut:
-    '<path d="M12.1409 9.3415L12.14 9.34286L7.37017 2.3284C7.13725 1.98587 6.67077 1.89702 6.32824 2.12994C5.98572 2.36286 5.89687 2.82934 6.12978 3.17187L11.2606 10.7171L8.86478 14.4605C8.30797 14.1665 7.67342 14.0001 7 14.0001C4.79086 14.0001 3 15.791 3 18.0001C3 20.2093 4.79086 22.0001 7 22.0001C9.20914 22.0001 11 20.2093 11 18.0001C11 17.0089 10.6395 16.1019 10.0424 15.4031L12.178 12.0662L14.2426 15.1024C13.4771 15.831 13 16.8599 13 18.0001C13 20.2093 14.7909 22.0001 17 22.0001C19.2091 22.0001 21 20.2093 21 18.0001C21 15.791 19.2091 14.0001 17 14.0001C16.471 14.0001 15.9659 14.1028 15.5037 14.2894L13.0575 10.692L13.0588 10.69L12.1409 9.3415ZM4.5 18.0001C4.5 16.6194 5.61929 15.5001 7 15.5001C8.38071 15.5001 9.5 16.6194 9.5 18.0001C9.5 19.3808 8.38071 20.5001 7 20.5001C5.61929 20.5001 4.5 19.3808 4.5 18.0001ZM14.5 18.0001C14.5 16.6194 15.6193 15.5001 17 15.5001C18.3807 15.5001 19.5 16.6194 19.5 18.0001C19.5 19.3808 18.3807 20.5001 17 20.5001C15.6193 20.5001 14.5 19.3808 14.5 18.0001ZM13.9381 9.31607L17.8815 3.15438C18.1048 2.8055 18.003 2.34167 17.6541 2.11839C17.3053 1.89511 16.8414 1.99692 16.6181 2.3458L13.0202 7.96756L13.9381 9.31607Z"/>',
+  cut: '<path d="M12.1409 9.3415L12.14 9.34286L7.37017 2.3284C7.13725 1.98587 6.67077 1.89702 6.32824 2.12994C5.98572 2.36286 5.89687 2.82934 6.12978 3.17187L11.2606 10.7171L8.86478 14.4605C8.30797 14.1665 7.67342 14.0001 7 14.0001C4.79086 14.0001 3 15.791 3 18.0001C3 20.2093 4.79086 22.0001 7 22.0001C9.20914 22.0001 11 20.2093 11 18.0001C11 17.0089 10.6395 16.1019 10.0424 15.4031L12.178 12.0662L14.2426 15.1024C13.4771 15.831 13 16.8599 13 18.0001C13 20.2093 14.7909 22.0001 17 22.0001C19.2091 22.0001 21 20.2093 21 18.0001C21 15.791 19.2091 14.0001 17 14.0001C16.471 14.0001 15.9659 14.1028 15.5037 14.2894L13.0575 10.692L13.0588 10.69L12.1409 9.3415ZM4.5 18.0001C4.5 16.6194 5.61929 15.5001 7 15.5001C8.38071 15.5001 9.5 16.6194 9.5 18.0001C9.5 19.3808 8.38071 20.5001 7 20.5001C5.61929 20.5001 4.5 19.3808 4.5 18.0001ZM14.5 18.0001C14.5 16.6194 15.6193 15.5001 17 15.5001C18.3807 15.5001 19.5 16.6194 19.5 18.0001C19.5 19.3808 18.3807 20.5001 17 20.5001C15.6193 20.5001 14.5 19.3808 14.5 18.0001ZM13.9381 9.31607L17.8815 3.15438C18.1048 2.8055 18.003 2.34167 17.6541 2.11839C17.3053 1.89511 16.8414 1.99692 16.6181 2.3458L13.0202 7.96756L13.9381 9.31607Z"/>',
   paste:
     '<path d="M12.7533 2C13.9109 2 14.8641 2.87549 14.9867 4.00046L16.75 4C17.9409 4 18.9156 4.92516 18.9948 6.09595L19 6.25C19 6.62919 18.7182 6.94257 18.3526 6.99216L18.249 6.999C17.8698 6.999 17.5564 6.71722 17.5068 6.35163L17.5 6.25C17.5 5.8703 17.2178 5.55651 16.8518 5.50685L16.75 5.5L14.6176 5.50082C14.2141 6.09953 13.5297 6.4933 12.7533 6.4933H9.24665C8.47031 6.4933 7.78594 6.09953 7.38237 5.50082L5.25 5.5C4.8703 5.5 4.55651 5.78215 4.50685 6.14823L4.5 6.25V19.7546C4.5 20.1343 4.78215 20.4481 5.14823 20.4977L5.25 20.5046L8.25 20.5041C8.62964 20.5041 8.94343 20.7861 8.99314 21.1521L9 21.254C9 21.6682 8.66423 22.0041 8.25 22.0041L5.25 22.0046C4.05914 22.0046 3.08436 21.0794 3.00519 19.9086L3 19.7546V6.25C3 5.05914 3.92516 4.08436 5.09595 4.00519L5.25 4L7.01333 4.00046C7.13595 2.87549 8.08906 2 9.24665 2H12.7533ZM18.75 8C19.9409 8 20.9156 8.92516 20.9948 10.096L21 10.25V19.75C21 20.9409 20.0748 21.9156 18.904 21.9948L18.75 22H12.25C11.0591 22 10.0844 21.0748 10.0052 19.904L10 19.75V10.25C10 9.05914 10.9252 8.08436 12.096 8.00519L12.25 8H18.75ZM18.75 9.5H12.25C11.8703 9.5 11.5565 9.78215 11.5068 10.1482L11.5 10.25V19.75C11.5 20.1297 11.7822 20.4435 12.1482 20.4932L12.25 20.5H18.75C19.1297 20.5 19.4435 20.2178 19.4932 19.8518L19.5 19.75V10.25C19.5 9.8703 19.2178 9.55651 18.8518 9.50685L18.75 9.5ZM12.7533 3.5H9.24665C8.83429 3.5 8.5 3.83429 8.5 4.24665C8.5 4.65902 8.83429 4.9933 9.24665 4.9933H12.7533C13.1657 4.9933 13.5 4.65902 13.5 4.24665C13.5 3.83429 13.1657 3.5 12.7533 3.5Z"/>',
   "delete-columns":
@@ -144,17 +141,17 @@ export const filledIconMarkup = {
   "delete-rows":
     '<g transform="matrix(1.00147,0,0,1.00147,0,0.7335)"><path d="M10.5 1.5H0V0H10.5A1.5 1.5 0 0 1 12 1.5V6H10.5ZM16.53515625 11.25L12.78515625 15H1.5A1.5 1.5 0 0 1 0 13.5V9A1.5 1.5 0 0 1 1.5 7.5H12.796875ZM10.5 16.5H12V21A1.5 1.5 0 0 1 10.5 22.5H0V21H10.5ZM22.91015625 14.96484375 20.25 12.3046875 17.58984375 14.96484375 16.53515625 13.91015625 19.1953125 11.25 16.53515625 8.58984375 17.6015625 7.53515625 20.25 10.18359375 22.91015625 7.53515625 23.96484375 8.58984375 21.31640625 11.25 23.9765625 13.91015625Z"/></g>',
   "file-docx":
-    '<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" fill="#fff" stroke="#d0d0d0"/><path d="M14 2v6h6" fill="none" stroke="#d0d0d0"/><rect x="2" y="13" width="14" height="8" rx="1" fill="#2B579A"/><text x="9" y="19.1" text-anchor="middle" font-family="Arial,Helvetica,sans-serif" font-size="4.6" font-weight="700" letter-spacing="-.2" fill="#fff">DOCX</text>',
+    '<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" fill="var(--icon-file-paper)" stroke="var(--icon-file-border)"/><path d="M14 2v6h6" fill="none" stroke="var(--icon-file-border)"/><rect x="2" y="13" width="14" height="8" rx="1" fill="var(--icon-file-docx)"/><text x="9" y="19.1" text-anchor="middle" font-family="Arial,Helvetica,sans-serif" font-size="4.6" font-weight="700" letter-spacing="-.2" fill="var(--icon-file-label)">DOCX</text>',
   "file-pdf":
-    '<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" fill="#fff" stroke="#d0d0d0"/><path d="M14 2v6h6" fill="none" stroke="#d0d0d0"/><rect x="2" y="13" width="14" height="8" rx="1" fill="#D93025"/><text x="9" y="19.1" text-anchor="middle" font-family="Arial,Helvetica,sans-serif" font-size="4.6" font-weight="700" letter-spacing="-.2" fill="#fff">PDF</text>',
+    '<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" fill="var(--icon-file-paper)" stroke="var(--icon-file-border)"/><path d="M14 2v6h6" fill="none" stroke="var(--icon-file-border)"/><rect x="2" y="13" width="14" height="8" rx="1" fill="var(--icon-file-pdf)"/><text x="9" y="19.1" text-anchor="middle" font-family="Arial,Helvetica,sans-serif" font-size="4.6" font-weight="700" letter-spacing="-.2" fill="var(--icon-file-label)">PDF</text>',
   "file-pptx":
-    '<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" fill="#fff" stroke="#d0d0d0"/><path d="M14 2v6h6" fill="none" stroke="#d0d0d0"/><rect x="2" y="13" width="14" height="8" rx="1" fill="#C43E1C"/><text x="9" y="19.1" text-anchor="middle" font-family="Arial,Helvetica,sans-serif" font-size="4.6" font-weight="700" letter-spacing="-.2" fill="#fff">PPTX</text>',
+    '<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" fill="var(--icon-file-paper)" stroke="var(--icon-file-border)"/><path d="M14 2v6h6" fill="none" stroke="var(--icon-file-border)"/><rect x="2" y="13" width="14" height="8" rx="1" fill="var(--icon-file-pptx)"/><text x="9" y="19.1" text-anchor="middle" font-family="Arial,Helvetica,sans-serif" font-size="4.6" font-weight="700" letter-spacing="-.2" fill="var(--icon-file-label)">PPTX</text>',
   "file-tex":
-    '<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" fill="#fff" stroke="#d0d0d0"/><path d="M14 2v6h6" fill="none" stroke="#d0d0d0"/><rect x="2" y="13" width="14" height="8" rx="1" fill="#3D6117"/><text x="9" y="19.1" text-anchor="middle" font-family="Arial,Helvetica,sans-serif" font-size="4.6" font-weight="700" letter-spacing="-.2" fill="#fff">TEX</text>',
+    '<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" fill="var(--icon-file-paper)" stroke="var(--icon-file-border)"/><path d="M14 2v6h6" fill="none" stroke="var(--icon-file-border)"/><rect x="2" y="13" width="14" height="8" rx="1" fill="var(--icon-file-tex)"/><text x="9" y="19.1" text-anchor="middle" font-family="Arial,Helvetica,sans-serif" font-size="4.6" font-weight="700" letter-spacing="-.2" fill="var(--icon-file-label)">TEX</text>',
   "file-xlsx":
-    '<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" fill="#fff" stroke="#d0d0d0"/><path d="M14 2v6h6" fill="none" stroke="#d0d0d0"/><rect x="2" y="13" width="14" height="8" rx="1" fill="#185C37"/><text x="9" y="19.1" text-anchor="middle" font-family="Arial,Helvetica,sans-serif" font-size="4.6" font-weight="700" letter-spacing="-.2" fill="#fff">XLSX</text>',
+    '<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" fill="var(--icon-file-paper)" stroke="var(--icon-file-border)"/><path d="M14 2v6h6" fill="none" stroke="var(--icon-file-border)"/><rect x="2" y="13" width="14" height="8" rx="1" fill="var(--icon-file-xlsx)"/><text x="9" y="19.1" text-anchor="middle" font-family="Arial,Helvetica,sans-serif" font-size="4.6" font-weight="700" letter-spacing="-.2" fill="var(--icon-file-label)">XLSX</text>',
   "file-zip":
-    '<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" fill="#fff" stroke="#d0d0d0"/><path d="M14 2v6h6" fill="none" stroke="#d0d0d0"/><rect x="2" y="13" width="14" height="8" rx="1" fill="#6B6B6B"/><text x="9" y="19.1" text-anchor="middle" font-family="Arial,Helvetica,sans-serif" font-size="4.6" font-weight="700" letter-spacing="-.2" fill="#fff">ZIP</text>',
+    '<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" fill="var(--icon-file-paper)" stroke="var(--icon-file-border)"/><path d="M14 2v6h6" fill="none" stroke="var(--icon-file-border)"/><rect x="2" y="13" width="14" height="8" rx="1" fill="var(--icon-file-zip)"/><text x="9" y="19.1" text-anchor="middle" font-family="Arial,Helvetica,sans-serif" font-size="4.6" font-weight="700" letter-spacing="-.2" fill="var(--icon-file-label)">ZIP</text>',
   "insert-col-left":
     '<g transform="matrix(1,0,0,1,0,0.75)"><path d="M22.5 1.5A1.5 1.5 0 0 1 24 3V19.5A1.5 1.5 0 0 1 22.5 21H1.5A1.5 1.5 0 0 1 0 19.5V15L1.5 16.5V19.5H7.5V13.5H13.5V9H7.5V3H1.5V6L0 7.5V3A1.5 1.5 0 0 1 1.5 1.5H22.5ZM22.5 15.0H16.5V19.5H22.5ZM22.5 9.0H16.5V13.5H22.5ZM22.5 3.0H16.5V7.5H22.5ZM6.15234375 7.27734375 2.9296875 10.5H12.0V12.0H2.9296875L6.15234375 15.22265625L5.09765625 16.27734375L0.0703125 11.25L5.09765625 6.22265625Z"/></g>',
   "insert-col-right":
@@ -171,29 +168,29 @@ export const filledIconMarkup = {
 } as const;
 
 export const filledIconDefaultSizes = {
-  bold: 20,
-  highlight: 20,
-  italic: 20,
-  subscript: 20,
-  superscript: 20,
-  underline: 20,
-  cut: 20,
-  "delete-columns": 20,
-  "delete-rows": 20,
-  "file-docx": 32,
-  "file-pdf": 32,
-  "file-pptx": 32,
-  "file-tex": 32,
-  "file-xlsx": 32,
-  "file-zip": 32,
-  "insert-col-left": 20,
-  "insert-col-right": 20,
-  "insert-row-above": 20,
-  "insert-row-below": 20,
-  key: 20,
-  paste: 20,
-  settings: 20,
-  table: 20,
+  bold: "var(--icon-size-md, 20px)",
+  highlight: "var(--icon-size-md, 20px)",
+  italic: "var(--icon-size-md, 20px)",
+  subscript: "var(--icon-size-md, 20px)",
+  superscript: "var(--icon-size-md, 20px)",
+  underline: "var(--icon-size-md, 20px)",
+  cut: "var(--icon-size-md, 20px)",
+  "delete-columns": "var(--icon-size-md, 20px)",
+  "delete-rows": "var(--icon-size-md, 20px)",
+  "file-docx": "var(--icon-size-file, 32px)",
+  "file-pdf": "var(--icon-size-file, 32px)",
+  "file-pptx": "var(--icon-size-file, 32px)",
+  "file-tex": "var(--icon-size-file, 32px)",
+  "file-xlsx": "var(--icon-size-file, 32px)",
+  "file-zip": "var(--icon-size-file, 32px)",
+  "insert-col-left": "var(--icon-size-md, 20px)",
+  "insert-col-right": "var(--icon-size-md, 20px)",
+  "insert-row-above": "var(--icon-size-md, 20px)",
+  "insert-row-below": "var(--icon-size-md, 20px)",
+  key: "var(--icon-size-md, 20px)",
+  paste: "var(--icon-size-md, 20px)",
+  settings: "var(--icon-size-md, 20px)",
+  table: "var(--icon-size-md, 20px)",
 } as const;
 
 export type StrokeIconName = keyof typeof strokeIconPaths;

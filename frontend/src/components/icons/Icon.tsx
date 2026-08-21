@@ -37,12 +37,16 @@ export function Icon({
     ? strokeIconPaths[name]
     : filledIconMarkup[name as FilledIconName];
   const resolvedSize =
-    size ?? (strokeIcon ? 20 : filledIconDefaultSizes[name as FilledIconName]);
+    size ??
+    (strokeIcon
+      ? "var(--icon-size-md)"
+      : filledIconDefaultSizes[name as FilledIconName]);
   const accessibleName = ariaLabel ?? title;
 
   return (
     <svg
       {...svgProps}
+      data-icon-name={name}
       aria-hidden={accessibleName ? undefined : true}
       aria-label={accessibleName}
       fill={strokeIcon ? "none" : "currentColor"}
@@ -52,7 +56,7 @@ export function Icon({
       stroke={strokeIcon ? "currentColor" : undefined}
       strokeLinecap={strokeIcon ? "round" : undefined}
       strokeLinejoin={strokeIcon ? "round" : undefined}
-      strokeWidth={strokeIcon ? 1.5 : undefined}
+      strokeWidth={strokeIcon ? "var(--icon-stroke-regular)" : undefined}
       viewBox="0 0 24 24"
       width={resolvedSize}
     >
