@@ -1,0 +1,11 @@
+# TreeDoc, DOCX và bảng tính.
+python-docx>=1.1,<2
+lxml>=5,<7
+openpyxl>=3.1,<4
+
+# PDF, ảnh và render HTML/PDF.
+pypdf>=5,<7
+PyMuPDF>=1.24,<2
+Pillow>=10,<13
+Wand>=0.6,<1
+playwright>=1.49,<2

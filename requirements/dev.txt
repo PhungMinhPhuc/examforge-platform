@@ -1,5 +1,4 @@
--r api.txt
--r engine.txt
+-r production.txt
 
 # Công cụ chỉ dùng khi phát triển/kiểm thử.
 pytest>=8,<9

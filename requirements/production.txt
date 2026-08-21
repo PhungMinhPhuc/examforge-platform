@@ -1,0 +1,4 @@
+# Toàn bộ runtime hiện được api/main.py nạp trực tiếp.
+-r api.txt
+-r document.txt
+-r ai.txt
