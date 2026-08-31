@@ -960,8 +960,8 @@ export default function ExamPage({
                             }
                           >
                             <svg
-                              width="15"
-                              height="15"
+                              width="var(--icon-size-compact)"
+                              height="var(--icon-size-compact)"
                               viewBox="0 0 24 24"
                               fill={
                                 markedQuestions.includes(node.id)
@@ -972,7 +972,7 @@ export default function ExamPage({
                               <path
                                 d="M6 4.75A1.75 1.75 0 0 1 7.75 3h8.5A1.75 1.75 0 0 1 18 4.75V21l-6-3.6L6 21V4.75Z"
                                 stroke="currentColor"
-                                strokeWidth="1.8"
+                                strokeWidth="var(--icon-stroke-emphasis)"
                                 strokeLinejoin="round"
                               />
                             </svg>
