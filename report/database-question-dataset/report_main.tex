@@ -1,0 +1,442 @@
+% !TeX program = latexmk
+% !TeX options = -xelatex -synctex=1 -interaction=nonstopmode -file-line-error -shell-escape -output-directory="%OUTDIR%" "%DOC%"
+\documentclass[a4paper,13pt,3p,twoside,openany]{report}
+\usepackage{scrextend}
+\changefontsizes{13pt}
+% \usepackage[utf8]{vietnam}
+\usepackage[top=2cm, bottom=2cm, left=3cm, right=2cm]{geometry}
+\usepackage{xurl}
+\usepackage{appendix}
+\usepackage{babel}
+\usepackage{xcolor}
+\usepackage{outlines}
+\usepackage{graphicx} % Cho phép chèn hỉnh ảnh
+\usepackage{fancybox} % Tạo khung box
+\usepackage{indentfirst} % Thụt đầu dòng ở dòng đầu tiên trong đoạn
+\usepackage{amsthm} % Cho phép thêm các môi trường định nghĩa
+\usepackage{latexsym} % Các kí hiệu toán học
+\usepackage{amsmath} % Hỗ trợ một số biểu thức toán học
+\usepackage{amssymb} % Bổ sung thêm kí hiệu về toán học
+\usepackage{amsbsy} % Hỗ trợ các kí hiệu in đậm
+\usepackage{times} % Chọn font Time New Romans
+\usepackage{array} % Tạo bảng array
+\usepackage{enumitem} % Cho phép thay đổi kí hiệu của list
+\usepackage{subfiles} % Chèn các file nhỏ, giúp chia các chapter ra nhiều file hơn
+\usepackage{titlesec} % Giúp chỉnh sửa các tiêu đề, đề mục như chương, phần,..
+\usepackage{titletoc}
+\usepackage{chngcntr} % Dùng để thiết lập lại cách đánh số caption,..
+\usepackage{pdflscape} % Đưa các bảng có kích thước đặt theo chiều ngang giấy
+\usepackage{afterpage}
+\usepackage[ruled,vlined]{algorithm2e}  % Hỗ trợ viết các giải thuật
+\usepackage{capt-of} % Cho phép sử dụng caption lớn đối với landscape page
+\usepackage{multirow} % Merge cells
+\usepackage{fancyhdr} % Cho phép tùy biến header và footer
+% \usepackage[natbib,backend=biber,style=ieee]{biblatex} % Giúp chèn tài liệu tham khảo
+\usepackage{rotating}
+\usepackage[font=small,labelfont=bf]{caption}
+
+\usepackage{listings}
+
+\definecolor{sql_keyword}{HTML}{0000FF}
+\definecolor{sql_type}{HTML}{800080}
+\definecolor{sql_string}{HTML}{AF0000}
+\definecolor{sql_identifier}{HTML}{000000}
+\definecolor{sql_bg}{HTML}{FFFFFF}
+\definecolor{sql_comment}{HTML}{008000}
+\definecolor{sql_num}{HTML}{444444}
+
+\lstset{
+    language=SQL,
+    backgroundcolor=\color{sql_bg},
+    basicstyle=\bfseries\ttfamily\footnotesize\color{sql_identifier},
+    breakatwhitespace=false,
+    breaklines=true,
+    captionpos=b,
+    commentstyle=\color{sql_comment},
+    escapeinside={\%*}{*)},
+    frame=single,
+    keepspaces=true,
+    keywordstyle=\color{sql_keyword}\bfseries,
+    morekeywords={*, SELECT, FROM, WHERE, NOT, IN, GROUP, BY, ORDER, LIMIT, OFFSET, RETURNING, PRIMARY, KEY, FOREIGN, REFERENCES, CONSTRAINT, UNIQUE, INDEX, FUNCTION, TRIGGER, PROCEDURE, REPLACE, LANGUAGE, PLPGSQL},
+    classoffset=1,
+    morekeywords={UUID, SERIAL, VARCHAR, TEXT, BOOL, TIMESTAMP, INTEGER, REAL, DOUBLE, BIGINT, SMALLINT, JSONB},
+    keywordstyle=\color{sql_type}\bfseries,
+    classoffset=0,
+    numbers=left,
+    numbersep=8pt,
+    numberstyle=\tiny\bfseries\color{sql_num},
+    rulecolor=\color{black},
+    showspaces=false,
+    showstringspaces=false,
+    showtabs=false,
+    stringstyle=\color{sql_string},
+    tabsize=2,
+    xleftmargin=0pt,
+    xrightmargin=0pt,
+    linewidth=\linewidth
+}
+
+\usepackage{tcolorbox}
+\usepackage{xparse}
+\RenewDocumentCommand{\texttt}{v}{%
+  \tcbox[
+    boxrule=0.4pt,
+    arc=1pt,
+    colback=gray!15,
+    colframe=gray!30,
+    coltext=black,
+    left=2pt, right=2pt,
+    top=1pt, bottom=1pt,
+    boxsep=0pt,
+    fontupper=\bfseries\ttfamily\footnotesize,
+    valign=center,
+    nobeforeafter,
+    box align=base
+  ]{#1}%
+}
+
+\usepackage{float}
+\usepackage{subcaption}
+\usepackage{tikz}
+\usetikzlibrary{arrows.meta,calc}
+
+
+\usepackage[nonumberlist, nopostdot, nogroupskip, acronym]{glossaries}
+\usepackage{glossary-superragged}
+\setglossarystyle{superraggedheaderborder}
+\usepackage{setspace}
+\usepackage{parskip}
+
+% package content table
+\usepackage{tocbasic}
+
+\usepackage{blindtext}
+
+% ===================================================
+
+% \renewcommand{\bibname}{Danh_sach_tai_lieu_tham_khao} 
+\usepackage[backend=bibtex,style=ieee]{biblatex}  %backend=biber is 'better'
+
+\addbibresource{Chapter/reference.bib} % chèn file chứa danh mục tài liệu tham khảo vào 
+
+% Redefine citation macro to include the brackets in the hyperlink, making '[1]' entirely blue
+\renewbibmacro*{cite}{%
+  \printtext[bibhyperref]{%
+    [\printfield{labelprefix}%
+     \printfield{labelnumber}%
+     \ifbool{bbx:subentry}
+       {\printfield{entrysetcount}}
+       {}%
+    ]%
+  }%
+} 
+
+% Redefine \cite command without the outer \mkbibbrackets wrapper to prevent double-bracket output
+\DeclareCiteCommand{\cite}
+  {\usebibmacro{prenote}}
+  {\usebibmacro{citeindex}%
+   \usebibmacro{cite}}
+  {\multicitedelim}
+  {\usebibmacro{postnote}}
+
+% \include{lstlisting} % Phần này cho phép chèn code và formatting code như C, C++, Python
+
+\setglossarystyle{longheaderborder} % Style có khung và tiêu đề
+% Tùy chỉnh lại độ rộng cột để không bị tràn lề
+\renewenvironment{theglossary}%
+  {\begin{longtable}{|p{0.2\textwidth}|p{0.7\textwidth}|}}% p{0.7\textwidth} giúp tự xuống dòng
+  {\end{longtable}}
+\makenoidxglossaries
+\input{Chapter/glossary}
+
+% ===================================================
+% Thay đổi font của công thức toán học - dùng Xe hoặc Lua
+\usepackage{unicode-math}
+\setmathfont{CambriaMath} %[Extension={.ttf},Path=./CambriaFonts/,Scale=1]
+\setmathrm{Cambria} %[Extension={.ttf},Path=./CambriaFonts/,Scale=1]
+\usepackage{fontspec}
+\setmainfont{Times New Roman}
+\everymath{\displaystyle}
+\let\oldfrac\frac
+\renewcommand{\frac}[2]{%
+    \mathchoice
+        % 1. Khi ở dạng Display (dòng chính, to nhất) -> Thêm khoảng trống
+        {\oldfrac{#1}{#2}\rule[-2ex]{0pt}{0pt}\rule{0pt}{3.5ex}} 
+        % 2. Khi ở dạng Text (dòng chữ bình thường) -> Thêm ít hơn một chút
+        {\oldfrac{#1}{#2}\rule[-2ex]{0pt}{0pt}\rule{0pt}{3.5ex}}
+        % 3. Khi ở dạng Script (số mũ, chỉ số) -> KHÔNG thêm khoảng trống
+        {\oldfrac{#1}{#2}}
+        % 4. Khi ở dạng ScriptScript (số mũ của số mũ) -> KHÔNG thêm khoảng trống 
+        {\oldfrac{#1}{#2}}
+}
+
+\sloppy
+
+% \usepackage{draftwatermark}
+% \SetWatermarkText{SAMPLE\\Author: Phuc}
+% \SetWatermarkScale{0.75}
+% \SetWatermarkLightness{0.9}
+
+\fancypagestyle{plain}{%
+\fancyhf{} % clear all header and footer fields
+\fancyfoot[RO,LE]{\thepage} %RO=Right Odd, LE=Left Even (để số trang luôn nằm ở mép ngoài)
+\renewcommand{\headrulewidth}{0pt}
+\renewcommand{\footrulewidth}{0pt}}
+
+\setlength{\headheight}{10pt}
+
+\def \TITLE{PROJECT REPORT}
+\def \AUTHOR{Phùng Minh Phúc}
+
+% ===================================================
+\titleformat{\chapter}[hang]{\centering\bfseries}{CHAPTER \thechapter.\ }{0pt}{}[]
+
+\titleformat 
+    {\chapter} % command
+    [hang] % shape
+    {\centering\bfseries} % format
+    {CHAPTER \thechapter.\ } % label
+    {0pt} %sep
+    {} % before
+    [] % after
+\titlespacing*{\chapter}{0pt}{-20pt}{20pt}
+
+\titleformat
+    {\section} % command
+    [hang] % shape
+    {\bfseries} % format
+    {\thechapter.\arabic{section}\ \ \ \ } % label
+    {0pt} %sep
+    {} % before
+    [] % after
+\titlespacing{\section}{0pt}{\parskip}{0.5\parskip}
+
+\titleformat
+    {\subsection} % command
+    [hang] % shape
+    {\bfseries} % format
+    {\thechapter.\arabic{section}.\arabic{subsection}\ \ \ \ } % label
+    {0pt} %sep
+    {} % before
+    [] % after
+\titlespacing{\subsection}{30pt}{\parskip}{0.5\parskip}
+
+\renewcommand\thesubsubsection{\alph{subsubsection}}
+\titleformat
+    {\subsubsection} % command
+    [hang] % shape
+    {\bfseries} % format
+    {\alph{subsubsection}, \ } % label
+    {0pt} %sep
+    {} % before
+    [] % after
+\titlespacing{\subsubsection}{50pt}{\parskip}{0.5\parskip}
+
+% \newcommand{\titlesize}{\fontsize{18pt}{23pt}\selectfont}
+% \newcommand{\subtitlesize}{\fontsize{16pt}{21pt}\selectfont}
+% \titleclass{\part}{top}
+% \titleformat{\part}[display]
+%   {\normalfont\huge\bfseries}{\centering}{20pt}{\Huge\centering}
+% \titlespacing{\part}{0pt}{em}{1em}
+% \titlespacing{\section}{0pt}{\parskip}{0.5\parskip}
+% \titlespacing{\subsection}{0pt}{\parskip}{0.5\parskip}
+% \titlespacing{\subsubsection}{0pt}{\parskip}{0.5\parskip}
+
+
+
+% ===================================================
+\usepackage{hyperref}
+\hypersetup{
+    colorlinks=true,
+    linkcolor=black,
+    citecolor=blue,
+    urlcolor=black,
+    pdfborder = {0 0 0}
+}
+\hypersetup{
+    pdftitle={\TITLE},
+	pdfauthor={\AUTHOR},
+    pdfproducer={Microsoft Print to PDF}
+}
+	
+\usepackage[all]{hypcap} % Cho phép tham chiếu chính xác đến hình ảnh và bảng biểu
+
+\graphicspath{{figures/}{../figures/}} % Thư mục chứa các hình ảnh
+
+\counterwithin{figure}{chapter} % Đánh số hình ảnh kèm theo chapter. Ví dụ: Hình 1.1, 1.2,..
+
+\title{\bf \TITLE}
+\author{\AUTHOR}
+
+\setcounter{secnumdepth}{3} % Cho phép subsubsection trong report
+% \setcounter{tocdepth}{3} % Chèn subsubsection vào bảng mục lục
+
+\theoremstyle{definition}
+\newtheorem{example}{Example}[chapter] % Định nghĩa môi trường ví dụ
+
+\onehalfspacing
+\setlength{\parskip}{6pt}
+\setlength{\parindent}{15pt}
+
+
+
+% =========================== BODY ===============
+\begin{document}
+% \newgeometry{top=2cm, bottom=2cm, left=2cm, right=2cm}
+\subfile{Chapter/Cover} % Phần bìa
+% \subfile{Chapter/Cover2} % Phần bìa lót
+% \restoregeometry
+
+% ===================================================
+\pagestyle{empty} % Header và footer rỗng
+%\newpage
+%\pagenumbering{gobble} % Xóa page numbering ở cuối trang
+%\subfile{chapters/0_1_subject.tex}
+
+% \pagestyle{empty} % Header và footer rỗng
+\newpage
+\pagenumbering{gobble} % Xóa page numbering ở cuối trang
+\subfile{Chapter/0_2_Acknowledgment.tex}
+
+% \pagestyle{empty} % Header và footer rỗng
+\newpage
+\pagenumbering{gobble} % Xóa page numbering ở cuối trang
+\subfile{Chapter/0_3_Abstract.tex}
+
+
+% ===================================================
+% \pagestyle{empty} % Header và footer rỗng
+\newpage
+\pagenumbering{gobble} % Xóa page numbering ở cuối trang
+\renewcommand*\contentsname{TABLE OF CONTENTS}
+\titlecontents{chapter}
+    [0.0cm]             % left margin
+    {\bfseries\vspace{0.3cm}}                  % above code
+    {{\bfseries{\scshape} CHAPTER \thecontentslabel.\ }} % numbered format
+    {}         % unnumbered format
+    {\titlerule*[0.3pc]{.}\contentspage}         % filler-page-format, e.g dots
+    
+\titlecontents{section}
+    [0.0cm]             % left margin
+    {\vspace{0.3cm}}                  % above code
+    {\thecontentslabel \ } % numbered format
+    {}         % unnumbered format
+    {\titlerule*[0.3pc]{.}\contentspage}         % filler-page-format, e.g dots
+    
+\titlecontents{subsection}
+    [1.0cm]             % left margin
+    {\vspace{0.3cm}}                  % above code
+    {\thecontentslabel \ } % numbered format
+    {}         % unnumbered format
+    {\titlerule*[0.3pc]{.}\contentspage}         % filler-page-format, e.g dots
+
+ % Tạo mục lục tự động
+\addtocontents{toc}{\protect\thispagestyle{empty}}
+\tableofcontents 
+\thispagestyle{empty}
+\cleardoublepage
+
+\pagenumbering{roman}
+%Tạo danh mục hình vẽ.
+\renewcommand{\listfigurename}{LIST OF FIGURES}
+{\let\oldnumberline\numberline
+\renewcommand{\numberline}{Figure~\oldnumberline}
+\listoffigures} 
+% \phantomsection\addcontentsline{toc}{section}{\numberline {} DANH MỤC HÌNH VẼ}
+\newpage
+
+
+ %Tạo danh mục bảng biểu.
+\renewcommand{\listtablename}{LIST OF TABLES}
+{\let\oldnumberline\numberline
+\renewcommand{\numberline}{Table~\oldnumberline}
+\listoftables}
+% \phantomsection\addcontentsline{toc}{section}{\numberline {} DANH MỤC BẢNG BIỂU}
+
+\glsaddall 
+% \renewcommand*{\glossaryname}{Danh sách thuật ngữ}
+\renewcommand*{\acronymname}{LIST OF ABBREVIATIONS}
+\renewcommand*{\entryname}{Abbreviation}
+\renewcommand*{\descriptionname}{Definition}
+
+% In danh sách
+\printnoidxglossary[type=\acronymtype] % Chỉ định in loại từ viết tắt (acronym)
+% \phantomsection\addcontentsline{toc}{section}{\numberline {} DANH MỤC THUẬT NGỮ VÀ TỪ VIẾT TẮT}
+
+% \renewcommand\appendixname{APPENDIX}
+% \renewcommand\appendixpagename{APPENDIX}
+% \renewcommand\appendixtocname{APPENDIX}
+
+\renewcommand{\figurename}{Figure}
+\renewcommand{\tablename}{Table}
+\renewcommand{\chaptername}{CHAPTER}
+
+% ===================================================
+
+
+\newpage
+\hypersetup{linkcolor=blue}
+\pagenumbering{arabic}
+
+\pagestyle{fancy}
+\fancyhf{}
+\fancyhead[LE, RO]{\leftmark}
+%\fancyhead[LE]{\rightmark}
+\fancyfoot[LE, RO]{\thepage}
+
+\chapter{INTRODUCTION}
+\subfile{Chapter/1_Introduction} % Phần mở đầu
+
+\newpage
+%\pagestyle{fancy} % Áp dụng header và footer
+\chapter{DATABASE DESIGN AND SCHEMA ANALYSIS}
+\subfile{Chapter/2_Database_Design}
+
+\newpage
+% \pagestyle{fancy} % Áp dụng header và footer
+\chapter{SQL STATEMENTS AND PERFORMANCE ANALYSIS}
+\subfile{Chapter/3_SQL_Statements}
+
+\newpage
+\chapter{DEMO WEB APPLICATION}
+\subfile{Chapter/4_Demo_Application}
+
+\newpage
+\chapter{PROJECT EVALUATION AND CONCLUSIONS}
+\subfile{Chapter/5_Conclusions}
+
+
+\newpage
+% \pagestyle{fancy} % Áp dụng header và footer
+% \chapter*{SHORT NOTICES ON REFERENCE} %Kết luận và hướng phát triển}
+% \label{chapter:reference}
+% \subfile{Chapter/5_Reference}
+
+% ===================================================
+\newpage
+\renewcommand\bibname{REFERENCES}
+\printbibliography
+\phantomsection\addcontentsline{toc}{chapter}{REFERENCES}
+
+% \appendixpage
+% \appendix
+% \addappheadtotoc
+
+\titleformat{\chapter}[hang]{\centering\bfseries}{ \thechapter.\ }{0pt}{}[]
+\titlespacing*{\chapter}{0pt}{-20pt}{20pt}
+
+\titlecontents{chapter}
+    [0.0cm]             % left margin
+    {\bfseries\vspace{0.3cm}}                  % above code
+    {{\bfseries{\scshape} \thecontentslabel.\ }} % numbered format
+    {}         % unnumbered format
+    {\titlerule*[0.3pc]{.}\contentspage} 
+    
+% \chapter{GRADUATION THESIS GUIDANCE}
+% \subfile{Chapter/Appendix_A}
+
+% \newpage
+% \chapter{USE CASE DESCRIPTIONS}
+% \subfile{Chapter/Appendix_B}
+
+\end{document}

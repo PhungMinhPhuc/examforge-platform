@@ -1,0 +1,322 @@
+\documentclass[../report_main.tex]{subfiles}
+\begin{document}
+
+\section{Architectural Overview}
+The database schema is designed using a modular approach, partitioned into four primary functional modules: Identity Management, Classroom Organization, the Hierarchical Question Bank, and the Assessment Engine,... To achieve a balance between performance and flexibility, the system employs a hybrid approach of strict normalization and strategic denormalization. This ensures that data redundancy is minimized where appropriate, while read performance is optimized for critical components. The use of PostgreSQL as the underlying management system allows for the integration of advanced data types, such as \gls{UUID}s for secure public-facing identifiers and \gls{JSON}B for flexible scoring configurations.
+\section{Entity-Relationship Diagram}
+\begin{sidewaysfigure}
+    \centering
+    \includegraphics[width=\textwidth]{Figures/Entity_Relationship_Diagram.jpg}
+    \caption{Entity-Relationship Diagram of the Online Examination System}
+    \label{fig:erd_schema}
+\end{sidewaysfigure}
+As illustrated in Figure \ref{fig:erd_schema}, the entity-relationship diagram provides a visual representation of the database schema, illustrating the logical connections between the core components of the system. The diagram highlights the relationships between the identity management tables, the academic organization entities, the polymorphic question bank structures, and the exam execution logs. This visual model serves as the blueprint for the physical database implementation, ensuring that referential integrity constraints and relationship cardinalities are properly defined.
+
+\section{Identity and Access Management}
+The foundation of the system rests on a specialized inheritance-like model for user management. The \texttt{accounts} table serves as the central identity registry, storing shared credentials and roles. To accommodate the distinct attributes of different users without creating sparse tables, the design employs a one-to-one relationship between the \texttt{accounts} table and the \texttt{teachers} and \texttt{students} tables. This specialization ensures that teacher-specific data, such as organizational affiliation, and student-specific profiles remain decoupled from the core authentication logic. Referential integrity is strictly enforced via foreign key constraints, ensuring that a teacher or student profile cannot exist without a corresponding base account.
+\section{Classroom and Enrollment Structure}
+Academic organization is managed through the \texttt{classes} and \texttt{students_classes} entities. A class is defined as a pedagogical unit owned by a single teacher, establishing a one-to-many relationship between educators and their classrooms. To handle the many-to-many relationship between students and classes, an associative table, \texttt{students_classes}, is implemented. This table records the enrollment history and ensures that students can participate in multiple learning environments simultaneously. This structure allows the system to efficiently filter academic content based on class membership, which is a prerequisite for the authorized retrieval of examination data.
+\section{The Multi-Type Question Bank}
+The most complex component of the schema is the question management system, which is designed to support diverse assessment formats. The \texttt{questions} table acts as a polymorphic hub, storing common metadata such as subject matter, grade level, and complexity. A self-referencing foreign key, \texttt{parent_id}, is utilized to support hierarchical question structures, enabling the creation of cloze tests or reading passages where multiple sub-questions are linked to a single stimulus.
+To manage the specific requirements of different question types, the design utilizes horizontal partitioning. Detailed attributes for multiple-choice, true-false, and short-answer questions are stored in dedicated tables (\texttt{q_choice_details}, \texttt{q_truefalse_details}, and \texttt{q_shortans_details}). This approach prevents the main question table from becoming cluttered with null values and allows for type-specific constraints. Furthermore, the \texttt{q_images} table provides a decoupled way to manage multimedia assets, ensuring that any question can be supplemented with technical diagrams or visual aids without modifying the core question logic.
+
+\subsection{Design Rationale: Query Optimization via Denormalization}
+Instead of fully normalizing to the \gls{3NF} by creating separate tables for \texttt{subject}, \texttt{grade}, \texttt{chapter}, and \texttt{lesson}, the system intentionally denormalizes these fields as text within the \texttt{questions} table. To maintain data integrity and prevent data anomalies (such as spelling errors), the system employs a structured \gls{JSON} curriculum file as the Single Source of Truth. The frontend and backend utilize this \gls{JSON} file to constrain and normalize user input via dropdowns before insertion. This denormalized approach offers two significant advantages:
+
+    - \textbf{Reduced Query Complexity:} It eliminates the need for deeply nested \texttt{JOIN} operations when retrieving question metadata or filtering the bank. This significantly enhances read performance, which is a critical requirement for a high-traffic online examination system.
+
+    - \textbf{Maintainability:} Updating the educational curriculum (e.g., introducing a new textbook structure) only requires modifying the \gls{JSON} file without necessitating structural changes or complex migrations in the database schema.
+
+\section{Assessment and Result Tracking}
+The final module governs the execution and evaluation of examinations. The \texttt{contests} table defines the parameters of an exam, including time limits and status, while the \texttt{contests_questions} table serves as a junction to the question bank. This junction table is critical as it allows for snapshotting attributes such as point weights at the time of the exam, protecting the contest's integrity even if the original question is later modified in the general bank.
+The \texttt{contest_results} table aggregates the final performance metrics for each student, while the \texttt{student_option_submissions} table provides a granular log of every response provided during an exam. By storing the \texttt{option_display_order} and \texttt{student_choice}, the database preserves the exact context in which the student interacted with the material, which is essential for both automated grading and subsequent pedagogical review. 
+
+\section{Relational Schema}
+The relational schema translates the conceptual entity-relationship model into a physical database structure. It defines the exact tables, columns, data types, and constraints required for implementation. Figure \ref{fig:relational_schema} provides a comprehensive view of this schema, illustrating the \gls{PK}s that uniquely identify records and the \gls{FK}s that enforce referential integrity across the system.
+
+\begin{sidewaysfigure}
+    \centering
+    \includegraphics[width=\textwidth]{Figures/Relational_Schema.jpg}
+    \caption{Relational Schema of the Database}
+    \label{fig:relational_schema}
+\end{sidewaysfigure}
+
+\section{Detailed Table Descriptions}
+The physical schema mapping, which defines tables and explicit foreign key relationships, is presented in Figure \ref{fig:relational_schema}. To provide a comprehensive understanding of the database, the physical structure of each table is described below, outlining their primary purposes and key constraints.
+
+\subsection{Accounts}
+\begin{table}[H]
+\centering
+\caption{Accounts Table}
+\label{tab:accounts}
+\renewcommand{\arraystretch}{1.25}
+\begin{tabular}{|p{3cm}|p{3.5cm}|p{8.5cm}|}
+\hline
+\textbf{Attribute} & \textbf{Datatype} & \textbf{Description} \\ \hline
+id & BIGSERIAL (PK) & Auto-generated unique identifier of an account \\ \hline
+public\_id & UUID (UQ) & Public unique identifier used externally \\ \hline
+email & VARCHAR & User email address \\ \hline
+password & VARCHAR & Encrypted password \\ \hline
+name & VARCHAR & Full name of the user \\ \hline
+avatar\_url & VARCHAR & URL of the user profile picture \\ \hline
+is\_active & BOOLEAN & Account status (active/inactive) \\ \hline
+role & VARCHAR & User role: Admin, Teacher, or Student \\ \hline
+create\_at & TIMESTAMP & Account creation timestamp \\ \hline
+\end{tabular}
+\end{table}
+
+\subsection{Teachers}
+\begin{table}[H]
+\centering
+\caption{Teachers Table}
+\label{tab:teachers}
+\renewcommand{\arraystretch}{1.25}
+\begin{tabular}{|p{3cm}|p{3.5cm}|p{8.5cm}|}
+\hline
+\textbf{Attribute} & \textbf{Datatype} & \textbf{Description} \\ \hline
+id & BIGINT (PK, FK) & References the corresponding account ID \\ \hline
+organization & VARCHAR & Institution or department affiliation \\ \hline
+... & ... & ... \\ \hline
+\end{tabular}
+\end{table}
+
+\subsection{Students}
+\begin{table}[H]
+\centering
+\caption{Students Table}
+\label{tab:students}
+\renewcommand{\arraystretch}{1.25}
+\begin{tabular}{|p{3cm}|p{3.5cm}|p{8.5cm}|}
+\hline
+\textbf{Attribute} & \textbf{Datatype} & \textbf{Description} \\ \hline
+id & BIGINT (PK, FK) & References the corresponding account ID \\ \hline
+school & VARCHAR & Name of the student's school \\ \hline
+... & ... & ... \\ \hline
+\end{tabular}
+\end{table}
+
+\subsection{Classes}
+\begin{table}[H]
+\centering
+\caption{Classes Table}
+\label{tab:classes}
+\renewcommand{\arraystretch}{1.25}
+\begin{tabular}{|p{3cm}|p{3.5cm}|p{8.5cm}|}
+\hline
+\textbf{Attribute} & \textbf{Datatype} & \textbf{Description} \\ \hline
+id & BIGSERIAL (PK) & Auto-generated unique identifier of a class \\ \hline
+teacher\_id & BIGINT (FK) & References Teachers(id) \\ \hline
+public\_id & UUID (UQ) & Public unique identifier used externally \\ \hline
+class\_name & TEXT & Name of the class \\ \hline
+description & TEXT & Detailed description of the class \\ \hline
+create\_at & TIMESTAMP & Class creation timestamp \\ \hline
+\end{tabular}
+\end{table}
+
+\subsection{Students\_Classes}
+\begin{table}[H]
+\centering
+\caption{Students\_Classes Table}
+\label{tab:students_classes}
+\renewcommand{\arraystretch}{1.25}
+\begin{tabular}{|p{3cm}|p{3.5cm}|p{8.5cm}|}
+\hline
+\textbf{Attribute} & \textbf{Datatype} & \textbf{Description} \\ \hline
+student\_id & BIGINT (FK) & References Students(id) \\ \hline
+class\_id & BIGINT (FK) & References Classes(id) \\ \hline
+create\_at & TIMESTAMP & Enrollment timestamp \\ \hline
+\end{tabular}
+\end{table}
+
+\subsection{Questions}
+\begin{table}[H]
+\centering
+\caption{Questions Table}
+\label{tab:questions}
+\renewcommand{\arraystretch}{1.25}
+\begin{tabular}{|p{3cm}|p{3.5cm}|p{8.5cm}|}
+\hline
+\textbf{Attribute} & \textbf{Datatype} & \textbf{Description} \\ \hline
+id & BIGSERIAL (PK) & Auto-generated unique identifier \\ \hline
+teacher\_id & BIGINT (FK) & References Teachers(id) \\ \hline
+public\_id & UUID (UQ) & Public unique identifier \\ \hline
+subject & TEXT & Subject name \\ \hline
+grade & INTEGER & Grade level \\ \hline
+parent\_id & BIGINT (FK) & References parent question (Questions(id)) \\ \hline
+question\_type & VARCHAR & e.g., `MC', `TF', `SA',... \\ \hline
+layout\_type & VARCHAR & Layout configuration \\ \hline
+content & TEXT & The question text \\ \hline
+solution & TEXT & Official solution/explanation \\ \hline
+chapter & TEXT & Chapter name \\ \hline
+lesson & TEXT & Lesson name \\ \hline
+complexity & SMALLINT & Difficulty level \\ \hline
+is\_shufflable & BOOLEAN & Indicates if components can be shuffled \\ \hline
+deleted\_at & TIMESTAMP & Soft delete timestamp \\ \hline
+\end{tabular}
+\end{table}
+
+\subsection{Q\_Choice\_Details}
+\begin{table}[H]
+\centering
+\caption{Q\_Choice\_Details Table}
+\label{tab:q_choice_details}
+\renewcommand{\arraystretch}{1.25}
+\begin{tabular}{|p{3cm}|p{3.5cm}|p{8.5cm}|}
+\hline
+\textbf{Attribute} & \textbf{Datatype} & \textbf{Description} \\ \hline
+id & BIGSERIAL (PK) & Option identifier \\ \hline
+question\_id & BIGINT (FK) & References Questions(id) \\ \hline
+content & TEXT & Option text \\ \hline
+is\_correct & BOOLEAN & True if this is the correct answer \\ \hline
+order\_index & INTEGER & Display order \\ \hline
+is\_shufflable & BOOLEAN & Can this option be shuffled \\ \hline
+\end{tabular}
+\end{table}
+
+\subsection{Q\_TrueFalse\_Details}
+\begin{table}[H]
+\centering
+\caption{Q\_TrueFalse\_Details Table}
+\label{tab:q_truefalse_details}
+\renewcommand{\arraystretch}{1.25}
+\begin{tabular}{|p{3cm}|p{3.5cm}|p{8.5cm}|}
+\hline
+\textbf{Attribute} & \textbf{Datatype} & \textbf{Description} \\ \hline
+id & BIGSERIAL (PK) & Option identifier \\ \hline
+question\_id & BIGINT (FK) & References Questions(id) \\ \hline
+content & TEXT & Statement text \\ \hline
+is\_correct & BOOLEAN & True if the statement is correct \\ \hline
+explaination & TEXT & Explanation for the answer \\ \hline
+order\_index & INTEGER & Display order \\ \hline
+is\_shufflable & BOOLEAN & Can this statement be shuffled \\ \hline
+\end{tabular}
+\end{table}
+
+\subsection{Q\_ShortAns\_Details}
+\begin{table}[H]
+\centering
+\caption{Q\_ShortAns\_Details Table}
+\label{tab:q_shortans_details}
+\renewcommand{\arraystretch}{1.25}
+\begin{tabular}{|p{3cm}|p{3.5cm}|p{8.5cm}|}
+\hline
+\textbf{Attribute} & \textbf{Datatype} & \textbf{Description} \\ \hline
+id & BIGSERIAL (PK) & Identifier \\ \hline
+question\_id & BIGINT (FK) & References Questions(id) \\ \hline
+content & TEXT & Expected short answer \\ \hline
+\end{tabular}
+\end{table}
+
+\subsection{Q\_Images}
+\begin{table}[H]
+\centering
+\caption{Q\_Images Table}
+\label{tab:q_images}
+\renewcommand{\arraystretch}{1.25}
+\begin{tabular}{|p{3cm}|p{3.5cm}|p{8.5cm}|}
+\hline
+\textbf{Attribute} & \textbf{Datatype} & \textbf{Description} \\ \hline
+id & BIGSERIAL (PK) & Image identifier \\ \hline
+question\_id & BIGINT (FK) & References Questions(id) \\ \hline
+storage\_path & TEXT & Path to the image file \\ \hline
+img\_type & VARCHAR & Image type/format \\ \hline
+img\_scale & NUMERIC & Scale factor for rendering \\ \hline
+raw\_code & TEXT & Source code (if generated) \\ \hline
+\end{tabular}
+\end{table}
+
+\subsection{Contests}
+\begin{table}[H]
+\centering
+\caption{Contests Table}
+\label{tab:contests}
+\renewcommand{\arraystretch}{1.25}
+\begin{tabular}{|p{3cm}|p{3.5cm}|p{8.5cm}|}
+\hline
+\textbf{Attribute} & \textbf{Datatype} & \textbf{Description} \\ \hline
+id & BIGSERIAL (PK) & Contest identifier \\ \hline
+class\_id & BIGINT & Class identifier \\ \hline
+public\_id & UUID (UQ) & Public unique identifier \\ \hline
+title & TEXT & Contest title \\ \hline
+time\_limit & INTEGER & Duration limit in minutes \\ \hline
+scoring\_config & JSONB & JSON configuration for scoring \\ \hline
+status & VARCHAR & Status (`active', `inactive') \\ \hline
+\end{tabular}
+\end{table}
+
+\subsection{Contests\_Questions}
+\begin{table}[H]
+\centering
+\caption{Contests\_Questions Table}
+\label{tab:contests_questions}
+\renewcommand{\arraystretch}{1.25}
+\begin{tabular}{|p{3cm}|p{3.5cm}|p{8.5cm}|}
+\hline
+\textbf{Attribute} & \textbf{Datatype} & \textbf{Description} \\ \hline
+contest\_id & BIGINT (FK) & References Contests(id) \\ \hline
+question\_id & BIGINT (FK) & References Questions(id) \\ \hline
+original\_order & INTEGER & Display order of the question \\ \hline
+point\_weight & NUMERIC & Points assigned to the question \\ \hline
+\end{tabular}
+\end{table}
+
+\subsection{Students\_Contests}
+\begin{table}[H]
+\centering
+\caption{Students\_Contests Table}
+\label{tab:students_contests}
+\renewcommand{\arraystretch}{1.25}
+\begin{tabular}{|p{3cm}|p{3.5cm}|p{8.5cm}|}
+\hline
+\textbf{Attribute} & \textbf{Datatype} & \textbf{Description} \\ \hline
+student\_id & BIGINT (FK) & References Students(id) \\ \hline
+contest\_id & BIGINT (FK) & References Contests(id) \\ \hline
+\end{tabular}
+\end{table}
+
+\subsection{Contest\_Results}
+\begin{table}[H]
+\centering
+\caption{Contest\_Results Table}
+\label{tab:contest_results}
+\renewcommand{\arraystretch}{1.25}
+\begin{tabular}{|p{4cm}|p{3.5cm}|p{7.5cm}|}
+\hline
+\textbf{Attribute} & \textbf{Datatype} & \textbf{Description} \\ \hline
+id & BIGSERIAL (PK) & Result identifier \\ \hline
+student\_id & BIGINT (FK) & References Students(id) \\ \hline
+contest\_id & BIGINT (FK) & References Contests(id) \\ \hline
+start\_time & TIMESTAMP & Start timestamp \\ \hline
+end\_time & TIMESTAMP & End timestamp \\ \hline
+total\_score & NUMERIC & Total calculated score \\ \hline
+count\_wrong\_answers & INTEGER & Number of incorrect answers \\ \hline
+display\_order & TEXT & Stored display order \\ \hline
+guest\_name & TEXT & Guest name who took the exam without an account \\ \hline
+\end{tabular}
+\end{table}
+
+\subsection{Student\_Option\_Submissions}
+\begin{table}[H]
+\centering
+\caption{Student\_Option\_Submissions Table}
+\label{tab:student_option_submissions}
+\renewcommand{\arraystretch}{1.25}
+\begin{tabular}{|p{4cm}|p{3.5cm}|p{7.5cm}|}
+\hline
+\textbf{Attribute} & \textbf{Datatype} & \textbf{Description} \\ \hline
+id & BIGSERIAL (PK) & Submission identifier \\ \hline
+contest\_result\_id & BIGINT (FK) & References Contest\_Results(id) \\ \hline
+question\_id & BIGINT (FK) & References Questions(id) \\ \hline
+student\_choice & TEXT & The choice made by the student \\ \hline
+option\_display\_order & TEXT & Display order presented \\ \hline
+is\_correct & BOOLEAN & Whether the choice was correct \\ \hline
+earned\_point & NUMERIC & Points earned for this submission \\ \hline
+\end{tabular}
+\end{table}
+
+\section{Database Indexing Strategy and Application Interface}
+A well-defined indexing strategy is critical for maintaining application performance. The database utilizes automatic B-Tree indexes on all primary key constraints (e.g., \texttt{id} fields across all tables) and unique constraints (e.g., \texttt{public_id} \gls{UUID} fields). These indexes guarantee logarithmic time complexity for direct lookups.
+However, based on the access patterns generated by the \gls{API}, additional foreign key indexes are highly recommended. For instance, creating indexes on \texttt{teacher_id} and \texttt{parent_id} in the \texttt{questions} table, \texttt{teacher_id} in the \texttt{classes} table, \texttt{class_id} in the \texttt{contests} table, \texttt{contest_id} in the \texttt{contest_results} table, and \texttt{contest_result_id} in the \texttt{student_option_submissions} table is vital because the \gls{API} frequently filters data hierarchically from the teacher down to the student results and submissions.
+Furthermore, the system connects to the database via Python utilizing the \texttt{psycopg2} driver, as defined in the \texttt{db.py} module. The \gls{API} implements a connection pool manager using Python context managers (\texttt{@contextmanager}). This approach ensures that database connections are properly acquired and returned to the pool, preventing connection exhaustion under heavy load. The cursor is configured as a \texttt{RealDictCursor}, which maps SQL query results directly to Python dictionaries, streamlining the serialization of data into \gls{JSON} responses for the frontend client. This architectural decision tightly couples the database's relational output with the application's RESTful communication needs.
+
+\end{document}

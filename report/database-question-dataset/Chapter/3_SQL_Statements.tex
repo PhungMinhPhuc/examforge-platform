@@ -1,0 +1,538 @@
+\documentclass[../report_main.tex]{subfiles}
+\begin{document}
+
+\section{Introduction}
+A robust database application requires not only standard \gls{CRUD} queries but also advanced database objects such as Views, Functions, Triggers, and Indexes to ensure data integrity, optimize performance, and handle complex business logic natively within the database engine. This chapter details 47 distinct SQL statements categorized into Complex Application Queries (extracted from the backend API), User-Defined Functions, Triggers, and Indexing Strategies.
+
+\section{Authentication \& Profile Queries}
+
+\textbf{Query 1: Check login information}
+\begin{lstlisting}[language=SQL]
+SELECT * FROM accounts 
+WHERE email = 'teacher1@email.com' AND is_active = true;
+-- Password verification is handled at the application level using a Python function
+\end{lstlisting}
+
+\textbf{Query 2: Retrieve full user profile with role-specific details}
+\begin{lstlisting}[language=SQL]
+SELECT a.id, a.email, a.role, a.name, a.avatar_url,
+       t.organization, s.school
+FROM accounts a
+LEFT JOIN teachers t ON a.id = t.id AND a.role = 'teacher'
+LEFT JOIN students s ON a.id = s.id AND a.role = 'student'
+WHERE a.id = 12345;
+\end{lstlisting}
+
+\textbf{Query 3: Create a new user account}
+\begin{lstlisting}[language=SQL]
+INSERT INTO accounts (email, password, role, name) 
+VALUES ('teacher@email.com', 'password', 'teacher', 'Teacher s name')
+RETURNING id;
+\end{lstlisting}
+
+\textbf{Query 4: Create corresponding user profile}
+\begin{lstlisting}[language=SQL]
+INSERT INTO teachers (id, organization) 
+VALUES (123456, 'SoICT-HUST');
+
+INSERT INTO students (id, school)
+VALUES (123456, 'Hanoi University of Science and Technology');
+\end{lstlisting}
+
+\textbf{Query 5: Update user profile}
+\begin{lstlisting}[language=SQL]
+UPDATE accounts
+SET name = 'Teacher s name' WHERE id = 123456
+RETURNING new.*;
+\end{lstlisting}
+
+\textbf{Query 6: Change account password}
+\begin{lstlisting}[language=SQL]
+UPDATE accounts
+SET password = 'new_hashed_password_string' 
+WHERE id = 123456;
+-- Password verification is handled at the application level using a Python function
+\end{lstlisting}
+
+\section{Data Upload \& Modification Queries}
+
+\textbf{Query 7: Upload a new question}
+\begin{lstlisting}[language=SQL]
+INSERT INTO questions (
+    teacher_id, public_id, subject, grade, parent_id,
+    question_type, layout_type, content, solution,
+    chapter, lesson, complexity, is_shufflable
+)
+VALUES (
+    123456, '1b95845a...', 'Physics', '12', NULL,
+    'mc', 'normal', 'Question Content...', 
+    'Detailed Solution...', 'Chapter 1', 'Lesson 1', 1, TRUE
+)
+RETURNING id;
+\end{lstlisting}
+
+\textbf{Query 8: Upload question's image}
+\begin{lstlisting}[language=SQL]
+INSERT INTO q_images (question_id, storage_path, img_type, img_scale) 
+VALUES (123456, '/static/img.png', 'png', 1.0);
+\end{lstlisting}
+
+\textbf{Query 9: Upload question's options}
+\begin{lstlisting}[language=SQL]
+INSERT INTO q_choice_details (question_id, content, is_correct, order_index, is_shufflable) 
+VALUES 
+    (123456, 'Option A', TRUE, 1, TRUE),
+    (123456, 'Option B', FALSE, 2, TRUE),
+    (123456, 'Option C', FALSE, 3, TRUE),
+    (123456, 'Option D', FALSE, 4, FALSE);
+\end{lstlisting}
+
+\textbf{Query 10: Update question content}
+\begin{lstlisting}[language=SQL]
+UPDATE questions 
+SET content = 'New content...', complexity = 4 
+WHERE id = 123456;
+\end{lstlisting}
+
+\textbf{Query 11: Update question options}
+\begin{lstlisting}[language=SQL]
+UPDATE q_choice_details 
+SET content = 'New Option' 
+WHERE id = 11223344 
+AND question_id = 123456;
+\end{lstlisting}
+
+\textbf{Query 12: Update question's image scaling}
+\begin{lstlisting}[language=SQL]
+UPDATE q_images 
+SET img_scale = 0.8 
+WHERE question_id = 123456;
+\end{lstlisting}
+
+\textbf{Query 13: Soft delete question}
+\begin{lstlisting}[language=SQL]
+UPDATE questions 
+SET deleted_at = NOW() 
+WHERE id = 111 
+AND teacher_id = 81; 
+-- Prevent teacher A try to delete teacher B question
+\end{lstlisting}
+
+\textbf{Query 14: Restore soft-deleted question}
+\begin{lstlisting}[language=SQL]
+UPDATE questions 
+SET deleted_at = NULL 
+WHERE id = 111 
+AND teacher_id = 81;
+\end{lstlisting}
+
+\textbf{Query 15: Permanently delete question}
+\begin{lstlisting}[language=SQL]
+DELETE FROM questions 
+WHERE id = 11539 
+AND teacher_id = 81;
+\end{lstlisting}
+
+
+\section{Question Bank Managing Queries}
+
+\textbf{Query 16: Count total number of questions based on filtering criteria}
+\begin{lstlisting}[language=SQL]
+SELECT COUNT(*) as total 
+FROM questions q 
+WHERE q.deleted_at IS NULL 
+AND q.parent_id IS NULL 
+AND q.teacher_id = 81 
+AND q.subject = 'Physics' 
+AND q.grade = 12 
+AND (q.content ILIKE '%BJT transistor%' OR EXISTS 
+    (SELECT 1 
+    FROM questions child 
+    WHERE child.parent_id = q.id 
+    AND child.content ILIKE '%BJT transistor%')
+);
+\end{lstlisting}
+
+\textbf{Query 17: Query first page's contents (Pagination)}
+\begin{lstlisting}[language=SQL]
+SELECT q.*, t.name AS teacher_name
+FROM questions q
+LEFT JOIN accounts t ON q.teacher_id = t.id
+WHERE q.deleted_at IS NULL 
+AND q.parent_id IS NULL 
+AND q.teacher_id = 81
+ORDER BY q.id DESC 
+LIMIT 20 OFFSET 0;
+\end{lstlisting}
+
+\textbf{Note:} Queries 18, 19, and 20 demonstrate a batch query optimization technique (using the \texttt{IN (...)} clause) to resolve the $N+1$ query problem. Instead of executing separate database calls to fetch images and options for each individual question, the system aggregates all question IDs from the paginated result and fetches their respective relations in a single database round-trip, significantly reducing latency and server load.
+
+\textbf{Query 18: Query questions image}
+\begin{lstlisting}[language=SQL]
+SELECT question_id, storage_path, img_scale 
+FROM q_images 
+WHERE question_id IN (1000, 1010, 1005);
+\end{lstlisting}
+
+\textbf{Query 19: Query questions options}
+\begin{lstlisting}[language=SQL]
+SELECT id, question_id, content, is_correct 
+FROM q_choice_details 
+WHERE question_id IN (4, 5);
+\end{lstlisting}
+
+\textbf{Query 20: Query following questions (for group/stimulus questions)}
+\begin{lstlisting}[language=SQL]
+SELECT id, parent_id, question_type, content, solution, complexity 
+FROM questions 
+WHERE parent_id IN (1431, 481, 502) 
+ORDER BY id ASC;
+\end{lstlisting}
+
+
+\section{Contest Managing Queries}
+
+\textbf{Query 21: Retrieve teacher's created contests}
+\begin{lstlisting}[language=SQL]
+SELECT ct.*, cl.class_name,
+       COALESCE(SUM(CASE WHEN q.question_type != 'st' THEN 1 ELSE 0 END), 0) as question_count
+FROM contests ct
+LEFT JOIN classes cl ON cl.id = ct.class_id
+LEFT JOIN contests_questions cq ON cq.contest_id = ct.id
+LEFT JOIN questions q ON q.id = cq.question_id
+WHERE ct.teacher_id = 4
+GROUP BY ct.id, cl.class_name
+ORDER BY ct.id DESC;
+\end{lstlisting}
+
+\textbf{Query 22: Retrieve student's enrolled contests}
+\begin{lstlisting}[language=SQL]
+SELECT ct.*, cl.class_name
+FROM contests ct
+JOIN students_classes sc ON sc.class_id = ct.class_id
+JOIN classes cl ON cl.id = ct.class_id
+WHERE sc.student_id = 10000 
+AND ct.status = 'active';
+\end{lstlisting}
+
+\textbf{Query 23: Create a new contest}
+\begin{lstlisting}[language=SQL]
+INSERT INTO contests (class_id, teacher_id, title, time_limit, scoring_config, status) 
+VALUES (5, 4, 'Midterm Exam', 45, '{"mc_weight": 1.0}', 'active') 
+RETURNING id, public_id;
+\end{lstlisting}
+
+\textbf{Query 24: Insert questions into contest}
+\begin{lstlisting}[language=SQL]
+INSERT INTO contests_questions (contest_id, question_id, original_order, point_weight) 
+VALUES (20, 150, 1, 2.0);
+\end{lstlisting}
+
+\textbf{Query 25: Open/Close a contest}
+\begin{lstlisting}[language=SQL]
+UPDATE contests 
+SET status = 'inactive' -- Or active/deleted (Soft delete)
+WHERE id = 103 
+AND teacher_id = 4;
+\end{lstlisting}
+
+\textbf{Query 26: Permanently delete a contest}
+\begin{lstlisting}[language=SQL]
+DELETE FROM contests 
+WHERE id = 103 
+AND teacher_id = 4;
+\end{lstlisting}
+
+\textbf{Query 27: Create new contest result (Student starts attempt)}
+\begin{lstlisting}[language=SQL]
+INSERT INTO contest_results (student_id, contest_id, guest_name, start_time) 
+VALUES (10000, 20, NULL, NOW()) 
+RETURNING id;
+\end{lstlisting}
+
+\textbf{Query 28: Create new student submission (Student submits a question)}
+\begin{lstlisting}[language=SQL]
+INSERT INTO student_option_submissions (
+    contest_result_id, question_id, student_choice, option_display_order, is_correct, earned_point
+) 
+VALUES (55, 205, 'assignment operator =', '', TRUE, 1.0);
+\end{lstlisting}
+
+\textbf{Query 29: Update contest result (Student submits the attempt)}
+\begin{lstlisting}[language=SQL]
+UPDATE contest_results
+SET end_time = NOW(), total_score = 8.5, count_wrong_answers = 2
+WHERE id = 55;
+\end{lstlisting}
+
+\textbf{Query 30: Show a contest's results (Teacher view)}
+\begin{lstlisting}[language=SQL]
+SELECT cr.id AS result_id, cr.start_time, cr.end_time, cr.total_score, cr.count_wrong_answers,
+       s.name AS student_name, cr.guest_name
+FROM contest_results cr
+LEFT JOIN accounts s ON s.id = cr.student_id
+WHERE cr.contest_id = 20
+ORDER BY cr.id DESC;
+\end{lstlisting}
+
+\textbf{Query 31: Show student's submission details (Student review)}
+\begin{lstlisting}[language=SQL]
+SELECT sos.*, q.content, q.solution
+FROM student_option_submissions sos
+JOIN questions q ON q.id = sos.question_id
+WHERE sos.contest_result_id = 55;
+\end{lstlisting}
+
+
+\section{Class Managing Queries}
+
+\textbf{Query 32: Retrieve class lists for Teacher}
+\begin{lstlisting}[language=SQL]
+SELECT c.*, COUNT(sc.student_id) AS student_count, COUNT(ct.id) AS contest_count
+FROM classes c
+LEFT JOIN students_classes sc ON sc.class_id = c.id
+LEFT JOIN contests ct ON ct.class_id = c.id
+WHERE c.teacher_id = 4 
+GROUP BY c.id 
+ORDER BY c.create_at DESC;
+\end{lstlisting}
+
+\textbf{Query 33: Retrieve class lists for Student}
+\begin{lstlisting}[language=SQL]
+SELECT c.*, t.name as teacher_name, COUNT(sc2.student_id) AS student_count
+FROM classes c
+JOIN students_classes sc ON sc.class_id = c.id AND sc.student_id = 10000
+LEFT JOIN accounts t ON t.id = c.teacher_id
+LEFT JOIN students_classes sc2 ON sc2.class_id = c.id
+GROUP BY c.id, t.name 
+ORDER BY c.create_at DESC;
+\end{lstlisting}
+
+\textbf{Query 34: Create a new class}
+\begin{lstlisting}[language=SQL]
+INSERT INTO classes (teacher_id, class_name, description) 
+VALUES (100, 'Advanced JavaFX Programming', 'Practical class...') 
+RETURNING id, public_id;
+\end{lstlisting}
+
+\textbf{Query 35: Delete a class}
+\begin{lstlisting}[language=SQL]
+DELETE FROM classes 
+WHERE id = 5 
+AND teacher_id = 100;
+\end{lstlisting}
+
+\textbf{Query 36: Query class's students}
+\begin{lstlisting}[language=SQL]
+SELECT a.id, a.name, a.email, sc.create_at as joined_at
+FROM students_classes sc
+JOIN accounts a ON a.id = sc.student_id
+WHERE sc.class_id = 5;
+\end{lstlisting}
+
+\textbf{Query 37: Query class's contests}
+\begin{lstlisting}[language=SQL]
+SELECT id, title, status, time_limit 
+FROM contests 
+WHERE class_id = 5 
+ORDER BY id DESC;
+\end{lstlisting}
+
+\textbf{Query 38: Search for students to add}
+\begin{lstlisting}[language=SQL]
+SELECT a.id, a.name, a.email
+FROM accounts a
+WHERE a.role = 'student'
+AND (CAST(a.id AS TEXT) LIKE '%son%' 
+OR a.email ILIKE '%son%' 
+OR a.name ILIKE '%son%')
+LIMIT 10;
+\end{lstlisting}
+
+\textbf{Query 39: Add student to class}
+\begin{lstlisting}[language=SQL]
+INSERT INTO students_classes (student_id, class_id) 
+VALUES (10000, 5);
+\end{lstlisting}
+
+\textbf{Query 40: Remove student from class}
+\begin{lstlisting}[language=SQL]
+DELETE FROM students_classes 
+WHERE student_id = 10000 
+AND class_id = 5;
+\end{lstlisting}
+
+
+\section{Database Functions and Triggers}
+
+\textbf{Query 41: Auto-sync teacher's question count}
+\begin{lstlisting}[language=SQL]
+ALTER TABLE teachers ADD COLUMN question_count INT DEFAULT 0;
+
+UPDATE teachers t
+SET question_count = COALESCE((
+    SELECT COUNT(*) 
+    FROM questions q 
+    WHERE q.teacher_id = t.id AND q.parent_id IS NULL AND q.deleted_at IS NULL
+), 0);
+
+CREATE OR REPLACE FUNCTION trg_sync_teacher_question_count()
+RETURNS TRIGGER AS $$
+BEGIN
+    IF (TG_OP = 'INSERT') AND NEW.parent_id IS NULL 
+    THEN
+        UPDATE teachers 
+        SET question_count = question_count + 1 
+        WHERE id = NEW.teacher_id;
+        RETURN NEW;
+    ELSIF (TG_OP = 'DELETE') AND OLD.parent_id IS NULL 
+    THEN
+        UPDATE teachers 
+        SET question_count = question_count - 1 
+        WHERE id = OLD.teacher_id;
+        RETURN OLD;
+    ELSIF (TG_OP = 'UPDATE') AND NEW.parent_id IS NULL 
+    THEN
+        IF (NEW.deleted_at IS NOT NULL AND OLD.deleted_at IS NULL) 
+        THEN
+            UPDATE teachers 
+            SET question_count = question_count - 1 
+            WHERE id = NEW.teacher_id;
+        ELSIF (NEW.deleted_at IS NULL AND OLD.deleted_at IS NOT NULL) 
+        THEN
+            UPDATE teachers 
+            SET question_count = question_count + 1 
+            WHERE id = NEW.teacher_id;
+        END IF;
+        RETURN NEW;
+    END IF;
+    RETURN NULL;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE TRIGGER sync_question_count
+AFTER INSERT OR UPDATE OR DELETE ON questions
+FOR EACH ROW EXECUTE FUNCTION trg_sync_teacher_question_count();
+\end{lstlisting}
+
+\textbf{Query 42: Auto-sync class's student count}
+\begin{lstlisting}[language=SQL]
+ALTER TABLE classes ADD COLUMN student_count INT DEFAULT 0;
+
+UPDATE classes c
+SET student_count = COALESCE((
+    SELECT COUNT(*) 
+    FROM students_classes sc 
+    WHERE sc.class_id = c.id
+), 0);
+
+CREATE OR REPLACE FUNCTION trg_sync_class_student_count()
+RETURNS TRIGGER AS $$
+BEGIN
+    IF (TG_OP = 'INSERT') 
+    THEN
+        UPDATE classes 
+        SET student_count = student_count + 1 
+        WHERE id = NEW.class_id;
+        RETURN NEW;
+    ELSIF (TG_OP = 'DELETE') 
+    THEN
+        UPDATE classes 
+        SET student_count = student_count - 1 
+        WHERE id = OLD.class_id;
+        RETURN OLD;
+    END IF;
+    RETURN NULL;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE TRIGGER sync_student_count
+AFTER INSERT OR DELETE ON students_classes
+FOR EACH ROW EXECUTE FUNCTION trg_sync_class_student_count();
+\end{lstlisting}
+
+\textbf{Query 43: Auto-sync class's contest count}
+\begin{lstlisting}[language=SQL]
+ALTER TABLE classes ADD COLUMN contest_count INT DEFAULT 0;
+
+UPDATE classes c
+SET contest_count = COALESCE((
+    SELECT COUNT(*) 
+    FROM contests ct 
+    WHERE ct.class_id = c.id
+), 0);
+
+CREATE OR REPLACE FUNCTION trg_sync_class_contest_count()
+RETURNS TRIGGER AS $$
+BEGIN
+    IF (TG_OP = 'INSERT') 
+    THEN
+        UPDATE classes 
+        SET contest_count = contest_count + 1 
+        WHERE id = NEW.class_id;
+        RETURN NEW;
+    ELSIF (TG_OP = 'DELETE') 
+    THEN
+        UPDATE classes 
+        SET contest_count = contest_count - 1 
+        WHERE id = OLD.class_id;
+        RETURN OLD;
+    END IF;
+    RETURN NULL;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE TRIGGER sync_contest_count
+AFTER INSERT OR DELETE ON contests
+FOR EACH ROW EXECUTE FUNCTION trg_sync_class_contest_count();
+\end{lstlisting}
+
+
+\section{Database Indexes (Optimization Strategy)}
+
+\textbf{Query 44: Authentication Optimization}
+\begin{lstlisting}[language=SQL]
+CREATE UNIQUE INDEX idx_accounts_email ON accounts(email);
+\end{lstlisting}
+
+\textbf{Query 45: Question Bank Query Optimization}
+\begin{lstlisting}[language=SQL]
+CREATE INDEX idx_questions_search ON questions(teacher_id, subject, grade) 
+WHERE deleted_at IS NULL;
+
+CREATE INDEX idx_questions_parent_id ON questions(parent_id) 
+WHERE parent_id IS NOT NULL;
+
+CREATE INDEX idx_q_choice_details_question_id ON q_choice_details(question_id);
+
+CREATE INDEX idx_q_images_question_id ON q_images(question_id);
+\end{lstlisting}
+
+\textbf{Query 46: Contest and Submission Optimization}
+\begin{lstlisting}[language=SQL]
+CREATE INDEX idx_contests_teacher_id ON contests(teacher_id);
+
+CREATE INDEX idx_contests_questions_contest_id ON contests_questions(contest_id);
+
+CREATE INDEX idx_contest_results_contest_id ON contest_results(contest_id);
+\end{lstlisting}
+
+\textbf{Query 47: Class Management Optimization}
+\begin{lstlisting}[language=SQL]
+CREATE INDEX idx_sc_student_id ON students_classes(student_id);
+
+CREATE INDEX idx_sc_class_id ON students_classes(class_id);
+
+CREATE UNIQUE INDEX idx_classes_public_id ON classes(public_id);
+\end{lstlisting}
+\textbf{Query 48: Dashboard Query Optimization}
+\begin{lstlisting}[language=SQL]
+CREATE INDEX idx_questions_dashboard ON questions(teacher_id) 
+WHERE deleted_at IS NULL AND parent_id IS NULL;
+
+CREATE INDEX idx_classes_teacher_id ON classes(teacher_id);
+
+CREATE INDEX idx_contests_class_id ON contests(class_id);
+\end{lstlisting}
+
+\end{document}

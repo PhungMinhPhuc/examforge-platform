@@ -1,0 +1,89 @@
+\documentclass[../report_main.tex]{subfiles}
+\begin{document}
+
+\section{Introduction}
+To empirically validate the structural integrity and operational efficiency of the proposed database schema, a web-based application prototype was developed. This application integrates directly with the PostgreSQL database backend, executing the complex SQL queries, functions, and triggers discussed in the preceding chapters. The prototype provides a functional user interface designed to simulate the interactions of administrators, educators, and students within a real-world examination environment.
+
+\section{Authentication and Role Management}
+The authentication mechanism relies upon the centralized \texttt{accounts} table, utilizing secure session management to route users to role-specific dashboards (see Figure \ref{fig:login_page} and \ref{fig:dashboard}). This ensures that pedagogical tools and student records are strictly partitioned according to the defined access control matrices.
+\begin{figure}[H]
+    \includegraphics[width=\linewidth]{Figures/login_page.png}
+    \caption{User Login Interface}
+    \label{fig:login_page}
+\end{figure}
+
+\begin{figure}[H]
+    \includegraphics[width=\linewidth]{Figures/dashboard.png}
+    \caption{Teacher Dashboard}
+    \label{fig:dashboard}
+\end{figure}
+
+\section{Class Management}
+To facilitate the organization of students and assignments, the application provides a dedicated Class Management module. Educators can create classes (Figure \ref{fig:class_overview}), invite students via a unique join code or direct addition (Figure \ref{fig:class_add_students}), and monitor the enrolled student roster (Figure \ref{fig:class_student_list}).
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=\textwidth]{Figures/class_overview.png}
+    \caption{Class Overview Interface}
+    \label{fig:class_overview}
+\end{figure}
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=\textwidth]{Figures/class_management_add_students.png}
+    \caption{Class Management - Adding Students}
+    \label{fig:class_add_students}
+\end{figure}
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=\textwidth]{Figures/class_management_student_list.png}
+    \caption{Class Management - Student List}
+    \label{fig:class_student_list}
+\end{figure}
+
+\section{Question Bank and Test Management}
+A primary functionality provided to educators involves the comprehensive management of the polymorphic question bank. The interface enables the insertion of new assessment items, the attachment of multimedia resources via the \texttt{q_images} table, and the configuration of complex answer structures across multiple data types, as depicted in Figure \ref{fig:question_bank}. Furthermore, educators can assemble these questions into formal examinations by configuring test parameters such as duration, scoring scales, and target classes (Figure \ref{fig:test_creation}).
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=1\textwidth]{Figures/question_bank.png}
+    \caption{Question Bank Management Interface}
+    \label{fig:question_bank}
+\end{figure}
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=\textwidth]{Figures/test_creation_interface.png}
+    \caption{Test Creation Interface}
+    \label{fig:test_creation}
+\end{figure}
+
+\section{Examination Execution}
+Examinees interact with the assessment engine through a dedicated, time-constrained interface. The system captures and commits selected options to the \texttt{student_option_submissions} table in real-time, preserving the exact display order of the choices to ensure subsequent grading accuracy and auditability. The interface for this process is illustrated in Figure \ref{fig:exam_interface}.
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=\textwidth]{Figures/exam_interface.png}
+    \caption{Student Examination Interface}
+    \label{fig:exam_interface}
+\end{figure}
+
+\section{Gradebook Compilation}
+Upon completion of an examination cycle, the backend database evaluates the submissions. The application then queries these results to present a consolidated, class-wide gradebook to the educator (Figure \ref{fig:gradebook}). Additionally, educators can drill down into detailed test results for individual students to review their specific answers and scores (Figure \ref{fig:detailed_results}).
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=\textwidth]{Figures/gradebook.png}
+    \caption{Teacher Gradebook}
+    \label{fig:gradebook}
+\end{figure}
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=\textwidth]{Figures/detailed_test_results.png}
+    \caption{Detailed Test Results Interface}
+    \label{fig:detailed_results}
+\end{figure}
+
+\end{document}

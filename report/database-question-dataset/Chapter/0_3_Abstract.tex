@@ -1,0 +1,18 @@
+\documentclass[../report_main.tex]{subfiles}
+\begin{document}
+
+\begin{center}
+    \Large{\textbf{ABSTRACT}}\\
+\end{center}
+\vspace{1cm}
+
+The rapid transition toward digital education has necessitated the development of robust, scalable, and flexible assessment infrastructures. This project report details the design, normalization, and physical implementation of a comprehensive database system for an \textit{Online Examination and Question Bank Management Platform}. 
+
+The system is constructed upon a PostgreSQL \cite{postgresql2023} foundation, specifically engineered to accommodate complex pedagogical requirements. Key architectural features include a polymorphic question bank capable of storing diverse formats-such as \gls{MC}, \gls{TF}, \gls{SA}, and \gls{OE} - as well as a hierarchical entity structure designed to support grouped passage-based questions (\gls{ST}). To ensure strict data integrity and reduce application-layer computational overhead, the architecture extensively utilizes advanced database-level operations, including \gls{PL/pgSQL} functions, automated Triggers, and B-Tree indexing strategies.
+
+The empirical implementation demonstrates that a meticulously normalized schema, combined with backend procedural logic, provides a highly reliable platform. The proposed model effectively resolves common anomalies associated with educational databases \cite{silberschatz2019database}, facilitating efficient large-scale academic performance tracking, dynamic examination generation, and granular analytical reporting.
+
+\vspace{1cm}
+\noindent\textbf{Keywords:} PostgreSQL, Relational Database Schema, Question Bank Architecture, Procedural Logic, Data Normalization, Online Assessment.
+
+\end{document}
