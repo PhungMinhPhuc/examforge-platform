@@ -1,0 +1,79 @@
+.display {
+  display: inline-flex;
+  max-width: 100%;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.5rem 0.75rem;
+  border: 1px solid var(--accent-primary-border);
+  border-radius: var(--radius-sm);
+  background: var(--accent-primary-soft);
+  font-size: var(--font-size-base);
+}
+
+.label {
+  flex: none;
+  color: var(--accent-primary);
+  font-weight: 600;
+}
+
+.alignedLabel {
+  width: 126px;
+}
+
+.boxes {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem;
+}
+
+.box {
+  display: inline-flex;
+  width: 25px;
+  height: 27px;
+  align-items: center;
+  justify-content: center;
+  border: 2px solid var(--accent-primary);
+  border-radius: 4px;
+  background: var(--bg-surface);
+  color: var(--text-primary);
+  font-size: var(--font-size-base);
+  font-weight: 700;
+}
+
+.correct {
+  border-color: var(--answer-correct-border);
+  background: var(--answer-correct-bg);
+}
+
+.correct .label {
+  color: var(--accent-success);
+}
+
+.correct .box {
+  border-color: var(--accent-success);
+  background: var(--answer-correct-bg);
+}
+
+.incorrect {
+  border-color: var(--answer-wrong-border);
+  background: var(--answer-wrong-bg);
+}
+
+.incorrect .label {
+  color: var(--accent-danger);
+}
+
+.incorrect .box {
+  border-color: var(--accent-danger);
+  background: var(--answer-wrong-bg);
+}
+
+@media (max-width: 480px) {
+  .display {
+    flex-wrap: wrap;
+  }
+
+  .alignedLabel {
+    width: 100%;
+  }
+}

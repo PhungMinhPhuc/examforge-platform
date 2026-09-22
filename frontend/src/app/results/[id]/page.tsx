@@ -8,6 +8,7 @@ import LatexRenderer from "@/components/LatexRenderer";
 import AdaptiveOptionGrid from "@/components/AdaptiveOptionGrid";
 import TrueFalseOptionList from "@/components/TrueFalseOptionList";
 import DetailsMenu from "@/components/DetailsMenu";
+import ShortAnswerDisplay from "@/components/ShortAnswerDisplay";
 import { hasAppHistory } from "@/lib/appHistory";
 import { mcCorrectLabel } from "@/lib/docTree";
 import api from "@/lib/api";
@@ -711,26 +712,7 @@ export default function ResultPage({
                                 const correctAnswer =
                                   node.options && node.options.length > 0
                                     ? node.options[0].content
-                                        .replace(/\$/g, "")
-                                        .replace(/[{}]/g, "")
-                                        .trim()
                                     : "";
-                                const answerBoxes = (value: string) => {
-                                  const chars = Array.from(value);
-                                  return Array.from({
-                                    length: Math.max(4, chars.length),
-                                  }).map((_, index) => chars[index] || "");
-                                };
-                                const studentBoxes = answerBoxes(
-                                  sub.student_choice || "",
-                                );
-                                const correctBoxes = answerBoxes(correctAnswer);
-                                const studentColor = sub.is_correct
-                                  ? "var(--accent-success)"
-                                  : "var(--accent-danger)";
-                                const studentBackground = sub.is_correct
-                                  ? "var(--answer-correct-bg)"
-                                  : "var(--answer-wrong-bg)";
 
                                 return (
                                   <div
@@ -742,114 +724,17 @@ export default function ResultPage({
                                       alignItems: "flex-start",
                                     }}
                                   >
-                                    <div
-                                      style={{
-                                        display: "flex",
-                                        gap: "0.5rem",
-                                        alignItems: "center",
-                                        minHeight: 58,
-                                        width: "fit-content",
-                                        maxWidth: "100%",
-                                        padding: "0.65rem 0.8rem",
-                                        border: `1px solid ${sub.is_correct ? "var(--answer-correct-border)" : "var(--answer-wrong-border)"}`,
-                                        borderRadius: "var(--radius-md)",
-                                        background: studentBackground,
-                                      }}
-                                    >
-                                      <strong
-                                        style={{
-                                          color: studentColor,
-                                          fontSize: "var(--font-size-base)",
-                                          marginRight: "0.25rem",
-                                          minWidth: 126,
-                                        }}
-                                      >
-                                        Đáp án của bạn:
-                                      </strong>
-                                      <div
-                                        style={{
-                                          display: "flex",
-                                          gap: "0.3rem",
-                                          flexWrap: "wrap",
-                                        }}
-                                      >
-                                        {studentBoxes.map(
-                                          (character, index) => (
-                                            <span
-                                              key={index}
-                                              style={{
-                                                width: 36,
-                                                height: 36,
-                                                display: "inline-flex",
-                                                alignItems: "center",
-                                                justifyContent: "center",
-                                                border: `2px solid ${studentColor}`,
-                                                borderRadius: 6,
-                                                background: studentBackground,
-                                                color: "var(--text-primary)",
-                                                fontWeight: 750,
-                                              }}
-                                            >
-                                              {character}
-                                            </span>
-                                          ),
-                                        )}
-                                      </div>
-                                    </div>
-                                    <div
-                                      style={{
-                                        display: "flex",
-                                        gap: "0.5rem",
-                                        alignItems: "center",
-                                        minHeight: 58,
-                                        width: "fit-content",
-                                        maxWidth: "100%",
-                                        padding: "0.65rem 0.8rem",
-                                        border:
-                                          "1px solid var(--accent-primary-border)",
-                                        borderRadius: "var(--radius-md)",
-                                        background:
-                                          "var(--accent-primary-soft)",
-                                      }}
-                                    >
-                                      <strong
-                                        style={{
-                                          color: "var(--accent-primary)",
-                                          fontSize: "var(--font-size-base)",
-                                          marginRight: "0.25rem",
-                                          minWidth: 126,
-                                        }}
-                                      >
-                                        Đáp án đúng:
-                                      </strong>
-                                      <div
-                                        style={{
-                                          display: "flex",
-                                          gap: "0.25rem",
-                                        }}
-                                      >
-                                        {correctBoxes.map((c, i) => (
-                                          <span
-                                            key={i}
-                                            style={{
-                                              width: 36,
-                                              height: 36,
-                                              border:
-                                                "2px solid var(--accent-primary)",
-                                              display: "inline-flex",
-                                              alignItems: "center",
-                                              justifyContent: "center",
-                                              fontWeight: 750,
-                                              borderRadius: 6,
-                                              background: "var(--bg-surface)",
-                                              color: "var(--text-primary)",
-                                            }}
-                                          >
-                                            {c}
-                                          </span>
-                                        ))}
-                                      </div>
-                                    </div>
+                                    <ShortAnswerDisplay
+                                      label="Đáp án của bạn:"
+                                      value={sub.student_choice}
+                                      tone={sub.is_correct ? "correct" : "incorrect"}
+                                      alignLabel
+                                    />
+                                    <ShortAnswerDisplay
+                                      label="Đáp án đúng:"
+                                      value={correctAnswer}
+                                      alignLabel
+                                    />
                                   </div>
                                 );
                               })()}

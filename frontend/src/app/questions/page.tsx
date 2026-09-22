@@ -11,6 +11,7 @@ import { QuestionEditor, QuestionDetail } from "@/components/QuestionEditor";
 import api from "@/lib/api";
 import AdaptiveOptionGrid from "@/components/AdaptiveOptionGrid";
 import TrueFalseOptionList from "@/components/TrueFalseOptionList";
+import ShortAnswerDisplay from "@/components/ShortAnswerDisplay";
 import { mcCorrectLabel } from "@/lib/docTree";
 import { toast } from "@/lib/toastStore";
 
@@ -657,62 +658,9 @@ export default function QuestionsPage() {
                       {node.question_type === "sa" &&
                         node.options &&
                         node.options.length > 0 &&
-                        (() => {
-                          const rawAns = node.options[0].content
-                            .replace(/\$/g, "")
-                            .replace(/[{}]/g, "")
-                            .trim();
-                          const chars = rawAns.split("");
-                          const boxes = Array.from({
-                            length: Math.max(4, chars.length),
-                          }).map((_, i) => chars[i] || "");
-
-                          return (
-                            <div
-                              style={{
-                                marginTop: "0.75rem",
-                                padding: "0.5rem 0.75rem",
-                                background: "var(--accent-primary-soft)",
-                                border:
-                                  "1px solid var(--accent-primary-border)",
-                                borderRadius: "var(--radius-sm)",
-                                display: "inline-flex",
-                                alignItems: "center",
-                                gap: "0.75rem",
-                              }}
-                            >
-                              <span
-                                style={{
-                                  fontWeight: 600,
-                                  color: "var(--accent-primary)",
-                                }}
-                              >
-                                Trả lời ngắn:
-                              </span>
-                              <div style={{ display: "flex", gap: "0.25rem" }}>
-                                {boxes.map((c, i) => (
-                                  <div
-                                    key={i}
-                                    style={{
-                                      width: "25px",
-                                      height: "27px",
-                                      border: "2px solid var(--accent-primary)",
-                                      display: "flex",
-                                      alignItems: "center",
-                                      justifyContent: "center",
-                                      fontWeight: 700,
-                                      borderRadius: "4px",
-                                      background: "var(--bg-surface)",
-                                      color: "var(--text-primary)",
-                                    }}
-                                  >
-                                    {c}
-                                  </div>
-                                ))}
-                              </div>
-                            </div>
-                          );
-                        })()}
+                        <div style={{ marginTop: "0.75rem" }}>
+                          <ShortAnswerDisplay value={node.options[0].content} />
+                        </div>}
 
                       {/* Solution */}
                       {node.question_type !== "st" &&
