@@ -633,7 +633,7 @@ export default function ResultPage({
                                     background: "var(--bg-elevated)",
                                     borderRadius: "var(--radius-sm)",
                                     border: "1px solid var(--border)",
-                                    fontSize: "0.9rem",
+                                    fontSize: "var(--font-size-base)",
                                   }}
                                 >
                                   <div style={{ flex: 1, minWidth: "200px" }}>
@@ -910,6 +910,7 @@ export default function ResultPage({
                                   borderLeft: "4px solid var(--accent-primary)",
                                   borderRadius:
                                     "0 var(--radius-sm) var(--radius-sm) 0",
+                                  fontSize: "var(--font-size-base)",
                                 }}
                               >
                                 <div

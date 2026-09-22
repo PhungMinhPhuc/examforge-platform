@@ -1,7 +1,3 @@
-/* Noto Sans (SIL OFL 1.1, tự host — xem assets/fonts/web/ui/LICENSE-NotoSans.txt)
-   thay Google Sans Flex: phủ tiếng Việt tốt, cảm giác đọc nhẹ nhàng hơn cho
-   nội dung dài (đề thi, câu hỏi) so với font vốn thiết kế cho tiêu đề/thương
-   hiệu. Mỗi độ đậm một file tĩnh riêng — xem lý do ở lịch sử đổi font trước. */
 @font-face {
   font-family: "System UI Bundled";
   src: url("/api/static/fonts/web/ui/NotoSans-Regular.ttf") format("truetype");
@@ -84,16 +80,21 @@
   unicode-range: U+1100-11FF, U+3130-318F, U+AC00-D7A3;
 }
 
-/* CSS Variables */
+/*
+ * LEGACY TOKEN FALLBACKS
+ *
+ * Các giá trị trong hai khối :root bên dưới chỉ còn phục vụ khả năng tương
+ * thích của stylesheet cũ. Nguồn token có hiệu lực được import sau file này:
+ * styles/color-tokens.css và styles/design-tokens.css. Không thêm token mới
+ * hoặc chỉnh palette/scale tại đây.
+ */
 :root {
   --bg-base: #f8f9fa;
   --bg-surface: #ffffff;
   --bg-elevated: #ffffff;
   --bg-card: #ffffff;
   --bg-hover: #f1f3f5;
-  /* Đậm hơn cả hàng trắng lẫn hàng sọc, để hover thấy rõ trên mọi hàng. */
   --bg-row-hover: #eceff3;
-  /* Trạng thái nút trên ribbon editor, mô phỏng Word nhưng vẫn theo theme. */
   --editor-button-hover: #f1f1f1;
   --editor-button-active: #d9d9d9;
   --editor-button-active-hover: #cecece;
@@ -106,12 +107,8 @@
   --accent-primary-soft: #f0f3ff;
   --accent-primary-selected: #e6ebff;
   --accent-primary-border: #bbc7f3;
-  /* Dành riêng cho "thông tin" (info) — tách khỏi primary. Xem
-     temp/design-tokens-demo/light-dark-demo.html. */
   --accent-secondary: #1a73e8;
-  /* success/warning/danger lấy đúng bộ màu đã chốt cùng chấm mức độ của
-     snackbar (Google Workspace "on light"), thay bộ màu cũ
-     (#15803d/#f59e0b/#c24141) — badge/nút/snackbar giờ dùng chung 1 nguồn. */
+  /* success/warning/danger */
   --accent-danger: #d93025;
   --accent-warning: #f9ab00;
   --accent-success: #188038;
@@ -120,12 +117,7 @@
   --answer-wrong-bg: #fce8e6;
   --answer-wrong-border: #f6aea9;
 
-  /* Màu loại câu (mc/tf/sa/oe/cd) — nguồn DUY NHẤT cho cả class .badge-mc...
-     trong CSS lẫn TYPE_COLORS trong TSX (questions/page.tsx,
-     questions/upload/page.tsx, contests/[id]/page.tsx). Trước đây TYPE_COLORS
-     là hex tĩnh + hậu tố alpha ("14"/"33") ghi thẳng trong JS nên không đổi
-     được theo theme — đây là lý do badge loại câu vẫn "dính" màu sáng dù
-     class CSS đã có bản tối. st dùng chung --tone-purple-*, không lặp lại. */
+  /* Màu loại câu (mc/tf/sa/oe/cd) */
   --type-mc: #1e3faa;
   --type-mc-soft: rgba(30, 63, 170, 0.08);
   --type-mc-border: rgba(30, 63, 170, 0.2);
@@ -141,8 +133,7 @@
   --type-cd: #0e7490;
   --type-cd-soft: rgba(14, 116, 144, 0.08);
   --type-cd-border: rgba(14, 116, 144, 0.2);
-  /* Chữ đặt trên nền accent-primary/success/danger (nút, badge tròn) — theme
-     tối sẽ đổi ngược lại vì lúc đó accent-* là màu NHẠT (chữ trắng sẽ mù). */
+  /* Chữ đặt trên nền accent-primary/success/danger (nút, badge tròn) */
   --text-on-accent: #ffffff;
 
   /* Nền mờ phía sau hộp thoại */
@@ -165,21 +156,11 @@
   --tone-purple-border: #e9d5ff;
   --tone-danger-bg: rgba(217, 48, 37, 0.12);
 
-  /* Trước là cùng #000000 cả ba — không phân cấp được chữ chính/phụ/mờ.
-     Xem temp/design-tokens-demo/. secondary/muted lấy theo xám THUẦN
-     (R=G=B, không ngả xanh) kiểu VSCode Light Modern — foreground/
-     descriptionForeground gốc trùng nhau (#3B3B3B) nên muted nội suy
-     nhạt hơn để vẫn giữ 3 cấp. Xem
-     temp/question-editor-demo/text-muted-demo.html. */
   --text-primary: #111827;
   --text-secondary: #3b3b3b;
   --text-muted: #5a5a5a;
 
   --border: #e5e7eb;
-  /* Trước #c2cbd9 nhạt quá, viền input/select/textarea gần như biến mất
-     trên nền trắng (thấy rõ khi soi kỹ ở đề xuất trang đăng nhập). Đậm lên
-     một nấc để rõ nhưng không gắt bằng --border-focus. Xem
-     temp/demo-html/auth-login-demo.html. */
   --border-strong: #a2aabb;
   --border-focus: #1e3faa;
   --text-placeholder: #9ca3af;
@@ -187,9 +168,7 @@
   --gradient-hero: #1e3faa;
   --gradient-card: rgba(30, 63, 170, 0.06);
 
-  /* Nền kính mờ của thẻ đăng nhập (.auth-card) — đục hơn hẳn .glass-card
-     gốc (vốn định cho nền tối) vì cần chữ đọc rõ trên nền aurora ở theme
-     sáng. Xem temp/demo-html/auth-login-demo.html. */
+  /* Nền kính mờ của thẻ đăng nhập (.auth-card) */
   --auth-glass-bg: rgba(255, 255, 255, 0.72);
   --auth-glass-border: rgba(255, 255, 255, 0.7);
 
@@ -227,12 +206,7 @@
 
 /* =====================================================================
    THEME TỐI — bật bằng data-theme="dark" trên <html> (xem lib/theme.ts +
-   nút chuyển ở trang Cài đặt). Không nền đen tuyệt đối (#000, dễ chói) —
-   theo đúng khuyến nghị Material, nền trung tính quanh #16181d.
-   --bg-surface tái dùng đúng --code-bg (#1e222b) đã có sẵn cho khối mã
-   nguồn. success/warning/danger + info lấy đúng bộ chấm đã chốt ở
-   error-toast-demo/demo-big-apps.html (tab Google, bản nền tối) — xem
-   temp/design-tokens-demo/light-dark-demo.html để đối chiếu gốc.
+   nút chuyển ở trang Cài đặt).
    ===================================================================== */
 :root[data-theme="dark"] {
   --bg-base: #16181d;
@@ -263,9 +237,7 @@
   --answer-correct-border: rgba(129, 201, 149, 0.4);
   --answer-wrong-bg: rgba(242, 139, 130, 0.14);
   --answer-wrong-border: rgba(242, 139, 130, 0.4);
-  /* accent-primary/success/danger giờ là màu NHẠT (dùng làm chữ trên nền
-     tối) — chữ đặt TRÊN nền các màu đó (nút, badge tròn) phải tối lại,
-     không thể trắng như theme sáng nữa. */
+
   --text-on-accent: #16181d;
 
   --overlay: rgba(0, 0, 0, 0.6);
@@ -296,11 +268,6 @@
   --type-cd-border: rgba(103, 232, 249, 0.35);
   --tone-danger-bg: rgba(242, 139, 130, 0.14);
 
-  /* secondary/muted lấy theo xám THUẦN (R=G=B, không ngả xanh) kiểu
-     VSCode Dark Modern — muted = descriptionForeground #9D9D9D thật,
-     secondary nội suy giữa đó và foreground #CCCCCC vì VSCode chỉ có 2
-     cấp còn app cần 3. Xem
-     temp/question-editor-demo/text-muted-demo.html. */
   --text-primary: #e8eaed;
   --text-secondary: #b8b8b8;
   --text-muted: #9d9d9d;
@@ -416,8 +383,6 @@ a:hover {
   border: none;
   border-radius: var(--radius-sm);
   font-size: var(--font-size-base);
-  /* Không đặt thì <button> lấy line-height normal của trình duyệt còn <a> và
-     <summary> kế thừa 1.6 của body, hai loại nút lệch nhau ~6px chiều cao. */
   line-height: 1.25;
   font-weight: var(--font-weight-semibold);
   cursor: pointer;
@@ -760,7 +725,7 @@ textarea::placeholder {
 .icon {
   fill: none;
   stroke: currentColor;
-  stroke-width: 1.8;
+  stroke-width: var(--icon-stroke-emphasis);
   stroke-linecap: round;
   stroke-linejoin: round;
 }
@@ -911,8 +876,8 @@ textarea::placeholder {
   gap: 0.35rem;
 }
 .segtabs button svg {
-  width: 15px;
-  height: 15px;
+  width: var(--icon-size-compact);
+  height: var(--icon-size-compact);
 }
 .segtabs button.active {
   background: var(--bg-card);
@@ -973,8 +938,8 @@ textarea::placeholder {
 }
 .input-icon svg,
 .input-icon-btn svg {
-  width: 17px;
-  height: 17px;
+  width: var(--icon-size-control);
+  height: var(--icon-size-control);
 }
 
 /* Nút Google/Microsoft — theo đúng quy tắc thương hiệu chính thức (không
@@ -1187,11 +1152,11 @@ textarea::placeholder {
     color var(--transition);
 }
 .nav-icon svg {
-  width: 20px;
-  height: 20px;
+  width: var(--icon-size-md);
+  height: var(--icon-size-md);
   fill: none;
   stroke: currentColor;
-  stroke-width: 1.8;
+  stroke-width: var(--icon-stroke-emphasis);
   stroke-linecap: round;
   stroke-linejoin: round;
 }
@@ -1201,11 +1166,11 @@ textarea::placeholder {
   position: relative;
 }
 .question-create-dropdown-trigger svg {
-  width: 16px;
-  height: 16px;
+  width: var(--icon-size-sm);
+  height: var(--icon-size-sm);
   fill: none;
   stroke: currentColor;
-  stroke-width: 1.8;
+  stroke-width: var(--icon-stroke-emphasis);
   stroke-linecap: round;
   stroke-linejoin: round;
 }
@@ -2002,7 +1967,7 @@ tbody td {
   min-width: 40px;
   overflow-wrap: anywhere;
   word-break: break-word;
-  vertical-align: top;
+  vertical-align: middle;
 }
 .rle-table td::after {
   content: "";
@@ -2066,8 +2031,8 @@ tbody td {
   padding: 0.6rem 0;
   box-sizing: border-box;
   background: var(--bg-elevated);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-sm);
+  border: var(--border-width) solid var(--border);
+  border-radius: var(--radius-none);
 }
 .rle-image.side-right {
   float: right;
@@ -2131,10 +2096,10 @@ tbody td {
 .rle-image-img {
   max-width: 100%;
   height: auto;
-  border-radius: 4px;
-  border: 1px solid var(--border);
+  border-radius: var(--radius-none);
+  border: var(--border-width) solid var(--border);
   display: block;
-  background: #fff;
+  background: var(--bg-surface);
 }
 
 .rle-image.side-center > .rle-image-img {
@@ -2174,10 +2139,10 @@ tbody td {
 .exam-workspace .question-content,
 .exam-workspace .option-item,
 .exam-workspace .tf-item {
-  font-size: var(--font-size-md);
+  font-size: var(--font-size-base);
 }
 .exam-workspace .latex-content {
-  font-size: var(--font-size-md);
+  font-size: var(--font-size-base);
   line-height: 1.75;
 }
 .exam-workspace .question-content {
@@ -2521,10 +2486,10 @@ tbody td {
   .exam-workspace .question-content,
   .exam-workspace .option-item,
   .exam-workspace .tf-item {
-    font-size: var(--font-size-md);
+    font-size: var(--font-size-base);
   }
   .exam-workspace .latex-content {
-    font-size: var(--font-size-md);
+    font-size: var(--font-size-base);
   }
 }
 
@@ -3303,11 +3268,11 @@ tbody td {
   transform: scale(0.94);
 }
 .history-nav-btn svg {
-  width: 15px;
-  height: 15px;
+  width: var(--icon-size-sm);
+  height: var(--icon-size-sm);
   fill: none;
   stroke: currentColor;
-  stroke-width: 2;
+  stroke-width: var(--icon-stroke-strong);
   stroke-linecap: round;
   stroke-linejoin: round;
 }
@@ -3498,7 +3463,7 @@ tbody td {
   /* Một chuẩn typography cho mọi nơi dùng LatexRenderer: đề bài, đáp án,
      lời giải và modal chi tiết. `.question-content` chỉ còn lo khoảng cách
      sau phần đề, không còn vô tình làm đề bài khác cỡ các trường còn lại. */
-  font-size: var(--font-size-md);
+  font-size: var(--font-size-base);
   line-height: 1.7;
   max-width: 100%;
   word-break: break-word;

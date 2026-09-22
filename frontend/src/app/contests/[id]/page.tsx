@@ -692,10 +692,10 @@ export default function ContestDetailPage({
                           // Chữ thật nằm trong LatexRenderer (con), tự set
                           // font-size riêng qua class .latex-content — nên
                           // "fontSize" đặt ở div cha này không có tác dụng.
-                          // Ghi đè thẳng biến --font-size-md mà .latex-content
+                          // Ghi đè thẳng biến --font-size-base mà .latex-content
                           // đang dùng, chỉ trong phạm vi div này — không đụng
                           // .question-content/.latex-content ở nơi khác.
-                          ["--font-size-md" as string]: "var(--font-size-xs)",
+                          ["--font-size-base" as string]: "var(--font-size-xs)",
                           color: "var(--text-primary)",
                           lineHeight: 1.5,
                           maxHeight: "6em",
