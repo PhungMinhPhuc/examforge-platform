@@ -9,13 +9,6 @@ import Combobox from "@/components/Combobox";
 import { GoogleIcon, Icon, MicrosoftIcon } from "@/components/icons";
 
 type AuthTab = "login" | "register" | "guest";
-
-const EYE_PATH = (
-  <>
-    <path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7Z" />
-    <circle cx="12" cy="12" r="3" />
-  </>
-);
 /** Google/Microsoft chưa nối OAuth thật ở backend — nút hiện đúng chuẩn
  * thương hiệu để chốt UI trước, bấm vào chỉ báo cho biết đang chờ triển khai. */
 function OAuthRow({ mode }: { mode: "Đăng nhập" | "Đăng ký" }) {
@@ -181,38 +174,32 @@ export default function HomePage() {
               <label className="form-label">
                 Email<span className="req-mark">*</span>
               </label>
-              <div className="input-wrap">
-                <span className="input-icon">
-                  <svg className="icon" viewBox="0 0 24 24">
-                    <path d="M4 5h16v14H4z" />
-                    <path d="m4 6 8 7 8-7" />
-                  </svg>
+              <span className="ui-input ui-input--large">
+                <span className="ui-input__before">
+                  <Icon name="mail" size="var(--control-icon-size)" />
                 </span>
                 <input
                   id="login-email"
-                  className="input has-icon"
+                  className="ui-input__control"
                   type="email"
                   placeholder="email@example.com"
                   value={loginEmail}
                   onChange={(e) => setLoginEmail(e.target.value)}
                   required
                 />
-              </div>
+              </span>
             </div>
             <div className="form-group">
               <label className="form-label">
                 Mật khẩu<span className="req-mark">*</span>
               </label>
-              <div className="input-wrap">
-                <span className="input-icon">
-                  <svg className="icon" viewBox="0 0 24 24">
-                    <rect x="5" y="11" width="14" height="9" rx="2" />
-                    <path d="M8 11V8a4 4 0 0 1 8 0v3" />
-                  </svg>
+              <span className="ui-input ui-input--large">
+                <span className="ui-input__before">
+                  <Icon name="lock" size="var(--control-icon-size)" />
                 </span>
                 <input
                   id="login-password"
-                  className="input has-icon has-icon-r"
+                  className="ui-input__control"
                   type={showPassword ? "text" : "password"}
                   placeholder="••••••••"
                   value={loginPass}
@@ -221,19 +208,13 @@ export default function HomePage() {
                 />
                 <button
                   type="button"
-                  className="input-icon-btn"
+                  className="ui-input__after"
                   onClick={() => setShowPassword((v) => !v)}
                   title={showPassword ? "Ẩn mật khẩu" : "Hiện mật khẩu"}
                 >
-                  {showPassword ? (
-                    <Icon className="icon" name="eye-off" />
-                  ) : (
-                    <svg className="icon" viewBox="0 0 24 24">
-                      {EYE_PATH}
-                    </svg>
-                  )}
+                  <Icon name={showPassword ? "eye-off" : "eye"} size="var(--control-icon-size)" />
                 </button>
-              </div>
+              </span>
             </div>
             <div className="auth-forgot">
               <button
@@ -281,43 +262,25 @@ export default function HomePage() {
               <label className="form-label">
                 Họ và tên<span className="req-mark">*</span>
               </label>
-              <input
-                id="reg-name"
-                className="input"
-                placeholder="Nguyễn Văn A"
-                value={regName}
-                onChange={(e) => setRegName(e.target.value)}
-                required
-              />
+              <span className="ui-input ui-input--large">
+                <input id="reg-name" className="ui-input__control" placeholder="Nguyễn Văn A" value={regName} onChange={(e) => setRegName(e.target.value)} required />
+              </span>
             </div>
             <div className="form-group">
               <label className="form-label">
                 Email<span className="req-mark">*</span>
               </label>
-              <input
-                id="reg-email"
-                className="input"
-                type="email"
-                placeholder="email@example.com"
-                value={regEmail}
-                onChange={(e) => setRegEmail(e.target.value)}
-                required
-              />
+              <span className="ui-input ui-input--large">
+                <input id="reg-email" className="ui-input__control" type="email" placeholder="email@example.com" value={regEmail} onChange={(e) => setRegEmail(e.target.value)} required />
+              </span>
             </div>
             <div className="form-group">
               <label className="form-label">
                 Mật khẩu<span className="req-mark">*</span>
               </label>
-              <input
-                id="reg-password"
-                className="input"
-                type="password"
-                placeholder="Tối thiểu 6 ký tự"
-                value={regPass}
-                onChange={(e) => setRegPass(e.target.value)}
-                required
-                minLength={6}
-              />
+              <span className="ui-input ui-input--large">
+                <input id="reg-password" className="ui-input__control" type="password" placeholder="Tối thiểu 6 ký tự" value={regPass} onChange={(e) => setRegPass(e.target.value)} required minLength={6} />
+              </span>
             </div>
             <div className="form-group">
               <label className="form-label">
@@ -325,7 +288,8 @@ export default function HomePage() {
               </label>
               <Combobox
                 id="reg-role"
-                className="select"
+                size="large"
+                style={{ width: "100%" }}
                 value={regRole}
                 onChange={(val) => setRegRole(val)}
                 options={[
@@ -337,13 +301,9 @@ export default function HomePage() {
             {regRole === "teacher" && (
               <div className="form-group">
                 <label className="form-label">Trường / Tổ chức</label>
-                <input
-                  id="reg-org"
-                  className="input"
-                  placeholder="Trường THPT..."
-                  value={regOrg}
-                  onChange={(e) => setRegOrg(e.target.value)}
-                />
+                <span className="ui-input ui-input--large">
+                  <input id="reg-org" className="ui-input__control" placeholder="Trường THPT..." value={regOrg} onChange={(e) => setRegOrg(e.target.value)} />
+                </span>
               </div>
             )}
             <button
@@ -367,26 +327,19 @@ export default function HomePage() {
             <p
               style={{
                 color: "var(--text-secondary)",
-                fontSize: "var(--font-size-base)",
+                fontSize: "var(--font-size-md)",
                 marginBottom: "1.1rem",
               }}
             >
-              Nhập mã đề thi do giáo viên cung cấp để bắt đầu làm bài — không
-              cần tài khoản.
+              Nhập mã đề thi do giáo viên cung cấp để bắt đầu làm bài.
             </p>
             <div className="form-group">
               <label className="form-label">
                 Mã đề thi (ID)<span className="req-mark">*</span>
               </label>
-              <input
-                id="guest-contest-id"
-                className="input"
-                placeholder="VD: 42"
-                type="number"
-                value={guestContestId}
-                onChange={(e) => setGuestContestId(e.target.value)}
-                required
-              />
+              <span className="ui-input ui-input--large">
+                <input id="guest-contest-id" className="ui-input__control" placeholder="VD: 42" type="text" inputMode="numeric" pattern="[0-9]*" value={guestContestId} onChange={(e) => setGuestContestId(e.target.value)} required />
+              </span>
             </div>
             <button
               id="btn-guest-exam"
