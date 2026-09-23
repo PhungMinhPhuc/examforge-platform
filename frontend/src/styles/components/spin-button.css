@@ -1,21 +1,42 @@
-/* SpinButton extends input.css. Not imported yet. */
+/* SpinButton extends the complete Input contract from input.css. */
 
 :root {
-  --spin-button-action-width: var(--control-height-sm);
+  --spin-button-action-width: var(--control-icon-slot-md);
 }
 
 .ui-spin-button {
   display: inline-grid;
   grid-template-columns: minmax(0, 1fr) var(--spin-button-action-width);
-  grid-template-rows: 1fr 1fr;
+  grid-template-rows: repeat(2, minmax(0, 1fr));
+  gap: 0;
+  overflow: hidden;
+}
+
+.ui-spin-button--small {
+  --spin-button-action-width: var(--control-icon-slot-sm);
+}
+
+.ui-spin-button--medium {
+  --spin-button-action-width: var(--control-icon-slot-md);
+}
+
+.ui-spin-button--large {
+  --spin-button-action-width: var(--control-icon-slot-lg);
 }
 
 .ui-spin-button__input {
   grid-row: 1 / 3;
+  width: 100%;
+  min-width: 0;
 }
 
 .ui-spin-button__increment,
 .ui-spin-button__decrement {
+  box-sizing: border-box;
+  position: relative;
+  z-index: 1;
+  width: 100%;
+  height: 100%;
   min-width: var(--spin-button-action-width);
   display: inline-flex;
   align-items: center;
@@ -24,7 +45,54 @@
   border: 0;
   background: transparent;
   color: var(--text-secondary);
+  line-height: 0;
   cursor: pointer;
+  overflow: hidden;
+}
+
+.ui-spin-button__increment svg,
+.ui-spin-button__decrement svg {
+  display: block;
+  flex: none;
+}
+
+.ui-spin-button__increment {
+  grid-column: 2;
+  grid-row: 1;
+  border-radius: 0 var(--control-radius-md) 0 0;
+}
+
+.ui-spin-button__increment::after {
+  content: "";
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  height: var(--control-border-width);
+  background: var(--border);
+  pointer-events: none;
+}
+
+.ui-spin-button__decrement {
+  grid-column: 2;
+  grid-row: 2;
+  border-radius: 0 0 var(--control-radius-md) 0;
+}
+
+.ui-spin-button--small .ui-spin-button__increment {
+  border-top-right-radius: var(--control-radius-sm);
+}
+
+.ui-spin-button--small .ui-spin-button__decrement {
+  border-bottom-right-radius: var(--control-radius-sm);
+}
+
+.ui-spin-button--large .ui-spin-button__increment {
+  border-top-right-radius: var(--control-radius-lg);
+}
+
+.ui-spin-button--large .ui-spin-button__decrement {
+  border-bottom-right-radius: var(--control-radius-lg);
 }
 
 .ui-spin-button__increment:hover,
@@ -35,5 +103,12 @@
 
 .ui-spin-button--disabled .ui-spin-button__increment,
 .ui-spin-button--disabled .ui-spin-button__decrement {
+  color: var(--text-muted);
   cursor: not-allowed;
+}
+
+.ui-spin-button__increment:focus-visible,
+.ui-spin-button__decrement:focus-visible {
+  outline: var(--focus-outline-width) solid var(--focus-outline-color);
+  outline-offset: calc(-1 * var(--focus-outline-width));
 }

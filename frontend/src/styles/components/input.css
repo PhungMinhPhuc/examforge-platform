@@ -1,19 +1,24 @@
 /*
  * Input component styles.
  * Requires color-tokens.css and design-tokens.css to be loaded first.
- * This file is not imported by the application yet.
+ * Imported by components/index.css.
  */
 
 .ui-input {
+  --input-affix-size: var(--control-icon-slot-md);
+  --input-inline-padding: var(--control-padding-inline-md);
+  --input-radius: var(--control-radius-md);
   position: relative;
+  box-sizing: border-box;
   min-width: 0;
-  min-height: var(--control-height-md);
+  height: var(--control-height-md);
   display: inline-flex;
   align-items: center;
-  gap: var(--space-1);
+  overflow: hidden;
+  gap: 0;
   border: var(--control-border-width) solid var(--border);
   border-bottom-color: var(--border-strong);
-  border-radius: var(--control-radius-md);
+  border-radius: var(--input-radius);
   background: var(--bg-surface);
   color: var(--text-primary);
   font: var(--font-weight-regular)
@@ -37,12 +42,12 @@
 .ui-input::after {
   content: "";
   position: absolute;
-  right: -1px;
-  bottom: -1px;
-  left: -1px;
+  right: var(--control-border-width);
+  bottom: 0;
+  left: var(--control-border-width);
   height: 2px;
-  border-radius: 0 0 var(--control-radius-md) var(--control-radius-md);
-  border-bottom: 2px solid var(--accent-primary);
+  border-radius: 0 0 var(--input-radius) var(--input-radius);
+  background: var(--accent-primary);
   transform: scaleX(0);
   transition: transform var(--transition-normal);
   pointer-events: none;
@@ -54,9 +59,11 @@
 
 .ui-input__control {
   align-self: stretch;
-  width: 100%;
+  box-sizing: border-box;
+  width: auto;
   min-width: 0;
-  padding-inline: var(--control-padding-inline-md);
+  flex: 1 1 auto;
+  padding-inline: var(--input-inline-padding);
   border: 0;
   outline: 0;
   background: transparent;
@@ -69,46 +76,110 @@
   opacity: 1;
 }
 
+.ui-input:has(.ui-input__control:-webkit-autofill) {
+  background: var(--accent-primary-soft);
+}
+
+.ui-input__control:-webkit-autofill,
+.ui-input__control:-webkit-autofill:hover,
+.ui-input__control:-webkit-autofill:focus,
+.ui-input__control:-webkit-autofill:active {
+  -webkit-text-fill-color: var(--text-primary);
+  caret-color: var(--text-primary);
+  box-shadow: 0 0 0 1000px var(--accent-primary-soft) inset;
+}
+
 .ui-input__before,
 .ui-input__after {
+  box-sizing: border-box;
   display: inline-flex;
   align-items: center;
+  justify-content: center;
   flex: none;
   color: var(--text-secondary);
-  width: var(--control-affix-size-md);
-  height: var(--control-affix-size-md);
+  background: transparent;
+  width: var(--input-affix-size);
+  height: 100%;
+}
+
+.ui-input__before > svg,
+.ui-input__after > svg {
+  display: block;
+  flex: none;
+}
+
+.ui-input__before {
+  margin-inline-start: 0;
+}
+
+.ui-input__after {
+  margin-inline-end: 0;
+}
+
+.ui-input:has(.ui-input__before) .ui-input__control {
+  padding-inline-start: 0;
+}
+
+.ui-input:has(.ui-input__after) .ui-input__control {
+  padding-inline-end: 0;
+}
+
+button.ui-input__after {
+  justify-content: center;
+  padding: 0;
+  border: 0;
+  border-radius: var(--control-radius-sm);
+  background: transparent;
+  cursor: pointer;
+}
+
+button.ui-input__after:hover {
+  color: var(--text-primary);
+}
+
+button.ui-input__after:focus-visible {
+  border-radius: var(--control-radius-sm);
+  outline: var(--focus-outline-width) solid var(--focus-outline-color);
+  outline-offset: var(--focus-outline-offset);
 }
 
 .ui-input--small {
-  min-height: var(--control-height-sm);
+  --input-affix-size: var(--control-icon-slot-sm);
+  --input-inline-padding: var(--control-padding-inline-sm);
+  --input-radius: var(--control-radius-sm);
+  height: var(--control-height-sm);
   border-radius: var(--control-radius-sm);
   font-size: var(--control-font-size-sm);
 }
 
 .ui-input--small .ui-input__control {
-  padding-inline: var(--control-padding-inline-sm);
+  line-height: var(--control-line-height-sm);
 }
 
-.ui-input--small .ui-input__before,
-.ui-input--small .ui-input__after {
-  width: var(--control-affix-size-sm);
-  height: var(--control-affix-size-sm);
+.ui-input--medium {
+  --input-affix-size: var(--control-icon-slot-md);
+  --input-inline-padding: var(--control-padding-inline-md);
+  --input-radius: var(--control-radius-md);
+  height: var(--control-height-md);
+  border-radius: var(--control-radius-md);
+  font-size: var(--control-font-size-md);
+}
+
+.ui-input--medium .ui-input__control {
+  line-height: var(--control-line-height-md);
 }
 
 .ui-input--large {
-  min-height: var(--control-height-lg);
+  --input-affix-size: var(--control-icon-slot-lg);
+  --input-inline-padding: var(--control-padding-inline-lg);
+  --input-radius: var(--control-radius-lg);
+  height: var(--control-height-lg);
   border-radius: var(--control-radius-lg);
   font-size: var(--control-font-size-lg);
 }
 
 .ui-input--large .ui-input__control {
-  padding-inline: var(--control-padding-inline-lg);
-}
-
-.ui-input--large .ui-input__before,
-.ui-input--large .ui-input__after {
-  width: var(--control-affix-size-lg);
-  height: var(--control-affix-size-lg);
+  line-height: var(--control-line-height-lg);
 }
 
 .ui-input--underline {
@@ -125,10 +196,22 @@
 }
 
 .ui-input--underline::after {
+  right: 0;
+  left: 0;
   border-radius: 0;
 }
 
 .ui-input--filled {
+  border-color: transparent;
+  background: var(--bg-hover);
+}
+
+.ui-input--filled-lighter {
+  border-color: transparent;
+  background: var(--bg-surface);
+}
+
+.ui-input--filled-darker {
   border-color: transparent;
   background: var(--bg-hover);
 }
@@ -138,7 +221,7 @@
 }
 
 .ui-input--invalid::after {
-  border-bottom-color: var(--accent-danger);
+  background: var(--accent-danger);
 }
 
 .ui-input--disabled {
@@ -149,4 +232,9 @@
 
 .ui-input--disabled .ui-input__control {
   cursor: not-allowed;
+}
+
+.ui-input--disabled .ui-input__before,
+.ui-input--disabled .ui-input__after {
+  color: var(--text-muted);
 }

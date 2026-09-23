@@ -1,7 +1,17 @@
-/* SearchBox extends input.css. Not imported yet. */
+/* SearchBox extends the complete Input contract from input.css. */
 
-.ui-searchbox__input {
+.ui-searchbox {
+  width: 100%;
+}
+
+.ui-searchbox__icon {
+  color: var(--text-secondary);
+  pointer-events: none;
+}
+
+.ui-searchbox .ui-searchbox__input {
   appearance: none;
+  font: inherit;
 }
 
 .ui-searchbox__input::-webkit-search-cancel-button {
@@ -9,8 +19,8 @@
 }
 
 .ui-searchbox__dismiss {
-  width: var(--control-affix-size-md);
-  height: var(--control-affix-size-md);
+  width: var(--input-affix-size);
+  height: 100%;
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -20,12 +30,23 @@
   cursor: pointer;
 }
 
-.ui-input--small .ui-searchbox__dismiss {
-  width: var(--control-affix-size-sm);
-  height: var(--control-affix-size-sm);
+.ui-searchbox__dismiss:hover {
+  color: var(--text-primary);
 }
 
-.ui-input--large .ui-searchbox__dismiss {
-  width: var(--control-affix-size-lg);
-  height: var(--control-affix-size-lg);
+.ui-searchbox__dismiss:focus-visible {
+  border-radius: var(--control-radius-sm);
+  outline: var(--focus-outline-width) solid var(--focus-outline-color);
+  outline-offset: var(--focus-outline-offset);
+}
+
+.ui-searchbox__dismiss[hidden] {
+  display: inline-flex;
+  visibility: hidden;
+  pointer-events: none;
+}
+
+.ui-input--disabled .ui-searchbox__dismiss {
+  color: var(--text-muted);
+  cursor: not-allowed;
 }

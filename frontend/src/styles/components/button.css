@@ -216,7 +216,7 @@
 
 .ui-button__secondary-text {
   color: var(--text-muted);
-  font-size: var(--font-size-2xs);
+  font-size: var(--font-size-3xs);
   font-weight: var(--font-weight-regular);
 }
 
@@ -280,6 +280,16 @@
   width: var(--control-height-md);
   padding: 0;
   border-left-color: var(--button-split-divider-color);
+}
+
+.ui-split-button > .ui-button--small:last-child {
+  min-width: var(--control-height-sm);
+  width: var(--control-height-sm);
+}
+
+.ui-split-button > .ui-button--large:last-child {
+  min-width: var(--control-height-lg);
+  width: var(--control-height-lg);
 }
 
 .ui-provider-button {

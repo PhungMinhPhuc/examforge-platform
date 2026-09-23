@@ -14,20 +14,51 @@
 
 .ui-field__label {
   color: var(--text-secondary);
-  font-size: var(--font-size-xs);
+  font-size: var(--control-font-size-md);
   font-weight: var(--font-weight-semibold);
 }
 
 .ui-field__required {
   margin-left: var(--space-1);
   color: var(--accent-danger);
+  font-size: inherit;
 }
 
 .ui-field__hint,
 .ui-field__validation {
   color: var(--text-muted);
-  font-size: var(--font-size-xs);
+  font-size: var(--control-font-size-md);
   line-height: var(--line-height-normal);
+}
+
+.ui-field__validation {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+}
+
+.ui-field__validation-icon {
+  width: var(--icon-size-xs);
+  height: var(--icon-size-xs);
+  flex: none;
+}
+
+.ui-field--small .ui-field__label,
+.ui-field--small .ui-field__hint,
+.ui-field--small .ui-field__validation {
+  font-size: var(--control-font-size-sm);
+}
+
+.ui-field--medium .ui-field__label,
+.ui-field--medium .ui-field__hint,
+.ui-field--medium .ui-field__validation {
+  font-size: var(--control-font-size-md);
+}
+
+.ui-field--large .ui-field__label,
+.ui-field--large .ui-field__hint,
+.ui-field--large .ui-field__validation {
+  font-size: var(--control-font-size-lg);
 }
 
 .ui-field__validation--error {
@@ -35,5 +66,31 @@
 }
 
 .ui-field__validation--warning {
-  color: var(--tone-warning-text);
+  color: var(--accent-warning);
+}
+
+.ui-field__validation--success {
+  color: var(--accent-success);
+}
+
+.ui-field--horizontal {
+  grid-template-columns: minmax(var(--control-min-width-lg), auto) minmax(0, 1fr);
+  align-items: center;
+  column-gap: var(--space-3);
+}
+
+.ui-field--horizontal .ui-field__hint,
+.ui-field--horizontal .ui-field__validation {
+  grid-column: 2;
+}
+
+.ui-field--disabled {
+  color: var(--text-muted);
+}
+
+.ui-field--disabled .ui-field__label,
+.ui-field--disabled .ui-field__hint,
+.ui-field--disabled .ui-field__validation {
+  color: var(--text-muted);
+  cursor: not-allowed;
 }
