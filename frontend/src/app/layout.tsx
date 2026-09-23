@@ -1,6 +1,10 @@
 import type { Metadata } from "next";
 import Script from "next/script";
 import "./globals.css";
+import "../styles/color-tokens.css";
+import "../styles/design-tokens.css";
+import "../styles/icon-tokens.css";
+import "../styles/components/index.css";
 import { AuthProvider } from "@/lib/auth-context";
 import FloatingChatbot from "@/components/FloatingChatbot";
 import ToastViewport from "@/components/ToastViewport";
