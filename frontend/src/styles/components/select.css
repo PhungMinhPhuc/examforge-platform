@@ -13,10 +13,19 @@
   cursor: pointer;
 }
 
+.ui-select__button--placeholder {
+  color: var(--text-placeholder);
+}
+
 .ui-combobox--small .ui-select__button {
   padding-inline: var(--control-padding-inline-sm);
 }
 
 .ui-combobox--large .ui-select__button {
   padding-inline: var(--control-padding-inline-lg);
+}
+
+.ui-combobox--disabled .ui-select__button {
+  color: var(--text-muted);
+  cursor: not-allowed;
 }

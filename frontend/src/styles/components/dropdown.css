@@ -1,4 +1,4 @@
-/* Dropdown extends the visual contract from combobox.css. Not imported yet. */
+/* Dropdown extends the complete visual contract from combobox.css. */
 
 :root {
   --dropdown-min-width: var(--combobox-min-width, 250px);
@@ -6,6 +6,10 @@
 
 .ui-dropdown {
   min-width: var(--dropdown-min-width);
+}
+
+.ui-dropdown--open .ui-combobox__expand svg {
+  transform: rotate(180deg);
 }
 
 .ui-dropdown__button {
@@ -31,4 +35,9 @@
 
 .ui-dropdown--large .ui-dropdown__button {
   padding-inline: var(--control-padding-inline-lg);
+}
+
+.ui-dropdown--disabled .ui-dropdown__button {
+  color: var(--text-muted);
+  cursor: not-allowed;
 }
