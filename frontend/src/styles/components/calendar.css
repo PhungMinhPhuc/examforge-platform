@@ -1,10 +1,10 @@
-/* Shared Calendar used standalone and inside DatePicker. Not imported by the app yet. */
+/* Shared Calendar used standalone and inside DatePicker. */
 
 :root {
   --calendar-panel-width: 220px;
   --calendar-week-number-panel-width: 250px;
   --calendar-grid-width: 196px;
-  --calendar-week-number-grid-width: 226px;
+  --calendar-week-number-grid-width: calc(var(--calendar-cell-size) * 8);
   --calendar-panel-padding: var(--space-3);
   --calendar-title-padding-start: 10px;
   --calendar-header-height: 28px;
@@ -15,6 +15,7 @@
   --calendar-month-column-gap: var(--space-3);
   --calendar-month-row-gap: var(--space-4);
   --calendar-disabled-opacity: 0.45;
+  --calendar-outside-opacity: var(--calendar-disabled-opacity);
 }
 
 .ui-calendar {
@@ -44,6 +45,14 @@
   width: calc(
     var(--calendar-week-number-panel-width) + var(--calendar-panel-width)
   );
+}
+
+.ui-calendar--overlay {
+  width: var(--calendar-panel-width);
+}
+
+.ui-calendar--overlay.ui-calendar--week-numbers {
+  width: var(--calendar-week-number-panel-width);
 }
 
 .ui-calendar__body {
@@ -92,7 +101,7 @@
   border-radius: var(--control-radius-sm);
   background: transparent;
   color: var(--text-primary);
-  font: var(--font-weight-semibold) var(--font-size-base) /
+  font: var(--font-weight-semibold) var(--font-size-md) /
     var(--calendar-header-height) var(--font-family-ui);
   text-align: start;
   white-space: nowrap;
@@ -146,7 +155,7 @@
 
 .ui-calendar__grid {
   width: var(--calendar-grid-width);
-  margin-top: var(--space-1);
+  margin: var(--space-1) auto 0;
   border-collapse: collapse;
   border-spacing: 0;
   table-layout: fixed;
@@ -162,9 +171,15 @@
 .ui-calendar__weekday,
 .ui-calendar__cell,
 .ui-calendar__week-number {
+  box-sizing: border-box;
+  width: var(--calendar-cell-size);
   height: var(--calendar-cell-size);
+  padding: 0;
   font-size: var(--control-font-size-sm);
   font-weight: var(--font-weight-regular);
+  line-height: var(--calendar-cell-size);
+  text-align: center;
+  vertical-align: middle;
 }
 
 .ui-calendar__weekday {
@@ -175,7 +190,6 @@
 .ui-calendar__cell {
   position: relative;
   margin: 0;
-  padding: var(--radius-xs);
   color: var(--text-primary);
   cursor: pointer;
 }
@@ -212,6 +226,11 @@
   background: var(--accent-primary-soft);
 }
 
+.ui-calendar__cell--range-start,
+.ui-calendar__cell--range-end {
+  background: var(--accent-primary-selected);
+}
+
 .ui-calendar__cell--today .ui-calendar__day {
   width: var(--calendar-today-size);
   height: var(--calendar-today-size);
@@ -231,6 +250,22 @@
 .ui-calendar__cell--disabled {
   opacity: var(--calendar-disabled-opacity);
   pointer-events: none;
+}
+
+.ui-calendar__cell--outside {
+  opacity: var(--calendar-outside-opacity);
+}
+
+.ui-calendar__today-marker {
+  width: var(--calendar-today-size);
+  height: var(--calendar-today-size);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--radius-full);
+  background: var(--accent-primary);
+  color: var(--text-on-accent);
+  font-weight: var(--font-weight-semibold);
 }
 
 .ui-calendar__week-number {
