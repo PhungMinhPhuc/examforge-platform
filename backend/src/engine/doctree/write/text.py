@@ -52,9 +52,18 @@ def inline_text(nodes):
             out.append(n["text"])
         elif t == "math":
             out.append(n["tex"])
+        elif t == "math_block":
+            out.append(n["tex"])
         elif t == "hard_break":
             out.append("\n")
     return "".join(out)
+
+
+def cell_text(nodes):
+    return "".join(
+        block_text([node]) if node.get("type") in ("table", "code_block") else inline_text([node])
+        for node in (nodes or [])
+    )
 
 
 def block_text(nodes):
@@ -69,7 +78,7 @@ def block_text(nodes):
             out.append(n["text"])
         elif t == "table":
             for row in n["rows"]:
-                out.append(" | ".join(inline_text(c["content"]) for c in row))
+                out.append(" | ".join(cell_text(c["content"]) for c in row))
         elif t == "list":
             for item in n["items"]:
                 out.append(block_text(item))

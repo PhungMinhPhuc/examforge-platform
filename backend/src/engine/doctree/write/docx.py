@@ -312,6 +312,10 @@ def add_inline(par, nodes, figures, math_batch=None, host=None):
                 r.bold = "bold" in marks
                 r.italic = "italic" in marks
                 r.underline = "underline" in marks
+                if "subscript" in marks:
+                    r.font.subscript = True
+                elif "superscript" in marks:
+                    r.font.superscript = True
                 color = n.get("color")
                 if color and re.fullmatch(r"#[0-9A-Fa-f]{6}", color):
                     r.font.color.rgb = RGBColor.from_string(color[1:].upper())
@@ -324,6 +328,18 @@ def add_inline(par, nodes, figures, math_batch=None, host=None):
             r.font.name = "Cambria Math"
             if math_batch is not None:
                 math_batch.append(("inline", r, n["tex"]))
+        elif t == "math_block":
+            if host is not None:
+                par = host.add_paragraph()
+                r = par.add_run(n["tex"])
+                r.italic = True
+                r.font.name = "Cambria Math"
+                if math_batch is not None:
+                    math_batch.append(("display", par, n["tex"]))
+            else:
+                r = par.add_run(n["tex"])
+                r.italic = True
+                r.font.name = "Cambria Math"
         elif t == "hard_break":
             if host is not None:
                 par = host.add_paragraph()
@@ -355,6 +371,10 @@ def add_blocks(host, nodes, figures, math_batch=None):
             p.add_run(n["tex"]).italic = True
             if math_batch is not None:
                 math_batch.append(("display", p, n["tex"]))
+        elif t == "code_block":
+            p = host.add_paragraph()
+            run = p.add_run(n.get("text", ""))
+            run.font.name = "Consolas"
         elif t == "image":
             p = host.add_paragraph()
             p.alignment = WD_ALIGN_PARAGRAPH.CENTER
@@ -535,7 +555,24 @@ def add_table(host, node, figures, math_batch=None):
         if rowspan > 1 or colspan > 1:
             cell = cell.merge(t.cell(r_idx + rowspan - 1, col + colspan - 1))
         cell.text = ""
-        add_inline(cell.paragraphs[0], cell_data["content"], figures, math_batch, host=cell)
+        paragraph = cell.paragraphs[0]
+        paragraph_used = False
+        for item in cell_data["content"]:
+            if item.get("type") == "table":
+                if not paragraph_used and not paragraph.text and paragraph._p.getparent() is not None:
+                    paragraph._p.getparent().remove(paragraph._p)
+                add_table(cell, item, figures, math_batch)
+                paragraph = cell.paragraphs[-1]
+                paragraph_used = False
+            elif item.get("type") == "code_block":
+                if paragraph_used:
+                    paragraph = cell.add_paragraph()
+                run = paragraph.add_run(item.get("text", ""))
+                run.font.name = "Consolas"
+                paragraph_used = True
+            else:
+                add_inline(paragraph, [item], figures, math_batch, host=cell)
+                paragraph_used = True
 
 
 def write_field(doc, tree, figures, lead=None, math_batch=None,

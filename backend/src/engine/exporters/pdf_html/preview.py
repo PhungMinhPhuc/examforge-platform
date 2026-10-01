@@ -327,10 +327,51 @@ def render_exam_preview_html(
 </script>"""
         pagedjs_head_scripts = """<script>window.PagedConfig = { auto: false };</script>
 <script src="https://cdn.jsdelivr.net/npm/pagedjs/dist/paged.polyfill.js"></script>"""
-        pagedjs_loader_div = """<div id="pagedjs-loader" data-pagedjs-ignore="true" style="position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: #fff; z-index: 9999; display: flex; flex-direction: column; align-items: center; justify-content: center; font-family: sans-serif; color: #555;">
-    <div style="width: 40px; height: 40px; border: 4px solid #f3f3f3; border-top: 4px solid #3498db; border-radius: 50%; animation: spin 1s linear infinite; margin-bottom: 15px;"></div>
-    <style>@keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }</style>
-    <div style="font-size: 16px; font-weight: 500;">Đang xử lý phân trang A4...</div>
+        pagedjs_loader_div = """<style data-pagedjs-ignore="true">
+    #pagedjs-loader {
+        --loading-spinner-size-lg: 24px;
+        --loading-spinner-stroke: 2px;
+        --loading-spinner-track: #a2aabb;
+        --loading-spinner-color: #1e3faa;
+        --loading-spinner-duration: 800ms;
+        --loading-spinner-gap: 12px;
+        position: fixed;
+        inset: 0;
+        z-index: 9999;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: var(--loading-spinner-gap);
+        background: #ffffff;
+        color: #111827;
+        font-family: "System UI Bundled", "Noto Sans", sans-serif;
+    }
+    #pagedjs-loader .ui-spinner {
+        width: var(--loading-spinner-size-lg);
+        height: var(--loading-spinner-size-lg);
+        flex: 0 0 auto;
+        border: var(--loading-spinner-stroke) solid var(--loading-spinner-track);
+        border-top-color: var(--loading-spinner-color);
+        border-radius: 9999px;
+        animation: ui-loading-spin var(--loading-spinner-duration) linear infinite;
+    }
+    #pagedjs-loader .ui-spinner__text {
+        font-size: 1rem;
+        font-weight: 500;
+        line-height: 1.4;
+    }
+    @keyframes ui-loading-spin { to { transform: rotate(360deg); } }
+    @media (prefers-reduced-motion: reduce) {
+        #pagedjs-loader .ui-spinner {
+            animation-duration: 0.01ms;
+            animation-iteration-count: 1;
+        }
+    }
+</style>
+<div id="pagedjs-loader" data-pagedjs-ignore="true" role="status" aria-live="polite">
+    <div class="ui-spinner" aria-hidden="true"></div>
+    <div class="ui-spinner__text">Đang xử lý phân trang A4...</div>
 </div>"""
         # Dò-mồ-côi TỔNG QUÁT cho mọi câu có ảnh trôi (không riêng mc): so trang
         # chứa `.doc-figure-block` (ảnh) vs trang xuất hiện ĐẦU TIÊN của chính

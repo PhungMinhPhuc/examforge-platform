@@ -13,7 +13,13 @@ Xem mục 6 của docs/chuan-hoa-du-lieu.md.
 import re
 
 STEP = "    "          # 4 dấu cách một mức, không dùng ký tự tab
-MARK_MACRO = {"bold": "textbf", "italic": "textit", "underline": "underline"}
+MARK_MACRO = {
+    "bold": "textbf",
+    "italic": "textit",
+    "underline": "underline",
+    "subscript": "textsubscript",
+    "superscript": "textsuperscript",
+}
 
 
 def _figure(fid, figures):
@@ -48,11 +54,29 @@ def inline_tex(nodes, figures=None):
             if parts and parts[-1].endswith("$"):
                 parts.append(" ")
             parts.append(f"${n['tex']}$")
+        elif t == "math_block":
+            parts.append(f"\\[{n['tex']}\\]")
         elif t == "hard_break":
             parts.append("\\\\\n")
         elif t == "image_inline":
             parts.append(_figure(n["figure_id"], figures))
     return "".join(parts)
+
+
+def cell_tex(nodes, figures=None):
+    return "".join(
+        (_cell_code_tex(node) if node.get("type") == "code_block" else block_tex([node], figures).strip())
+        if node.get("type") in ("table", "code_block")
+        else inline_tex([node], figures)
+        for node in (nodes or [])
+    )
+
+
+def _cell_code_tex(node):
+    escaped = (node.get("text") or "").replace("\\", r"\textbackslash{}")
+    escaped = escaped.replace("_", r"\_").replace("%", r"\%").replace("&", r"\&")
+    escaped = escaped.replace("\n", "\\\\ ")
+    return f"\\texttt{{{escaped}}}"
 
 
 def block_tex(nodes, figures=None, indent=""):
@@ -69,6 +93,8 @@ def block_tex(nodes, figures=None, indent=""):
             out.append(indent + body)
         elif t == "math_block":
             out.append(f"{indent}$${n['tex']}$$")
+        elif t == "code_block":
+            out.append(f"{indent}\\begin{{verbatim}}\n{n['text']}\n{indent}\\end{{verbatim}}")
         elif t == "image":
             # Hình đứng riêng luôn căn giữa — đúng cách bộ xuất cũ vẫn làm cho
             # ảnh "thường" (không phải immini, immini đã tách hình ra riêng ở
@@ -117,7 +143,7 @@ def block_tex(nodes, figures=None, indent=""):
                         col += 1
                         continue
                     c, colspan, rowspan = by_col[col]
-                    body = inline_tex(c["content"], figures)
+                    body = cell_tex(c["content"], figures)
                     if rowspan > 1:
                         body = f"\\multirow{{{rowspan}}}{{*}}{{{body}}}"
                         for cc in range(col, col + colspan):

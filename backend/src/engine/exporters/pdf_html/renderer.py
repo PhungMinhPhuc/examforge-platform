@@ -323,6 +323,17 @@ def _add_pdf_image_markers(content_html: str, question_css_id: str) -> str:
     )
 
 
+def _prepend_question_label(content_html: str, label_html: str) -> str:
+    if not content_html:
+        return f"<p>{label_html}</p>"
+
+    inserted = re.sub(r"(<p\b[^>]*>)", rf"\1{label_html}", content_html, count=1)
+    if inserted != content_html:
+        return inserted
+
+    return f"<p>{label_html}</p>{content_html}"
+
+
 def _render_single_question(q: dict, counter: int, include_solution: bool, show_answers: bool,
                              id_prefix: str = "q-", pdf_marker: bool = False,
                              linked_image_assets: bool = False) -> str:
@@ -344,8 +355,9 @@ def _render_single_question(q: dict, counter: int, include_solution: bool, show_
         f'<span class="pdf-question-marker">[[QID:{question_css_id}]]</span>'
         if pdf_marker else ''
     )
-    content_html = content_html.replace(
-        '<p>', f'<p><strong>Câu {counter}:</strong>{question_marker} ', 1,
+    content_html = _prepend_question_label(
+        content_html,
+        f'<strong>Câu {counter}:</strong>{question_marker} ',
     )
     cls = "question-content" + (" immini" if layout.startswith("immini") else "") \
         + _side_class(rec["content_doc"])

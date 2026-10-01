@@ -13,7 +13,14 @@ import html as _html
 import re
 from ..figures import A4_REFERENCE_WIDTH_PT
 
-TAG_OF = {"bold": "strong", "italic": "em", "underline": "u", "highlight": "mark"}
+TAG_OF = {
+    "bold": "strong",
+    "italic": "em",
+    "underline": "u",
+    "highlight": "mark",
+    "subscript": "sub",
+    "superscript": "sup",
+}
 
 
 def _default_math(tex, display):
@@ -66,11 +73,22 @@ def inline_html(nodes, figures=None, math_fmt=None):
             parts.append(s)
         elif t == "math":
             parts.append(math_fmt(_html.escape(n["tex"]), False))
+        elif t == "math_block":
+            parts.append(f'<span class="doc-math-block">{math_fmt(_html.escape(n["tex"]), True)}</span>')
         elif t == "hard_break":
             parts.append("<br>")
         elif t == "image_inline":
             parts.append(_img(n["figure_id"], figures, "doc-figure-inline"))
     return "".join(parts)
+
+
+def cell_html(nodes, figures=None, math_fmt=None):
+    return "".join(
+        block_html([node], figures, math_fmt)
+        if node.get("type") in ("table", "code_block")
+        else inline_html([node], figures, math_fmt)
+        for node in (nodes or [])
+    )
 
 
 def block_html(nodes, figures=None, math_fmt=None):
@@ -100,7 +118,7 @@ def block_html(nodes, figures=None, math_fmt=None):
                 for c in r:
                     colspan = f' colspan="{c["colspan"]}"' if c.get("colspan") else ""
                     rowspan = f' rowspan="{c["rowspan"]}"' if c.get("rowspan") else ""
-                    cells.append(f"<td{colspan}{rowspan}>{inline_html(c['content'], figures, math_fmt)}</td>")
+                    cells.append(f"<td{colspan}{rowspan}>{cell_html(c['content'], figures, math_fmt)}</td>")
                 height = heights[row_index] if row_index < len(heights) else None
                 style = f' style="height:{float(height):g}px"' if height else ""
                 rows.append(f"<tr{style}>" + "".join(cells) + "</tr>")

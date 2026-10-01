@@ -6,7 +6,7 @@ kiểm được tự động. `validate(doc)` trả về danh sách lỗi; rỗn
 import re
 
 SIDES = {"left", "right", "center"}
-MARKS = {"bold", "italic", "underline", "highlight"}
+MARKS = {"bold", "italic", "underline", "highlight", "subscript", "superscript"}
 
 # type -> (trường bắt buộc, trường được phép thêm)
 BLOCK = {
@@ -21,6 +21,7 @@ BLOCK = {
 INLINE = {
     "text":         ({"text"}, {"marks", "color"}),
     "math":         ({"tex"}, set()),
+    "math_block":   ({"tex"}, set()),
     "hard_break":   (set(), set()),
     "image_inline": ({"figure_id"}, set()),
 }
@@ -58,6 +59,9 @@ def validate(doc, figure_ids=None):
                 for m in n.get("marks", []):
                     if m not in MARKS:
                         err(p, f"dấu định dạng lạ: {m!r}")
+                marks = set(n.get("marks", []))
+                if {"subscript", "superscript"} <= marks:
+                    err(p, "subscript và superscript không thể cùng áp dụng")
                 color = n.get("color")
                 if color is not None and not re.fullmatch(r"#[0-9A-Fa-f]{6}", color):
                     err(p, "color phải có dạng #RRGGBB")
@@ -133,7 +137,10 @@ def validate(doc, figure_ids=None):
         if total > 1.000001:
             err(p, f"tổng width các cột vượt 1: {total:g}")
 
-    def check_table(n, p):
+    def check_table(n, p, depth=1):
+        if depth > 3:
+            err(p, "bảng lồng sâu quá 3 cấp")
+            return
         rows = n.get("rows")
         if not isinstance(rows, list) or not rows:
             return err(p, "table phải có ít nhất một hàng")
@@ -170,7 +177,21 @@ def validate(doc, figure_ids=None):
                     if rowspan > 1:
                         next_carried[col] = rowspan - 1
                 cursor += span
-                check_inline(c["content"], cp + ".content")
+                content = c["content"]
+                if not isinstance(content, list):
+                    err(cp + ".content", "content phải là mảng")
+                else:
+                    for item_i, item in enumerate(content):
+                        item_path = f"{cp}.content[{item_i}]"
+                        if isinstance(item, dict) and item.get("type") == "table":
+                            check_keys(item, {"rows"}, {"align", "widths", "row_heights"}, item_path)
+                            check_table(item, item_path, depth + 1)
+                        elif isinstance(item, dict) and item.get("type") == "code_block":
+                            check_keys(item, {"text"}, {"lang"}, item_path)
+                        elif not isinstance(item, dict):
+                            err(item_path, "nút trong ô phải là object")
+                        else:
+                            check_inline([item], item_path)
             widths.add(max(occupied, default=-1) + 1)
             carried = next_carried
         if len(widths) > 1:

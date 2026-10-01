@@ -1,4 +1,0 @@
-# File tương thích cho lệnh cũ: `cd api && pip install -r requirements.txt`.
-# Nguồn dependency thật nằm tập trung trong thư mục requirements/ ở gốc repo.
--r ../requirements/api.txt
--r ../requirements/engine.txt

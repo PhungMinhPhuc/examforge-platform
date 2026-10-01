@@ -29,7 +29,8 @@ KNOWN = {
     "begin", "end", "ex", "immini", "imminiL", "choice", "choiceTF", "shortans",
     "loigiai", "itemch", "itemchoice", "sochc", "chc", "True",
     # nội dung — thành nút trong cây
-    "textbf", "textit", "underline", "hline", "item", "itemize", "enumerate",
+    "textbf", "textit", "underline", "textsubscript", "textsuperscript",
+    "hline", "item", "itemize", "enumerate",
     "tabular", "multicolumn", "includegraphics", "tikzpicture", "linewidth",
     # trình bày thuần — cố ý bỏ, xem "CSDL không chứa mẹo căn dòng"
     "vspace", "hspace", "centering", "raggedleft", "raggedright", "noindent", "center", "pandocbounded",
@@ -150,9 +151,15 @@ def protect_math(text):
     return text, store
 
 
-# --------------------------------------------------------------- nút nội dung ---
+# nút nội dung 
 
-MARK_OF = {"textbf": "bold", "textit": "italic", "underline": "underline"}
+MARK_OF = {
+    "textbf": "bold",
+    "textit": "italic",
+    "underline": "underline",
+    "textsubscript": "subscript",
+    "textsuperscript": "superscript",
+}
 
 
 def inline_nodes(text, math, holes):
@@ -172,7 +179,10 @@ def inline_nodes(text, math, holes):
             out.append(node)
 
     def walk(s, marks):
-        m = re.search(r"\\(textbf|textit|underline)\{", s)
+        m = re.search(
+            r"\\(textbf|textit|underline|textsubscript|textsuperscript)\{",
+            s,
+        )
         if m:
             inner, end = bracket(s, m.end() - 1)
             walk(s[:m.start()], marks)
@@ -204,19 +214,43 @@ def parse_tabular(body, math, holes):
     align = [c for c in m.group(1) if c in "lcr"] if m else []
     body = body[m.end():] if m else body
 
+    def split_at_level(value, separator):
+        parts, start, depth = [], 0, 0
+        token = re.compile(r"\\(?:begin|end)\{tabular\}|\\\\|&")
+        for hit in token.finditer(value):
+            found = hit.group(0)
+            if found == r"\begin{tabular}":
+                depth += 1
+            elif found == r"\end{tabular}":
+                depth = max(0, depth - 1)
+            elif found == separator and depth == 0:
+                parts.append(value[start:hit.start()])
+                start = hit.end()
+        parts.append(value[start:])
+        return parts
+
+    def cell_nodes(value):
+        content = []
+        for kind, fragment in _split_top_level_envs(value):
+            if kind == "text":
+                content.extend(inline_nodes(fragment.strip(), math, holes))
+            elif kind == "tabular":
+                content.append(parse_tabular(fragment, math, holes))
+        return content
+
     rows = []
-    for raw in re.split(r"\\\\", body):
+    for raw in split_at_level(body, r"\\"):
         raw = raw.replace("\\hline", "").strip()
         if not raw:
             continue
         cells = []
-        for cell in raw.split("&"):
+        for cell in split_at_level(raw, "&"):
             span = 1
             mc = re.search(r"\\multicolumn\{(\d+)\}\{[^}]*\}\{", cell)
             if mc:
                 inner, _ = bracket(cell, mc.end() - 1)
                 span, cell = int(mc.group(1)), inner
-            c = {"content": inline_nodes(cell.strip(), math, holes)}
+            c = {"content": cell_nodes(cell.strip())}
             if span > 1:
                 c["colspan"] = span
             cells.append(c)

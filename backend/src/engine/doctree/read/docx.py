@@ -43,9 +43,16 @@ def run_marks(r):
     pr = r.find(q("w:rPr"))
     if pr is None:
         return []
-    return [mark for tag, mark in MARK_OF.items()
-            if (el := pr.find(q("w:" + tag))) is not None
-            and el.get(q("w:val")) not in ("0", "false", "none")]
+    marks = [mark for tag, mark in MARK_OF.items()
+             if (el := pr.find(q("w:" + tag))) is not None
+             and el.get(q("w:val")) not in ("0", "false", "none")]
+    vertical = pr.find(q("w:vertAlign"))
+    vertical_value = vertical.get(q("w:val")) if vertical is not None else None
+    if vertical_value == "subscript":
+        marks.append("subscript")
+    elif vertical_value == "superscript":
+        marks.append("superscript")
+    return marks
 
 
 def run_color(r):
@@ -284,8 +291,13 @@ def table_node(tbl, ctx):
                 logical_col += span
                 continue
             content = []
-            for p in tc.findall(q("w:p")):
-                content += para_inline(p, ctx)
+            for child in tc:
+                if child.tag == q("w:p"):
+                    content += para_inline(child, ctx)
+                elif child.tag == q("w:tbl"):
+                    nested = table_node(child, ctx)
+                    if nested:
+                        content.append(nested)
             cell = {"content": content}
             if span > 1:
                 cell["colspan"] = span
