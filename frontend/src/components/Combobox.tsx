@@ -2,6 +2,7 @@
 
 import React, { useEffect, useId, useRef, useState } from "react";
 import { Icon } from "@/components/icons";
+import { Spinner } from "@/components/Loading";
 
 type ComboboxValue = string | number;
 type ComboboxSize = "small" | "medium" | "large";
@@ -189,7 +190,7 @@ export default function Combobox({
               setSearch("");
             }}
           >
-            <Icon name="close" size="var(--control-icon-size)" />
+            <Icon name="x" size="var(--control-icon-size)" />
           </button>
         )}
         <button type="button" className="ui-combobox__expand" aria-label={open ? "Đóng danh sách" : "Mở danh sách"} aria-expanded={open} disabled={disabled} onClick={() => setOpen((current) => !current)}>
@@ -199,7 +200,7 @@ export default function Combobox({
       {open && (
         <div id={listboxId} className="ui-combobox__listbox" role="listbox" aria-multiselectable={multiple || undefined}>
           {loading ? (
-            <div className="ui-combobox__loading">Đang tải…</div>
+            <div className="ui-combobox__loading"><Spinner size="small" label="Đang tải …" /></div>
           ) : filtered.length > 0 ? (
             filtered.map((option, index) => {
               const label = optionLabel(option);

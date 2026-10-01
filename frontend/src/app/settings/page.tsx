@@ -4,9 +4,11 @@ import { useEffect, useState } from "react";
 import { useAuth } from "@/lib/auth-context";
 import { useRouter } from "next/navigation";
 import Sidebar from "@/components/Sidebar";
-import api from "@/lib/api";
+import PageHeader from "@/components/PageHeader";
 import { getStoredTheme, applyTheme, type Theme } from "@/lib/theme";
 import { toast } from "@/lib/toastStore";
+import MessageBar from "@/components/MessageBar";
+import { Icon } from "@/components/icons";
 
 export default function SettingsPage() {
   const { user, isLoading, logout } = useAuth();
@@ -18,7 +20,6 @@ export default function SettingsPage() {
 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
-  const [success, setSuccess] = useState("");
 
   // Bắt đầu bằng "light" (khớp bản HTML server render) rồi mới đọc
   // localStorage thật sau khi mount — tránh lệch giữa server/client
@@ -48,7 +49,6 @@ export default function SettingsPage() {
     e.preventDefault();
     setLoading(true);
     setError("");
-    setSuccess("");
 
     try {
       // update profile API
@@ -62,7 +62,6 @@ export default function SettingsPage() {
         method: "PUT",
         body: JSON.stringify(payload),
       });
-      setSuccess("Cập nhật thông tin thành công!");
       toast.success("Cập nhật thông tin thành công!");
       // Xoá mật khẩu sau khi cập nhật
       setPassword("");
@@ -77,7 +76,6 @@ export default function SettingsPage() {
       }, 1500);
     } catch (err: any) {
       setError(err.message || "Có lỗi xảy ra khi cập nhật hồ sơ");
-      toast.error(err.message || "Có lỗi xảy ra khi cập nhật hồ sơ");
     } finally {
       setLoading(false);
     }
@@ -115,7 +113,7 @@ export default function SettingsPage() {
           height: "100vh",
         }}
       >
-        <span className="spinner" />
+        <span className="ui-spinner" />
       </div>
     );
   if (!user) return null;
@@ -124,10 +122,7 @@ export default function SettingsPage() {
     <div className="page-wrapper">
       <Sidebar />
       <main className="main-content">
-        <div className="page-header">
-          <h1 className="page-title">Cài đặt Tài khoản</h1>
-          <p className="page-sub">Quản lý thông tin cá nhân và bảo mật</p>
-        </div>
+        <PageHeader title="Cài đặt tài khoản" description="Quản lý thông tin cá nhân và bảo mật" />
 
         <div
           className="card"
@@ -137,7 +132,7 @@ export default function SettingsPage() {
             <div style={{ fontWeight: 700 }}>Giao diện</div>
             <div
               style={{
-                fontSize: "var(--font-size-xs)",
+                fontSize: "var(--font-size-2xs)",
                 color: "var(--text-muted)",
               }}
             >
@@ -147,52 +142,42 @@ export default function SettingsPage() {
           <div style={{ display: "flex", gap: "0.5rem" }}>
             <button
               type="button"
-              className={`btn ${theme === "light" ? "btn-primary" : "btn-secondary"}`}
+              className={`ui-button ${theme === "light" ? "ui-button--primary" : "ui-button--secondary"}`}
               onClick={() => handleThemeChange("light")}
             >
-              ☀ Sáng
+              <Icon name="sun" />
+              Sáng
             </button>
             <button
               type="button"
-              className={`btn ${theme === "dark" ? "btn-primary" : "btn-secondary"}`}
+              className={`ui-button ${theme === "dark" ? "ui-button--primary" : "ui-button--secondary"}`}
               onClick={() => handleThemeChange("dark")}
             >
-              ● Tối
+              <Icon name="moon" />
+              Tối
             </button>
           </div>
         </div>
 
         <div className="card" style={{ maxWidth: "600px" }}>
           {error && (
-            <div className="alert alert-error" style={{ marginBottom: "1rem" }}>
+            <MessageBar className="ui-message-bar--section" intent="error" onDismiss={() => setError("")}>
               {error}
-            </div>
-          )}
-          {success && (
-            <div
-              className="alert alert-success"
-              style={{ marginBottom: "1rem" }}
-            >
-              {success}
-            </div>
+            </MessageBar>
           )}
 
           <form onSubmit={handleUpdate}>
             <div className="form-group">
               <label className="form-label">Email</label>
               <input
-                className="input"
+                className="ui-input-native"
                 type="email"
                 value={user.email || ""}
                 disabled
-                style={{
-                  background: "var(--bg-elevated)",
-                  cursor: "not-allowed",
-                }}
               />
               <div
                 style={{
-                  fontSize: "var(--font-size-xs)",
+                  fontSize: "var(--font-size-2xs)",
                   color: "var(--text-muted)",
                   marginTop: "0.25rem",
                 }}
@@ -204,7 +189,7 @@ export default function SettingsPage() {
             <div className="form-group">
               <label className="form-label">Họ và tên</label>
               <input
-                className="input"
+                className="ui-input-native"
                 placeholder="Tên hiển thị của bạn"
                 value={name}
                 onChange={(e) => setName(e.target.value)}
@@ -216,14 +201,14 @@ export default function SettingsPage() {
               <div className="form-group">
                 <label className="form-label">Trường / Tổ chức</label>
                 <input
-                  className="input"
+                  className="ui-input-native"
                   placeholder="VD: Trường THPT Chuyên..."
                   value={organization}
                   onChange={(e) => setOrganization(e.target.value)}
                 />
                 <div
                   style={{
-                    fontSize: "var(--font-size-xs)",
+                    fontSize: "var(--font-size-2xs)",
                     color: "var(--text-muted)",
                     marginTop: "0.25rem",
                   }}
@@ -236,7 +221,7 @@ export default function SettingsPage() {
             <div className="form-group">
               <label className="form-label">Đổi mật khẩu mới</label>
               <input
-                className="input"
+                className="ui-input-native"
                 type="password"
                 placeholder="Bỏ trống nếu không muốn đổi"
                 value={password}
@@ -246,7 +231,7 @@ export default function SettingsPage() {
               {password && (
                 <div
                   style={{
-                    fontSize: "var(--font-size-xs)",
+                    fontSize: "var(--font-size-2xs)",
                     color: "var(--accent-warning)",
                     marginTop: "0.25rem",
                   }}
@@ -258,7 +243,7 @@ export default function SettingsPage() {
 
             <button
               type="submit"
-              className="btn btn-primary"
+              className="ui-button ui-button--primary"
               disabled={loading}
               style={{ marginTop: "1rem" }}
             >

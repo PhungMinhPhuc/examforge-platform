@@ -14,6 +14,8 @@ import type {
   CodingSubmission,
 } from "@/modules/coding/types";
 import { STATUS_BADGE, bestStatus } from "@/components/CodingQuestionNode";
+import PageHeader from "@/components/PageHeader";
+import MessageBar from "@/components/MessageBar";
 
 export default function CodingQuestionPage({
   params,
@@ -75,42 +77,47 @@ export default function CodingQuestionPage({
       <Sidebar />
       <main className="main-content">
         {loading ? (
-          <div className="skeleton" style={{ height: 180 }} />
+          <div className="ui-skeleton" style={{ height: 180 }} />
         ) : error ? (
-          <div className="alert alert-error">{error}</div>
+          <MessageBar
+            intent="error"
+            onDismiss={() => router.push(`/coding/${assignmentId}`)}
+          >
+            {error}
+          </MessageBar>
         ) : !question ? (
           <div className="empty-state">
             <h3>Không tìm thấy câu này trong bài</h3>
-            <Link href={`/coding/${assignmentId}`} className="btn btn-primary">
+            <Link href={`/coding/${assignmentId}`} className="ui-button ui-button--primary">
               Về danh sách bài
             </Link>
           </div>
         ) : (
           <>
-            <div className="page-header">
-              <div>
-                <div className="page-breadcrumb">
-                  <Link href="/coding">Lập trình</Link>
-                  <span className="sep">/</span>
-                  <span className="current">{assignment?.title}</span>
-                </div>
-                <h1 className="page-title">Câu {index + 1}</h1>
-                <p className="page-sub">
+            <PageHeader
+              breadcrumbs={[
+                { label: "Lập trình", href: "/coding" },
+                { label: assignment?.title || "Bài lập trình", href: `/coding/${assignmentId}`, truncate: true },
+                { label: `Câu ${index + 1}` },
+              ]}
+              title={`Câu ${index + 1}`}
+              description={
+                <>
                   {[question.chapter, question.lesson]
                     .filter(Boolean)
                     .join(" · ") || "Chưa gắn chương"}{" "}
                   · {questions.length} bài trong đề
-                </p>
-              </div>
-              <div style={{ display: "flex", gap: ".5rem" }}>
+                </>
+              }
+              actions={<>
                 <Link
                   href={`/coding/${assignmentId}`}
-                  className="btn btn-secondary btn-sm"
+                  className="ui-button ui-button--secondary ui-button--small"
                 >
                   Danh sách bài
                 </Link>
                 <button
-                  className="btn btn-secondary btn-sm"
+                  className="ui-button ui-button--secondary ui-button--small"
                   disabled={index <= 0}
                   onClick={() =>
                     router.push(
@@ -121,7 +128,7 @@ export default function CodingQuestionPage({
                   Câu trước
                 </button>
                 <button
-                  className="btn btn-secondary btn-sm"
+                  className="ui-button ui-button--secondary ui-button--small"
                   disabled={index >= questions.length - 1}
                   onClick={() =>
                     router.push(
@@ -131,8 +138,8 @@ export default function CodingQuestionPage({
                 >
                   Câu sau
                 </button>
-              </div>
-            </div>
+              </>}
+            />
             <CodingWorkspace
               question={{ ...question, overallStatus } as any}
               questionNumber={index + 1}
@@ -142,7 +149,7 @@ export default function CodingQuestionPage({
             <div className="card" style={{ padding: "1.25rem" }}>
               <h2
                 style={{
-                  fontSize: "var(--font-size-md)",
+                  fontSize: "var(--font-size-sm)",
                   marginBottom: ".6rem",
                 }}
               >

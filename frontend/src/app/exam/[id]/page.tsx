@@ -1,14 +1,17 @@
 "use client";
 
 import { useEffect, useState, useCallback, use, useMemo, useRef } from "react";
-import { useSearchParams } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useAuth } from "@/lib/auth-context";
 import LatexRenderer from "@/components/LatexRenderer";
 import ExamTimer from "@/components/ExamTimer";
 import api from "@/lib/api";
 import Link from "next/link";
 import CodingQuestionNode from "@/components/CodingQuestionNode";
-import { toast } from "@/lib/toastStore";
+import { ProgressBar } from "@/components/Loading";
+import MessageBar from "@/components/MessageBar";
+import { confirmDialog } from "@/lib/confirmDialog";
+import { Icon } from "@/components/icons";
 
 type Question = {
   id: number;
@@ -92,7 +95,11 @@ export default function ExamPage({
   const [guestName, setGuestName] = useState("");
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
-  const [error, setError] = useState("");
+  const [loadError, setLoadError] = useState("");
+  const [startError, setStartError] = useState("");
+  const [submitError, setSubmitError] = useState("");
+  const submitErrorRef = useRef<HTMLDivElement>(null);
+  const router = useRouter();
   const [score, setScore] = useState<number | null>(null);
   const [maxScore, setMaxScore] = useState<number | null>(null);
   const [submissionSummary, setSubmissionSummary] = useState<{
@@ -115,6 +122,12 @@ export default function ExamPage({
   const [persistedOptionOrders, setPersistedOptionOrders] = useState<
     Record<string, string>
   >({});
+
+  useEffect(() => {
+    if (submitError) {
+      submitErrorRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
+    }
+  }, [submitError]);
   const layoutInitRef = useRef<number | null>(null);
 
   useEffect(() => {
@@ -150,7 +163,7 @@ export default function ExamPage({
         setContest(res.contest as Contest);
         setQuestions(res.questions as Question[]);
       })
-      .catch((err) => setError(err.message))
+      .catch((err) => setLoadError(err.message))
       .finally(() => setLoading(false));
   }, [contestId]);
 
@@ -390,11 +403,10 @@ export default function ExamPage({
   const handleStart = async () => {
     if (isGuest && !guestName.trim()) {
       const msg = "Vui lòng nhập tên của bạn";
-      setError(msg);
-      toast.error(msg);
+      setStartError(msg);
       return;
     }
-    setError("");
+    setStartError("");
     try {
       const res = await api.startContest(contestId, {
         student_id: isGuest ? null : user?.user_id || null,
@@ -428,8 +440,7 @@ export default function ExamPage({
       }
       setStage("exam");
     } catch (e: unknown) {
-      setError(e instanceof Error ? e.message : "Lỗi bắt đầu thi");
-      toast.error(e instanceof Error ? e.message : "Lỗi bắt đầu thi");
+      setStartError(e instanceof Error ? e.message : "Lỗi bắt đầu thi");
     }
   };
 
@@ -473,7 +484,10 @@ export default function ExamPage({
 
   const handleSubmit = useCallback(
     async (force = false) => {
-      if (!force && !confirm("Bạn chắc chắn muốn nộp bài?")) return;
+      if (!force && !(await confirmDialog("Bạn chắc chắn muốn nộp bài?", {
+        title: "Nộp bài thi",
+        confirmLabel: "Nộp bài",
+      }))) return;
       if (!resultId) return;
       setSubmitting(true);
       try {
@@ -510,8 +524,7 @@ export default function ExamPage({
         });
         setStage("done");
       } catch (e: unknown) {
-        setError(e instanceof Error ? e.message : "Lỗi nộp bài");
-        toast.error(e instanceof Error ? e.message : "Lỗi nộp bài");
+        setSubmitError(e instanceof Error ? e.message : "Lỗi nộp bài");
       } finally {
         setSubmitting(false);
       }
@@ -551,14 +564,14 @@ export default function ExamPage({
         }}
       >
         <span
-          className="spinner"
+          className="ui-spinner"
           style={{ width: 40, height: 40, borderWidth: 3 }}
         />
         <p style={{ color: "var(--text-secondary)" }}>Đang tải đề thi...</p>
       </div>
     );
 
-  if (error && !contest)
+  if (loadError && !contest)
     return (
       <div
         style={{
@@ -570,8 +583,10 @@ export default function ExamPage({
           gap: "1rem",
         }}
       >
-        <div className="alert alert-error">{error}</div>
-        <Link href="/" className="btn btn-primary">
+        <MessageBar className="ui-message-bar--section" intent="error" onDismiss={() => router.push("/")}>
+          {loadError}
+        </MessageBar>
+        <Link href="/" className="ui-button ui-button--primary">
           Về trang chủ
         </Link>
       </div>
@@ -634,7 +649,7 @@ export default function ExamPage({
               >
                 <div
                   style={{
-                    fontSize: "var(--font-size-xs)",
+                    fontSize: "var(--font-size-2xs)",
                     color: "var(--text-muted)",
                     marginBottom: "0.25rem",
                   }}
@@ -646,17 +661,24 @@ export default function ExamPage({
             ))}
           </div>
 
-          {error && <div className="alert alert-error">{error}</div>}
+          {startError && (
+            <MessageBar className="ui-message-bar--section" intent="error" onDismiss={() => setStartError("")}>
+              {startError}
+            </MessageBar>
+          )}
 
           {isGuest && (
             <div className="form-group">
               <label className="form-label">Họ và tên</label>
               <input
                 id="guest-name"
-                className="input"
+                className="ui-input-native"
                 placeholder="Nguyễn Văn A"
                 value={guestName}
-                onChange={(e) => setGuestName(e.target.value)}
+                onChange={(e) => {
+                  setGuestName(e.target.value);
+                  setStartError("");
+                }}
               />
             </div>
           )}
@@ -666,7 +688,7 @@ export default function ExamPage({
           >
             <button
               id="btn-start-exam"
-              className="btn btn-primary btn-lg"
+              className="ui-button ui-button--primary ui-button--large"
               onClick={handleStart}
             >
               {" "}
@@ -674,7 +696,7 @@ export default function ExamPage({
             </button>
             <Link
               href="/"
-              className="btn btn-ghost"
+              className="ui-button ui-button--ghost"
               style={{ textAlign: "center" }}
             >
               Quay về
@@ -763,7 +785,10 @@ export default function ExamPage({
                 {Object.entries(submissionSummary.section_stats).map(
                   ([type, stats]) => (
                     <div key={type}>
-                      <span>▸ {sectionLabels[type] || "Phần khác"}</span>
+                      <span>
+                        <Icon name="chevron-right" size="var(--icon-size-compact)" />
+                        {sectionLabels[type] || "Phần khác"}
+                      </span>
                       <strong>
                         {stats.correct}/{stats.total}
                       </strong>
@@ -785,7 +810,7 @@ export default function ExamPage({
           {resultId && (
             <Link
               href={`/results/${resultId}`}
-              className="btn btn-primary btn-lg exam-result-detail-button"
+              className="ui-button ui-button--primary ui-button--large exam-result-detail-button"
             >
               Xem chi tiết bài làm
             </Link>
@@ -803,7 +828,7 @@ export default function ExamPage({
           )}
           <Link
             href={isGuest ? "/" : "/contests"}
-            className="btn btn-ghost exam-result-back"
+            className="ui-button ui-button--ghost exam-result-back"
           >
             {isGuest ? "Về trang chủ" : "Về Đề thi và bài tập"}
           </Link>
@@ -834,7 +859,7 @@ export default function ExamPage({
         }}
       >
         <div>
-          <div style={{ fontWeight: 700, fontSize: "var(--font-size-md)" }}>
+          <div style={{ fontWeight: 700, fontSize: "var(--font-size-sm)" }}>
             {contest?.title}
           </div>
           <div style={{ fontSize: "0.8rem", color: "var(--text-secondary)" }}>
@@ -858,12 +883,12 @@ export default function ExamPage({
         />
         <button
           id="btn-submit-exam"
-          className="btn btn-primary"
+          className="ui-button ui-button--primary"
           onClick={() => handleSubmit(false)}
           disabled={submitting}
           style={{ justifySelf: "end" }}
         >
-          {submitting ? <span className="spinner" /> : "Nộp bài"}
+          {submitting ? <span className="ui-spinner" /> : "Nộp bài"}
         </button>
       </div>
 
@@ -871,7 +896,18 @@ export default function ExamPage({
         className={`exam-body-layout ${questionNavOpen ? "nav-open" : "nav-closed"}`}
       >
         <main className="exam-question-column">
-          {error && <div className="alert alert-error">{error}</div>}
+          {submitError && (
+            <div ref={submitErrorRef}>
+              <MessageBar
+                intent="error"
+                actionLabel="Thử nộp lại"
+                onAction={() => handleSubmit(false)}
+                onDismiss={() => setSubmitError("")}
+              >
+                {submitError}
+              </MessageBar>
+            </div>
+          )}
 
           {/* Blocks of Questions */}
           {processedQuestions.blocks.map((block: any) => (
@@ -886,7 +922,7 @@ export default function ExamPage({
                 <h2
                   style={{
                     color: "var(--accent-primary)",
-                    fontSize: "var(--font-size-lg)",
+                    fontSize: "var(--font-size-base)",
                   }}
                 >
                   {block.title}
@@ -959,23 +995,7 @@ export default function ExamPage({
                                 : `Đánh dấu câu ${node.qNum}`
                             }
                           >
-                            <svg
-                              width="var(--icon-size-compact)"
-                              height="var(--icon-size-compact)"
-                              viewBox="0 0 24 24"
-                              fill={
-                                markedQuestions.includes(node.id)
-                                  ? "currentColor"
-                                  : "none"
-                              }
-                            >
-                              <path
-                                d="M6 4.75A1.75 1.75 0 0 1 7.75 3h8.5A1.75 1.75 0 0 1 18 4.75V21l-6-3.6L6 21V4.75Z"
-                                stroke="currentColor"
-                                strokeWidth="var(--icon-stroke-emphasis)"
-                                strokeLinejoin="round"
-                              />
-                            </svg>
+                            <Icon name="bookmark" size="var(--icon-size-compact)" />
                           </button>
                         </div>
                         <div style={{ flex: 1, minWidth: 0 }}>
@@ -1049,10 +1069,16 @@ export default function ExamPage({
                                     imageZoomable
                                   />
                                 </div>
-                                <div className="tf-toggle">
+                                <div
+                                  className="ui-segmented ui-segmented--fit ui-binary-choice ui-binary-choice--small"
+                                  role="group"
+                                  aria-label={`Câu ${node.id}, ý ${oi + 1}`}
+                                >
                                   <button
+                                    type="button"
                                     id={`q${node.id}-tf-${oi}-T`}
-                                    className={cur === "T" ? "active-T" : ""}
+                                    className="ui-segmented__item ui-binary-choice__true"
+                                    aria-pressed={cur === "T"}
                                     onClick={() =>
                                       setTFAnswer(node.id, oi, "T")
                                     }
@@ -1060,8 +1086,10 @@ export default function ExamPage({
                                     Đ
                                   </button>
                                   <button
+                                    type="button"
                                     id={`q${node.id}-tf-${oi}-F`}
-                                    className={cur === "F" ? "active-F" : ""}
+                                    className="ui-segmented__item ui-binary-choice__false"
+                                    aria-pressed={cur === "F"}
                                     onClick={() =>
                                       setTFAnswer(node.id, oi, "F")
                                     }
@@ -1081,7 +1109,7 @@ export default function ExamPage({
                           <label className="form-label">Đáp án:</label>
                           <input
                             id={`q${node.id}-answer`}
-                            className="input"
+                            className="ui-input-native"
                             style={{ maxWidth: 200 }}
                             placeholder="Nhập đáp án..."
                             value={ans}
@@ -1098,7 +1126,7 @@ export default function ExamPage({
                           <label className="form-label">Câu trả lời:</label>
                           <textarea
                             id={`q${node.id}-answer`}
-                            className="textarea"
+                            className="ui-textarea"
                             placeholder="Viết câu trả lời của bạn..."
                             value={ans}
                             onChange={(e) =>
@@ -1193,7 +1221,10 @@ export default function ExamPage({
             }
             title={questionNavOpen ? "Thu gọn" : "Mở danh sách câu hỏi"}
           >
-            {questionNavOpen ? "›" : "‹"}
+            <Icon
+              name={questionNavOpen ? "chevron-right" : "chevron-left"}
+              size="var(--icon-size-control)"
+            />
           </button>
 
           {questionNavOpen && (
@@ -1254,14 +1285,11 @@ export default function ExamPage({
                     {answeredCount}/{totalQ} câu
                   </strong>
                 </div>
-                <div className="progress-bar">
-                  <div
-                    className="progress-fill"
-                    style={{
-                      width: `${(answeredCount / Math.max(1, totalQ)) * 100}%`,
-                    }}
-                  />
-                </div>
+                <ProgressBar
+                  value={answeredCount}
+                  max={Math.max(1, totalQ)}
+                  label="Tiến độ làm bài"
+                />
               </div>
             </div>
           )}

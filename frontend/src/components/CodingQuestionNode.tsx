@@ -3,6 +3,7 @@ import LatexRenderer from "@/components/LatexRenderer";
 import Editor from "@monaco-editor/react";
 
 import Combobox from "@/components/Combobox";
+import { Icon } from "@/components/icons";
 
 const COMPLEXITY_LABELS: Record<number, string> = {
   1: "Nhận biết",
@@ -257,7 +258,7 @@ export default function CodingQuestionNode({
                     >
                       <div
                         style={{
-                          fontSize: "var(--font-size-xs)",
+                          fontSize: "var(--font-size-2xs)",
                           color: "var(--text-secondary)",
                           marginBottom: "0.25rem",
                         }}
@@ -278,7 +279,7 @@ export default function CodingQuestionNode({
                     <div style={{ flex: 1, padding: "0.75rem 1rem" }}>
                       <div
                         style={{
-                          fontSize: "var(--font-size-xs)",
+                          fontSize: "var(--font-size-2xs)",
                           color: "var(--text-secondary)",
                           marginBottom: "0.25rem",
                         }}
@@ -344,7 +345,6 @@ export default function CodingQuestionNode({
                 Ngôn ngữ:
               </span>
               <Combobox
-                className="select"
                 style={{ width: "130px", margin: 0 }}
                 value={lang}
                 onChange={handleLangChange}
@@ -366,26 +366,10 @@ export default function CodingQuestionNode({
               onChange={handleFileUpload}
             />
             <button
-              className="btn btn-secondary"
-              style={{ padding: "0.4rem 0.75rem", fontSize: "0.8rem" }}
+              className="ui-button ui-button--secondary ui-button--small"
               onClick={() => fileInputRef.current?.click()}
             >
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                width="14"
-                height="14"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                style={{ marginRight: "4px", verticalAlign: "text-bottom" }}
-              >
-                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
-                <polyline points="17 8 12 3 7 8"></polyline>
-                <line x1="12" y1="3" x2="12" y2="15"></line>
-              </svg>
+              <Icon name="upload" />
               Tải file lên
             </button>
           </div>
@@ -404,21 +388,7 @@ export default function CodingQuestionNode({
               gap: "0.5rem",
             }}
           >
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              width="16"
-              height="16"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            >
-              <circle cx="12" cy="12" r="10"></circle>
-              <line x1="12" y1="8" x2="12" y2="12"></line>
-              <line x1="12" y1="16" x2="12.01" y2="16"></line>
-            </svg>
+            <Icon name="alert-circle" />
             Vui lòng chọn trình biên dịch (ngôn ngữ) trước khi nộp bài!
           </div>
         )}

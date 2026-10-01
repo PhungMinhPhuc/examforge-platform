@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useEffect, useRef, useState } from "react";
+import { Spinner } from "@/components/Loading";
 
 interface Props {
   value: string;
@@ -96,7 +97,7 @@ export default function MathLiveEditor({
           borderRadius: "4px",
         }}
       >
-        Đang tải công cụ Toán...
+        <Spinner size="small" label="Đang tải công cụ Toán …" />
       </div>
     );
 

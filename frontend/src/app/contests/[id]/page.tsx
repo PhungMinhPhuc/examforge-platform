@@ -12,6 +12,12 @@ import ExportContestModal from "@/components/ExportContestModal";
 import NumberInput from "@/components/NumberInput";
 import useScrollRestoration from "@/lib/useScrollRestoration";
 import { toast } from "@/lib/toastStore";
+import DateTimePicker from "@/components/DateTimePicker";
+import { Icon } from "@/components/icons";
+import PageHeader from "@/components/PageHeader";
+import Checkbox from "@/components/Checkbox";
+import MessageBar from "@/components/MessageBar";
+import { confirmDialog } from "@/lib/confirmDialog";
 
 type QuestionInContest = {
   id: number;
@@ -121,7 +127,7 @@ export default function ContestDetailPage({
   const [submissions, setSubmissions] = useState<any[]>([]);
   const [contestMaxScore, setContestMaxScore] = useState<number | null>(null);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState("");
+  const [loadError, setLoadError] = useState("");
   const [toggling, setToggling] = useState(false);
   const [copied, setCopied] = useState(false);
   const [showSubmissions, setShowSubmissions] = useState(false);
@@ -131,6 +137,10 @@ export default function ContestDetailPage({
   const [classOptions, setClassOptions] = useState<ClassAssignment[]>([]);
   const [selectedClassIds, setSelectedClassIds] = useState<number[]>([]);
   const [assigningClasses, setAssigningClasses] = useState(false);
+  const [assignError, setAssignError] = useState("");
+  const [editContestError, setEditContestError] = useState("");
+  const [showQuestionMutationWarning, setShowQuestionMutationWarning] =
+    useState(true);
   const [editContestData, setEditContestData] = useState({
     title: "",
     time_limit: 0,
@@ -171,7 +181,9 @@ export default function ContestDetailPage({
         setSubmissions(subRes.submissions || []);
         setContestMaxScore(subRes.max_score ?? null);
       })
-      .catch((err) => setError(err.message))
+      .catch((err) =>
+        setLoadError(err.message || "Không thể tải thông tin đề thi"),
+      )
       .finally(() => setLoading(false));
   }, [contestId]);
 
@@ -184,7 +196,6 @@ export default function ContestDetailPage({
       setContest((prev) => (prev ? { ...prev, status: newStatus } : prev));
       toast.success("Đã cập nhật trạng thái");
     } catch (e: unknown) {
-      setError(e instanceof Error ? e.message : "Lỗi cập nhật trạng thái");
       toast.error(e instanceof Error ? e.message : "Lỗi cập nhật trạng thái");
     } finally {
       setToggling(false);
@@ -193,6 +204,7 @@ export default function ContestDetailPage({
 
   const handleOpenEditContest = () => {
     if (!contest) return;
+    setEditContestError("");
     const localValue = (value?: string | null) =>
       value
         ? new Date(
@@ -235,7 +247,9 @@ export default function ContestDetailPage({
       });
       setShowEditContestModal(false);
     } catch (e: unknown) {
-      toast.error(e instanceof Error ? e.message : "Lỗi cập nhật đề thi");
+      setEditContestError(
+        e instanceof Error ? e.message : "Lỗi cập nhật đề thi",
+      );
     }
   };
 
@@ -260,6 +274,7 @@ export default function ContestDetailPage({
 
   // ô tích = lớp đang được giao đề, bỏ tích là gỡ
   const openAssignModal = async () => {
+    setAssignError("");
     setShowAssignModal(true);
     try {
       const data = (await api.getContestClasses(contestId)) as {
@@ -270,8 +285,7 @@ export default function ContestDetailPage({
         data.classes.filter((c) => c.assigned).map((c) => c.id),
       );
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Không thể tải danh sách lớp");
-      toast.error(
+      setAssignError(
         e instanceof Error ? e.message : "Không thể tải danh sách lớp",
       );
     }
@@ -295,13 +309,14 @@ export default function ContestDetailPage({
     if (!classesToAdd.length && !classesToRemove.length) return;
     if (
       classesToRemove.length &&
-      !confirm(
+      !(await confirmDialog(
         `Gỡ đề khỏi ${classesToRemove.length} lớp: ${classesToRemove
           .map((c) => c.class_name)
           .join(", ")}?\n\n` +
           "Học sinh các lớp đó sẽ không còn thấy và không vào làm được đề này nữa. " +
           "Bài đã nộp vẫn giữ nguyên.",
-      )
+        { title: "Gỡ đề khỏi lớp", confirmLabel: "Gỡ đề", intent: "danger" },
+      ))
     )
       return;
     setAssigningClasses(true);
@@ -315,8 +330,9 @@ export default function ContestDetailPage({
       setShowAssignModal(false);
       toast.success("Đã lưu thay đổi");
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Không thể lưu thay đổi");
-      toast.error(e instanceof Error ? e.message : "Không thể lưu thay đổi");
+      setAssignError(
+        e instanceof Error ? e.message : "Không thể lưu thay đổi",
+      );
     } finally {
       setAssigningClasses(false);
     }
@@ -326,6 +342,7 @@ export default function ContestDetailPage({
     if (user?.role !== "teacher") return;
     try {
       const q = await api.getQuestion(questionId);
+      setShowQuestionMutationWarning(true);
       setDetailModal({ question: q, saving: false, error: "", displayNumStr });
     } catch {
       /* ignore */
@@ -335,9 +352,10 @@ export default function ContestDetailPage({
   const saveDetail = async () => {
     if (!detailModal) return;
     if (
-      !confirm(
+      !(await confirmDialog(
         "Bạn có chắc chắn muốn lưu?\n\nLưu ý: Việc thay đổi sẽ ảnh hưởng đến TOÀN BỘ các đề thi khác đang chứa câu hỏi này!",
-      )
+        { title: "Lưu thay đổi câu hỏi gốc", confirmLabel: "Lưu thay đổi" },
+      ))
     )
       return;
 
@@ -388,7 +406,6 @@ export default function ContestDetailPage({
       setDetailModal((d) =>
         d ? { ...d, saving: false, error: e.message || "Lỗi lưu câu hỏi" } : d,
       );
-      toast.error(e?.message || "Lỗi lưu câu hỏi");
     }
   };
 
@@ -468,7 +485,7 @@ export default function ContestDetailPage({
             {[1, 2, 3, 4].map((i) => (
               <div
                 key={i}
-                className="skeleton"
+                className="ui-skeleton"
                 style={{ height: "80px", borderRadius: "var(--radius-lg)" }}
               />
             ))}
@@ -477,17 +494,20 @@ export default function ContestDetailPage({
       </div>
     );
 
-  if (error || !contest)
+  if (loadError || !contest)
     return (
       <div className="page-wrapper">
         <Sidebar />
         <main className="main-content">
-          <div className="alert alert-error">
-            {error || "Không tìm thấy đề thi"}
-          </div>
+          <MessageBar
+            intent="error"
+            onDismiss={() => router.push("/contests")}
+          >
+            {loadError || "Không tìm thấy đề thi"}
+          </MessageBar>
           <Link
             href="/contests"
-            className="btn btn-ghost"
+            className="ui-button ui-button--ghost"
             style={{ marginTop: "1rem" }}
           >
             Quay lại
@@ -501,38 +521,33 @@ export default function ContestDetailPage({
       <Sidebar />
       <main className="main-content">
         {/* Header */}
-        <div className="page-header">
-          <div>
-            <div className="page-breadcrumb">
-              <Link href="/contests">Đề thi</Link>
-              <span className="sep">/</span>
-              <span className="current">Chi tiết</span>
-            </div>
-            <h1 className="page-title">{contest.title}</h1>
-          </div>
-          <div style={{ display: "flex", gap: "0.5rem", alignItems: "center" }}>
+        <PageHeader
+          breadcrumbs={[{ label: "Đề thi", href: "/contests" }, { label: contest.title, truncate: true }]}
+          title={contest.title}
+          actions={<>
             <Link
               href={`/exam/${contestId}`}
-              className="btn btn-ghost btn-sm"
+              className="ui-button ui-button--ghost ui-button--small"
               target="_blank"
             >
+              <Icon name="eye" />
               Xem trước
             </Link>
             <button
-              className={`btn btn-sm ${contest.status === "active" ? "btn-danger" : "btn-primary"}`}
+              className={`ui-button ui-button--small ${contest.status === "active" ? "ui-button--danger" : "ui-button--primary"}`}
               onClick={toggleStatus}
               disabled={toggling}
             >
               {toggling ? (
-                <span className="spinner" />
+                <span className="ui-spinner" />
               ) : contest.status === "active" ? (
                 " Đóng đề"
               ) : (
                 " Mở đề"
               )}
             </button>
-          </div>
-        </div>
+          </>}
+        />
 
         <div
           style={{
@@ -545,7 +560,7 @@ export default function ContestDetailPage({
           {/* Question list */}
           <div className="card">
             <h3
-              style={{ marginBottom: "1rem", fontSize: "var(--font-size-md)" }}
+              style={{ marginBottom: "1rem", fontSize: "var(--font-size-sm)" }}
             >
               Danh sách câu hỏi ({topLevelQs.length} mục -{" "}
               {actualQuestions.length} câu)
@@ -594,7 +609,7 @@ export default function ContestDetailPage({
                         display: "flex",
                         alignItems: "center",
                         justifyContent: "center",
-                        fontSize: "var(--font-size-xs)",
+                        fontSize: "var(--font-size-2xs)",
                         fontWeight: 700,
                         color:
                           TYPE_COLORS[q.question_type] ||
@@ -616,7 +631,7 @@ export default function ContestDetailPage({
                       >
                         <span
                           style={{
-                            fontSize: "var(--font-size-2xs)",
+                            fontSize: "var(--font-size-3xs)",
                             fontWeight: 600,
                             padding: "0.15rem 0.45rem",
                             borderRadius: 99,
@@ -638,7 +653,7 @@ export default function ContestDetailPage({
                             <span
                               key={type}
                               style={{
-                                fontSize: "var(--font-size-2xs)",
+                                fontSize: "var(--font-size-3xs)",
                                 fontWeight: 600,
                                 padding: "0.15rem 0.45rem",
                                 borderRadius: 99,
@@ -654,7 +669,7 @@ export default function ContestDetailPage({
                         {q.chapter && (
                           <span
                             style={{
-                              fontSize: "var(--font-size-2xs)",
+                              fontSize: "var(--font-size-3xs)",
                               color: "var(--text-muted)",
                             }}
                           >
@@ -664,7 +679,7 @@ export default function ContestDetailPage({
                         {q.complexity && (
                           <span
                             style={{
-                              fontSize: "var(--font-size-2xs)",
+                              fontSize: "var(--font-size-3xs)",
                               color: "var(--text-muted)",
                             }}
                           >
@@ -716,7 +731,7 @@ export default function ContestDetailPage({
                     {/* Weight */}
                     <div
                       style={{
-                        fontSize: "var(--font-size-xs)",
+                        fontSize: "var(--font-size-2xs)",
                         color: "var(--text-muted)",
                         flexShrink: 0,
                         textAlign: "right",
@@ -770,7 +785,7 @@ export default function ContestDetailPage({
                                 display: "flex",
                                 alignItems: "center",
                                 justifyContent: "center",
-                                fontSize: "var(--font-size-xs)",
+                                fontSize: "var(--font-size-2xs)",
                                 fontWeight: 700,
                                 color:
                                   TYPE_COLORS[child.question_type] ||
@@ -782,7 +797,7 @@ export default function ContestDetailPage({
                             <div style={{ flex: 1, minWidth: 0 }}>
                               <div
                                 style={{
-                                  fontSize: "var(--font-size-sm)",
+                                  fontSize: "var(--font-size-xs)",
                                   color: "var(--text-secondary)",
                                   lineHeight: 1.5,
                                   maxHeight: "6em",
@@ -833,9 +848,10 @@ export default function ContestDetailPage({
                   Thông tin chung
                 </h4>
                 <button
-                  className="btn btn-ghost btn-sm"
+                  className="ui-button ui-button--ghost ui-button--small"
                   onClick={handleOpenEditContest}
                 >
+                  <Icon name="edit" />
                   Chỉnh sửa
                 </button>
               </div>
@@ -850,7 +866,7 @@ export default function ContestDetailPage({
                   style={{
                     display: "flex",
                     justifyContent: "space-between",
-                    fontSize: "var(--font-size-sm)",
+                    fontSize: "var(--font-size-xs)",
                   }}
                 >
                   <span style={{ color: "var(--text-secondary)" }}>
@@ -865,7 +881,7 @@ export default function ContestDetailPage({
                     display: "flex",
                     justifyContent: "space-between",
                     gap: ".75rem",
-                    fontSize: "var(--font-size-sm)",
+                    fontSize: "var(--font-size-xs)",
                   }}
                 >
                   <span style={{ color: "var(--text-secondary)" }}>Mở từ</span>
@@ -880,7 +896,7 @@ export default function ContestDetailPage({
                     display: "flex",
                     justifyContent: "space-between",
                     gap: ".75rem",
-                    fontSize: "var(--font-size-sm)",
+                    fontSize: "var(--font-size-xs)",
                   }}
                 >
                   <span style={{ color: "var(--text-secondary)" }}>
@@ -897,7 +913,7 @@ export default function ContestDetailPage({
                     style={{
                       display: "flex",
                       justifyContent: "space-between",
-                      fontSize: "var(--font-size-sm)",
+                      fontSize: "var(--font-size-xs)",
                     }}
                   >
                     <span style={{ color: "var(--text-secondary)" }}>
@@ -912,7 +928,7 @@ export default function ContestDetailPage({
                   style={{
                     display: "flex",
                     justifyContent: "space-between",
-                    fontSize: "var(--font-size-sm)",
+                    fontSize: "var(--font-size-xs)",
                   }}
                 >
                   <span style={{ color: "var(--text-secondary)" }}>
@@ -948,23 +964,24 @@ export default function ContestDetailPage({
               >
                 <button
                   onClick={() => setShowSubmissions(true)}
-                  className="btn btn-primary btn-sm"
+                  className="ui-button ui-button--primary ui-button--small"
                   style={{ width: "100%" }}
                 >
                   Danh sách đã nộp ({submissions.length})
                 </button>
                 <button
-                  className="btn btn-secondary btn-sm"
+                  className="ui-button ui-button--secondary ui-button--small"
                   style={{ width: "100%" }}
                   onClick={openAssignModal}
                 >
                   Lớp áp dụng
                 </button>
                 <button
-                  className="btn btn-secondary btn-sm"
+                  className="ui-button ui-button--secondary ui-button--small"
                   style={{ width: "100%" }}
                   onClick={() => setShowExportModal(true)}
                 >
+                  <Icon name="export" />
                   Xuất đề thi
                 </button>
               </div>
@@ -992,7 +1009,7 @@ export default function ContestDetailPage({
                     background: "var(--bg-elevated)",
                     borderRadius: "var(--radius-sm)",
                     padding: "0.625rem 0.75rem",
-                    fontSize: "var(--font-size-xs)",
+                    fontSize: "var(--font-size-2xs)",
                     color: "var(--text-secondary)",
                     wordBreak: "break-all",
                     border: "1px solid var(--border)",
@@ -1004,18 +1021,20 @@ export default function ContestDetailPage({
               )}
               {contest.allow_guest_link && (
                 <button
-                  className={`btn btn-sm ${copied ? "btn-secondary" : "btn-primary"}`}
+                  className={`ui-button ui-button--small ${copied ? "ui-button--secondary" : "ui-button--primary"}`}
                   style={{ width: "100%" }}
                   onClick={copyLink}
                 >
-                  {copied ? " Đã sao chép!" : " Sao chép đường dẫn"}
+                  <Icon name={copied ? "check" : "copy"} />
+                  {copied ? "Đã sao chép" : "Sao chép đường dẫn"}
                 </button>
               )}
               <button
-                className={`btn btn-sm ${contest.allow_guest_link ? "btn-danger" : "btn-primary"}`}
+                className={`ui-button ui-button--small ${contest.allow_guest_link ? "ui-button--danger" : "ui-button--primary"}`}
                 style={{ width: "100%", marginTop: ".5rem" }}
                 onClick={toggleGuestLink}
               >
+                <Icon name={contest.allow_guest_link ? "link-off" : "share"} />
                 {contest.allow_guest_link ? "Dừng chia sẻ" : "Chia sẻ"}
               </button>
             </div>
@@ -1057,7 +1076,7 @@ export default function ContestDetailPage({
                       <span
                         style={{
                           flex: 1,
-                          fontSize: "var(--font-size-sm)",
+                          fontSize: "var(--font-size-xs)",
                           color: "var(--text-secondary)",
                         }}
                       >
@@ -1065,7 +1084,7 @@ export default function ContestDetailPage({
                       </span>
                       <span
                         style={{
-                          fontSize: "var(--font-size-sm)",
+                          fontSize: "var(--font-size-xs)",
                           fontWeight: 600,
                         }}
                       >
@@ -1102,7 +1121,7 @@ export default function ContestDetailPage({
                         style={{
                           display: "flex",
                           justifyContent: "space-between",
-                          fontSize: "var(--font-size-sm)",
+                          fontSize: "var(--font-size-xs)",
                         }}
                       >
                         <span style={{ color: "var(--text-secondary)" }}>
@@ -1123,51 +1142,24 @@ export default function ContestDetailPage({
       {/* Modal Submissions */}
       {showSubmissions && (
         <div
-          style={{
-            position: "fixed",
-            top: 0,
-            left: 0,
-            right: 0,
-            bottom: 0,
-            background: "rgba(0,0,0,0.5)",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            zIndex: 1000,
-            padding: "1rem",
-          }}
+          className="ui-modal-backdrop"
         >
           <div
-            className="card modal-wide-responsive"
-            style={{
-              width: "90vw",
-              maxWidth: "1200px",
-              height: "90vh",
-              display: "flex",
-              flexDirection: "column",
-              padding: 0,
-            }}
+            className="ui-modal ui-modal--large"
           >
-            <div
-              style={{
-                padding: "1.5rem",
-                borderBottom: "1px solid var(--border)",
-                display: "flex",
-                justifyContent: "space-between",
-                alignItems: "center",
-              }}
-            >
-              <h3 style={{ margin: 0 }}>
+            <header className="ui-modal__header">
+              <h3 className="ui-modal__title">
                 Danh sách bài thi đã nộp ({submissions.length})
               </h3>
               <button
                 onClick={() => setShowSubmissions(false)}
-                className="btn btn-ghost btn-sm"
-                style={{ width: 32, height: 32, padding: 0 }}
+                className="ui-modal__close"
+                type="button"
+                aria-label="Đóng"
               >
-                ✕
+                <Icon name="close" />
               </button>
-            </div>
+            </header>
             <div style={{ padding: "1.5rem", overflowY: "auto" }}>
               {submissions.length === 0 ? (
                 <div
@@ -1237,7 +1229,7 @@ export default function ContestDetailPage({
                             <td>
                               <Link
                                 href={`/results/${sub.result_id}`}
-                                className="btn btn-secondary btn-sm"
+                                className="ui-button ui-button--secondary ui-button--small"
                               >
                                 Chi tiết
                               </Link>
@@ -1257,61 +1249,27 @@ export default function ContestDetailPage({
       {/* Question Edit Modal */}
       {detailModal && (
         <div
-          style={{
-            position: "fixed",
-            inset: 0,
-            zIndex: 1100,
-            background: "rgba(0,0,0,0.5)",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            padding: "1rem",
-          }}
+          className="ui-modal-backdrop"
           onMouseDown={(e) => {
             if (e.target === e.currentTarget) setDetailModal(null);
           }}
         >
           <div
-            className="modal-wide-responsive"
-            style={{
-              width: "95vw",
-              maxWidth: 1400,
-              height: "95vh",
-              background: "var(--bg-surface)",
-              borderRadius: "var(--radius-lg)",
-              boxShadow: "var(--shadow-lg)",
-              display: "flex",
-              flexDirection: "column",
-            }}
+            className="ui-modal ui-modal--large"
           >
-            <div
-              style={{
-                padding: "1rem 1.5rem",
-                borderBottom: "1px solid var(--border)",
-                display: "flex",
-                justifyContent: "space-between",
-                alignItems: "center",
-                flexShrink: 0,
-              }}
-            >
-              <h3 style={{ margin: 0 }}>
+            <header className="ui-modal__header">
+              <h3 className="ui-modal__title">
                 Đang chỉnh sửa: Câu {detailModal.displayNumStr}
               </h3>
               <button
+                className="ui-modal__close"
+                type="button"
+                aria-label="Đóng"
                 onClick={() => setDetailModal(null)}
-                style={{
-                  background: "none",
-                  border: "none",
-                  cursor: "pointer",
-                  fontSize: 20,
-                  color: "var(--text-secondary)",
-                  lineHeight: 1,
-                  padding: 4,
-                }}
               >
-                ✕
+                <Icon name="close" />
               </button>
-            </div>
+            </header>
 
             <div
               style={{
@@ -1321,23 +1279,33 @@ export default function ContestDetailPage({
                 flexDirection: "column",
               }}
             >
-              <div style={{ padding: "1rem 1.5rem 0 1.5rem" }}>
-                <div
-                  className="alert alert-error"
-                  style={{
-                    margin: 0,
-                    display: "flex",
-                    gap: "0.5rem",
-                    alignItems: "center",
-                    fontWeight: 600,
-                    color: "var(--accent-danger)",
-                  }}
-                >
-                  Lưu ý: Bạn đang sửa câu hỏi gốc trong ngân hàng. Việc thay đổi
-                  sẽ ảnh hưởng đến TOÀN BỘ các đề thi khác đang chứa câu hỏi
-                  này!
+              {showQuestionMutationWarning && (
+                <div style={{ padding: "1rem 1.5rem 0 1.5rem" }}>
+                  <MessageBar
+                    intent="warning"
+                    title="Bạn đang sửa câu hỏi gốc trong ngân hàng"
+                    onDismiss={() => setShowQuestionMutationWarning(false)}
+                  >
+                    Việc thay đổi sẽ ảnh hưởng đến TOÀN BỘ các đề thi khác đang
+                    chứa câu hỏi này!
+                  </MessageBar>
                 </div>
-              </div>
+              )}
+
+              {detailModal.error && (
+                <div style={{ padding: "1rem 1.5rem 0" }}>
+                  <MessageBar
+                    intent="error"
+                    onDismiss={() =>
+                      setDetailModal((current) =>
+                        current ? { ...current, error: "" } : current,
+                      )
+                    }
+                  >
+                    {detailModal.error}
+                  </MessageBar>
+                </div>
+              )}
 
               <div style={{ padding: "1.5rem" }}>
                 <QuestionEditor
@@ -1349,17 +1317,6 @@ export default function ContestDetailPage({
                   imageEditable={true}
                 />
               </div>
-              {detailModal.error && (
-                <div
-                  style={{
-                    padding: "0 1.5rem 1rem",
-                    color: "var(--accent-danger)",
-                    fontSize: "var(--font-size-base)",
-                  }}
-                >
-                  {detailModal.error}
-                </div>
-              )}
             </div>
 
             <div
@@ -1373,13 +1330,13 @@ export default function ContestDetailPage({
               }}
             >
               <button
-                className="btn btn-secondary"
+                className="ui-button ui-button--secondary"
                 onClick={() => setDetailModal(null)}
               >
                 Đóng
               </button>
               <button
-                className="btn btn-primary"
+                className="ui-button ui-button--primary"
                 onClick={saveDetail}
                 disabled={detailModal.saving}
               >
@@ -1399,53 +1356,35 @@ export default function ContestDetailPage({
       )}
 
       {showEditContestModal && contest && (
-        <div
-          style={{
-            position: "fixed",
-            inset: 0,
-            zIndex: 1100,
-            background: "rgba(0,0,0,0.5)",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            padding: "1rem",
-          }}
-        >
-          <div
-            className="card"
-            style={{
-              width: "min(680px, 95vw)",
-              maxHeight: "90vh",
-              overflowY: "auto",
-              display: "flex",
-              flexDirection: "column",
-              gap: "1rem",
-              padding: "1.5rem",
-            }}
-          >
-            <div
-              style={{
-                display: "flex",
-                justifyContent: "space-between",
-                alignItems: "center",
-                marginBottom: ".25rem",
-              }}
-            >
-              <div>
-                <h3 style={{ margin: 0, fontSize: "var(--font-size-lg)" }}>
+        <div className="ui-modal-backdrop">
+          <div className="ui-modal ui-modal--medium">
+            <header className="ui-modal__header">
+              <div className="ui-modal__heading">
+                <h3 className="ui-modal__title">
                   Chỉnh sửa thông tin
                 </h3>
-                <p className="page-sub" style={{ margin: ".25rem 0 0" }}>
+                <p className="ui-modal__description">
                   Metadata của đề thi
                 </p>
               </div>
               <button
-                className="btn btn-ghost btn-sm"
+                className="ui-modal__close"
+                type="button"
+                aria-label="Đóng"
                 onClick={() => setShowEditContestModal(false)}
               >
-                ✕
+                <Icon name="close" />
               </button>
-            </div>
+            </header>
+            <div className="ui-modal__body">
+            {editContestError && (
+              <MessageBar
+                intent="error"
+                onDismiss={() => setEditContestError("")}
+              >
+                {editContestError}
+              </MessageBar>
+            )}
             <div>
               <label
                 style={{
@@ -1459,7 +1398,7 @@ export default function ContestDetailPage({
               </label>
               <input
                 type="text"
-                className="input"
+                className="ui-input-native"
                 style={{ width: "100%" }}
                 value={editContestData.title}
                 onChange={(e) =>
@@ -1482,7 +1421,7 @@ export default function ContestDetailPage({
                 Thời gian làm bài (phút)
               </label>
               <NumberInput
-                className="input"
+                className="ui-input-native"
                 style={{ width: "100%" }}
                 value={editContestData.time_limit}
                 onChange={(v) =>
@@ -1502,30 +1441,24 @@ export default function ContestDetailPage({
             >
               <label style={{ fontWeight: 600, fontSize: ".9rem" }}>
                 Thời điểm mở
-                <input
-                  type="datetime-local"
-                  className="input"
-                  style={{ width: "100%", minWidth: 0, marginTop: ".5rem" }}
+                <DateTimePicker
                   value={editContestData.available_from}
-                  onChange={(e) =>
+                  onChange={(value) =>
                     setEditContestData({
                       ...editContestData,
-                      available_from: e.target.value,
+                      available_from: value,
                     })
                   }
                 />
               </label>
               <label style={{ fontWeight: 600, fontSize: ".9rem" }}>
                 Hạn nộp
-                <input
-                  type="datetime-local"
-                  className="input"
-                  style={{ width: "100%", minWidth: 0, marginTop: ".5rem" }}
+                <DateTimePicker
                   value={editContestData.due_at}
-                  onChange={(e) =>
+                  onChange={(value) =>
                     setEditContestData({
                       ...editContestData,
-                      due_at: e.target.value,
+                      due_at: value,
                     })
                   }
                 />
@@ -1539,8 +1472,7 @@ export default function ContestDetailPage({
                 fontSize: ".9rem",
               }}
             >
-              <input
-                type="checkbox"
+              <Checkbox
                 checked={editContestData.allow_late_submission}
                 onChange={(e) =>
                   setEditContestData({
@@ -1551,21 +1483,15 @@ export default function ContestDetailPage({
               />
               Cho phép nộp sau hạn
             </label>
-            <div
-              style={{
-                display: "flex",
-                justifyContent: "flex-end",
-                gap: "0.75rem",
-                marginTop: "1rem",
-              }}
-            >
+            </div>
+            <div className="ui-modal__footer">
               <button
-                className="btn btn-secondary"
+                className="ui-button ui-button--secondary"
                 onClick={() => setShowEditContestModal(false)}
               >
                 Hủy
               </button>
-              <button className="btn btn-primary" onClick={handleSaveContest}>
+              <button className="ui-button ui-button--primary" onClick={handleSaveContest}>
                 Lưu thay đổi
               </button>
             </div>
@@ -1574,57 +1500,42 @@ export default function ContestDetailPage({
       )}
       {showAssignModal && contest && (
         <div
-          style={{
-            position: "fixed",
-            inset: 0,
-            zIndex: 1200,
-            background: "var(--overlay)",
-            display: "grid",
-            placeItems: "center",
-            padding: "2.5vh",
-          }}
+          className="ui-modal-backdrop"
           onMouseDown={(e) => {
             if (e.target === e.currentTarget) setShowAssignModal(false);
           }}
         >
           <div
-            className="card modal-wide-responsive"
-            style={{
-              width: "95vw",
-              maxWidth: 1400,
-              height: "95vh",
-              padding: 0,
-              display: "flex",
-              flexDirection: "column",
-              overflow: "hidden",
-            }}
+            className="ui-modal ui-modal--large"
           >
-            <div
-              style={{
-                padding: "1.25rem 1.5rem",
-                borderBottom: "1px solid var(--border)",
-                display: "flex",
-                justifyContent: "space-between",
-                alignItems: "flex-start",
-              }}
-            >
-              <div>
-                <h2 style={{ margin: 0 }}>Giao đề cho lớp</h2>
-                <p className="page-sub" style={{ margin: ".25rem 0 0" }}>
+            <header className="ui-modal__header">
+              <div className="ui-modal__heading">
+                <h2 className="ui-modal__title">Giao đề cho lớp</h2>
+                <p className="ui-modal__description">
                   {contest.title} · tích để giao, bỏ tích để gỡ. Lớp bị gỡ sẽ
                   không truy cập được đề nữa, bài đã nộp vẫn giữ.
                 </p>
               </div>
               <button
-                className="btn btn-ghost btn-sm"
+                className="ui-modal__close"
+                type="button"
+                aria-label="Đóng"
                 onClick={() => setShowAssignModal(false)}
               >
-                Đóng
+                <Icon name="close" />
               </button>
-            </div>
+            </header>
             <div
               style={{ padding: "1.25rem 1.5rem", overflowY: "auto", flex: 1 }}
             >
+              {assignError && (
+                <MessageBar
+                  intent="error"
+                  onDismiss={() => setAssignError("")}
+                >
+                  {assignError}
+                </MessageBar>
+              )}
               <div style={{ overflowX: "auto" }}>
                 <table className="problem-table pick-table">
                   <colgroup>
@@ -1637,8 +1548,7 @@ export default function ContestDetailPage({
                   <thead>
                     <tr>
                       <th>
-                        <input
-                          type="checkbox"
+                        <Checkbox
                           aria-label="Chọn tất cả"
                           disabled={!classOptions.length}
                           checked={allClassesSelected}
@@ -1675,8 +1585,8 @@ export default function ContestDetailPage({
                           onClick={() => toggleClassId(cls.id, !selected)}
                         >
                           <td onClick={(e) => e.stopPropagation()}>
-                            <input
-                              type="checkbox"
+                            <Checkbox
+                              aria-label={`Chọn lớp ${cls.class_name}`}
                               checked={selected}
                               onChange={(e) =>
                                 toggleClassId(cls.id, e.target.checked)
@@ -1713,10 +1623,11 @@ export default function ContestDetailPage({
                   </tbody>
                 </table>
               </div>
-              {classOptions.length === 0 && (
+              {!assignError && classOptions.length === 0 && (
                 <div className="empty-state">
                   <h3>Chưa có lớp học</h3>
-                  <Link className="btn btn-primary" href="/classes">
+                  <Link className="ui-button ui-button--primary" href="/classes">
+                    <Icon name="plus" />
                     Tạo lớp học
                   </Link>
                 </div>
@@ -1744,7 +1655,7 @@ export default function ContestDetailPage({
                   : `Đang ở ${selectedClassIds.length} lớp`}
               </strong>
               <button
-                className="btn btn-primary"
+                className="ui-button ui-button--primary"
                 disabled={
                   (!classesToAdd.length && !classesToRemove.length) ||
                   assigningClasses

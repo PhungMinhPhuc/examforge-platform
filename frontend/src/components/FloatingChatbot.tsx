@@ -4,7 +4,9 @@ import { useState, useRef, useEffect } from "react";
 import { aiApi, ChatMessage, NormalizeProgress } from "@/lib/ai-api";
 import LatexRenderer from "@/components/LatexRenderer";
 import { useAuth } from "@/lib/auth-context";
-import { toast } from "@/lib/toastStore";
+import { Icon } from "@/components/icons";
+import { ProgressBar, Spinner } from "@/components/Loading";
+import MessageBar from "@/components/MessageBar";
 
 function FloatingChatbotContent() {
   const [isOpen, setIsOpen] = useState(false);
@@ -16,6 +18,7 @@ function FloatingChatbotContent() {
   const [normalizeResult, setNormalizeResult] = useState<any>(null);
   const [progress, setProgress] = useState<NormalizeProgress | null>(null);
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
+  const [feedbackError, setFeedbackError] = useState("");
   const fileInputRef = useRef<HTMLInputElement>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
@@ -54,7 +57,7 @@ function FloatingChatbotContent() {
           { role: "model", content: data.response },
         ]);
       } catch (err) {
-        toast.error("Lỗi: " + (err as Error).message);
+        setFeedbackError("Lỗi: " + (err as Error).message);
       } finally {
         setIsLoading(false);
       }
@@ -67,7 +70,7 @@ function FloatingChatbotContent() {
         setInput("");
         setSelectedFiles([]);
       } catch (err) {
-        toast.error("Lỗi: " + (err as Error).message);
+        setFeedbackError("Lỗi: " + (err as Error).message);
       } finally {
         setIsLoading(false);
         setProgress(null);
@@ -205,46 +208,24 @@ function FloatingChatbotContent() {
           max-height: 100px;
         }
         .chatbot-send {
-          padding: 0.5rem;
-          border-radius: 0.75rem;
           color: white;
-          border: none;
-          cursor: pointer;
         }
         .chatbot-send.chat { background: #2563eb; }
         .chatbot-send.norm { background: #9333ea; }
         .chatbot-send:disabled { opacity: 0.5; cursor: not-allowed; }
-        @keyframes bounce {
-          0%, 100% { transform: translateY(-25%); animation-timing-function: cubic-bezier(0.8, 0, 1, 1); }
-          50% { transform: translateY(0); animation-timing-function: cubic-bezier(0, 0, 0.2, 1); }
-        }
-        @keyframes spin {
-          to { transform: rotate(360deg); }
-        }
-        .dot {
-          width: 6px; height: 6px; background: #9ca3af; border-radius: 50%;
-          animation: bounce 1s infinite;
-        }
       `}</style>
 
       {/* Floating Button */}
-      <button onClick={() => setIsOpen(!isOpen)} className="chatbot-btn">
+      <button
+        type="button"
+        onClick={() => setIsOpen(!isOpen)}
+        className="chatbot-btn"
+        aria-label={isOpen ? "Đóng trợ lý AI" : "Mở trợ lý AI"}
+      >
         {isOpen ? (
-          <svg
-            style={{ width: "24px", height: "24px" }}
-            fill="none"
-            viewBox="0 0 24 24"
-            stroke="currentColor"
-          >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth={2}
-              d="M6 18L18 6M6 6l12 12"
-            />
-          </svg>
+          <Icon name="close" size="var(--icon-size-lg)" />
         ) : (
-          <span style={{ fontWeight: "bold", fontSize: "var(--font-size-lg)" }}>AI</span>
+          <span style={{ fontWeight: "bold", fontSize: "var(--font-size-base)" }}>AI</span>
         )}
       </button>
 
@@ -265,16 +246,16 @@ function FloatingChatbotContent() {
                   display: "flex",
                   alignItems: "center",
                   justifyContent: "center",
-                  fontSize: "var(--font-size-lg)",
+                  fontSize: "var(--font-size-base)",
                 }}
               >
                 AI
               </div>
               <div>
-                <h3 style={{ fontWeight: "bold", margin: 0, fontSize: "var(--font-size-md)" }}>
+                <h3 style={{ fontWeight: "bold", margin: 0, fontSize: "var(--font-size-sm)" }}>
                   AI
                 </h3>
-                <p style={{ fontSize: "var(--font-size-xs)", opacity: 0.8, margin: 0 }}>
+                <p style={{ fontSize: "var(--font-size-2xs)", opacity: 0.8, margin: 0 }}>
                   {typeof window !== "undefined"
                     ? (() => {
                         const p =
@@ -326,7 +307,7 @@ function FloatingChatbotContent() {
               </h3>
               <p
                 style={{
-                  fontSize: "var(--font-size-base)",
+                  fontSize: "var(--font-size-md)",
                   color: "#6b7280",
                   margin: "0 0 1rem 0",
                 }}
@@ -368,15 +349,24 @@ function FloatingChatbotContent() {
 
               {/* Body */}
               <div className="chatbot-body">
+                {feedbackError && (
+                  <MessageBar
+                    className="ui-message-bar--section"
+                    intent="error"
+                    onDismiss={() => setFeedbackError("")}
+                  >
+                    {feedbackError}
+                  </MessageBar>
+                )}
                 {mode === "chat" ? (
                   <>
                     {messages.length === 0 && (
                       <div
                         style={{
                           textAlign: "center",
-                          color: "#9ca3af",
+                          color: "var(--text-placeholder)",
                           marginTop: "2.5rem",
-                          fontSize: "var(--font-size-base)",
+                          fontSize: "var(--font-size-md)",
                         }}
                       >
                         <p>
@@ -399,26 +389,8 @@ function FloatingChatbotContent() {
                     ))}
                     {isLoading && (
                       <div className="msg-row msg-bot">
-                        <div
-                          className="msg-bubble bot"
-                          style={{
-                            display: "flex",
-                            gap: "4px",
-                            padding: "0.75rem 1rem",
-                          }}
-                        >
-                          <div
-                            className="dot"
-                            style={{ animationDelay: "0s" }}
-                          ></div>
-                          <div
-                            className="dot"
-                            style={{ animationDelay: "0.2s" }}
-                          ></div>
-                          <div
-                            className="dot"
-                            style={{ animationDelay: "0.4s" }}
-                          ></div>
+                        <div className="msg-bubble bot">
+                          <Spinner size="small" label="Đang trả lời …" />
                         </div>
                       </div>
                     )}
@@ -441,51 +413,28 @@ function FloatingChatbotContent() {
                           alignItems: "center",
                           justifyContent: "center",
                           textAlign: "center",
-                          color: "#6b7280",
-                          padding: "1rem",
+                          color: "var(--text-muted)",
+                          padding: "var(--space-4)",
                         }}
                       >
-                        <div
-                          style={{
-                            width: "40px",
-                            height: "40px",
-                            border: "3px solid #e5e7eb",
-                            borderTopColor: "#9333ea",
-                            borderRadius: "50%",
-                            animation: "spin 0.8s linear infinite",
-                            marginBottom: "1rem",
-                          }}
-                        />
+                        <Spinner size="large" />
                         <p
                           style={{
-                            fontSize: "0.9rem",
-                            fontWeight: 600,
-                            margin: "0 0 0.5rem 0",
-                            color: "#374151",
+                            fontSize: "var(--font-size-sm)",
+                            fontWeight: "var(--font-weight-semibold)",
+                            margin: "var(--space-4) 0 var(--space-2)",
+                            color: "var(--text-primary)",
                           }}
                         >
                           {stageLabel(progress?.stage)}
                         </p>
                         {progress?.total ? (
                           <>
-                            <div
-                              style={{
-                                width: "100%",
-                                maxWidth: "240px",
-                                height: "8px",
-                                background: "var(--border)",
-                                borderRadius: "9999px",
-                                overflow: "hidden",
-                              }}
-                            >
-                              <div
-                                style={{
-                                  width: `${Math.round(((progress.progress || 0) / progress.total) * 100)}%`,
-                                  height: "100%",
-                                  background:
-                                    "linear-gradient(to right,#2563eb,#9333ea)",
-                                  transition: "width 0.3s",
-                                }}
+                            <div style={{ width: "100%", maxWidth: "240px" }}>
+                              <ProgressBar
+                                value={progress.progress || 0}
+                                max={progress.total}
+                                label="Tiến độ chuẩn hóa tài liệu"
                               />
                             </div>
                             <p
@@ -515,25 +464,15 @@ function FloatingChatbotContent() {
                           color: "#9ca3af",
                         }}
                       >
-                        <svg
+                        <Icon
+                          name="image"
+                          size="var(--icon-size-illustration)"
                           style={{
-                            width: "48px",
-                            height: "48px",
                             marginBottom: "0.5rem",
-                            color: "#d1d5db",
+                            color: "var(--icon-color-empty-state)",
                           }}
-                          fill="none"
-                          viewBox="0 0 24 24"
-                          stroke="currentColor"
-                        >
-                          <path
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                            strokeWidth={1}
-                            d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"
-                          />
-                        </svg>
-                        <p style={{ fontSize: "var(--font-size-base)" }}>
+                        />
+                        <p style={{ fontSize: "var(--font-size-md)" }}>
                           Tải ảnh/PDF/Word lên hoặc paste text thô vào ô bên
                           dưới để chuẩn hóa.
                         </p>
@@ -551,7 +490,8 @@ function FloatingChatbotContent() {
                             marginBottom: "0.75rem",
                           }}
                         >
-                          ✓ Đã chuẩn hóa xong{" "}
+                          <Icon name="check" size="var(--icon-size-control)" />{" "}
+                          Đã chuẩn hóa xong{" "}
                           {normalizeResult?.questions?.length ??
                             (Array.isArray(normalizeResult)
                               ? normalizeResult.length
@@ -582,19 +522,7 @@ function FloatingChatbotContent() {
                             gap: "0.5rem",
                           }}
                         >
-                          <svg
-                            style={{ width: "18px", height: "18px" }}
-                            fill="none"
-                            viewBox="0 0 24 24"
-                            stroke="currentColor"
-                          >
-                            <path
-                              strokeLinecap="round"
-                              strokeLinejoin="round"
-                              strokeWidth={2}
-                              d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"
-                            />
-                          </svg>
+                          <Icon name="clipboard" size="var(--icon-size-action)" />
                           Xem trước & Lưu câu hỏi
                         </button>
                       </div>
@@ -626,7 +554,7 @@ function FloatingChatbotContent() {
                         style={{
                           background: "var(--tone-purple-bg)",
                           color: "var(--tone-purple-text)",
-                          fontSize: "var(--font-size-xs)",
+                          fontSize: "var(--font-size-2xs)",
                           padding: "0.25rem 0.5rem",
                           borderRadius: "0.25rem",
                           display: "flex",
@@ -645,6 +573,8 @@ function FloatingChatbotContent() {
                           {f.name}
                         </span>
                         <button
+                          type="button"
+                          aria-label={`Bỏ tệp ${f.name}`}
                           onClick={() =>
                             setSelectedFiles((files) =>
                               files.filter((_, idx) => idx !== i),
@@ -657,7 +587,7 @@ function FloatingChatbotContent() {
                             fontWeight: "bold",
                           }}
                         >
-                          ×
+                          <Icon name="x" />
                         </button>
                       </div>
                     ))}
@@ -686,6 +616,8 @@ function FloatingChatbotContent() {
                       />
                       <button
                         onClick={() => fileInputRef.current?.click()}
+                        type="button"
+                        aria-label="Đính kèm tệp"
                         style={{
                           padding: "0.5rem",
                           color: "#6b7280",
@@ -695,19 +627,7 @@ function FloatingChatbotContent() {
                           borderRadius: "0.5rem",
                         }}
                       >
-                        <svg
-                          style={{ width: "20px", height: "20px" }}
-                          fill="none"
-                          viewBox="0 0 24 24"
-                          stroke="currentColor"
-                        >
-                          <path
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                            strokeWidth={2}
-                            d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13"
-                          />
-                        </svg>
+                        <Icon name="paper-clip" size="var(--icon-size-md)" />
                       </button>
                     </>
                   )}
@@ -734,24 +654,14 @@ function FloatingChatbotContent() {
                     disabled={
                       isLoading || (!input.trim() && selectedFiles.length === 0)
                     }
-                    className={`chatbot-send ${mode === "chat" ? "chat" : "norm"}`}
+                    className={`ui-button ui-button--icon chatbot-send ${mode === "chat" ? "chat" : "norm"}`}
+                    type="button"
+                    aria-label="Gửi"
                   >
                     {isLoading ? (
-                      <span style={{ fontSize: "var(--font-size-xs)" }}>...</span>
+                      <Spinner size="small" />
                     ) : (
-                      <svg
-                        style={{ width: "20px", height: "20px" }}
-                        fill="none"
-                        viewBox="0 0 24 24"
-                        stroke="currentColor"
-                      >
-                        <path
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          strokeWidth={2}
-                          d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"
-                        />
-                      </svg>
+                      <Icon name="send" />
                     )}
                   </button>
                 </div>

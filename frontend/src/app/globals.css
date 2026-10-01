@@ -186,14 +186,14 @@
   --transition-slow: 0.4s ease;
 
   /* Thang cỡ chữ dùng chung — 9 bậc, thay cho việc mỗi chỗ tự ghi cứng một số rem riêng. */
-  --font-size-2xs: 0.7rem;
-  --font-size-xs: 0.75rem;
-  --font-size-sm: 0.825rem;
-  --font-size-base: 0.875rem;
-  --font-size-md: 1rem;
-  --font-size-lg: 1.25rem;
-  --font-size-xl: 1.75rem;
-  --font-size-2xl: clamp(1.4rem, 3vw, 2rem);
+  --font-size-3xs: 0.7rem;
+  --font-size-2xs: 0.75rem;
+  --font-size-xs: 0.825rem;
+  --font-size-md: 0.875rem;
+  --font-size-sm: 1rem;
+  --font-size-base: 1.25rem;
+  --font-size-lg: 1.75rem;
+  --font-size-xl: clamp(1.4rem, 3vw, 2rem);
   --font-size-3xl: clamp(1.8rem, 4vw, 3rem);
 
   /* Khớp đúng 5 file Noto Sans đang bundle (assets/fonts/web/ui/). */
@@ -334,15 +334,15 @@ h1 {
   line-height: 1.2;
 }
 h2 {
-  font-size: var(--font-size-2xl);
+  font-size: var(--font-size-xl);
   font-weight: var(--font-weight-bold);
 }
 h3 {
-  font-size: var(--font-size-lg);
+  font-size: var(--font-size-base);
   font-weight: var(--font-weight-semibold);
 }
 h4 {
-  font-size: var(--font-size-md);
+  font-size: var(--font-size-sm);
   font-weight: var(--font-weight-semibold);
 }
 
@@ -371,84 +371,6 @@ a:hover {
   flex: 1;
   padding: 2rem 2.5rem;
   overflow-y: auto;
-}
-
-/* Buttons */
-.btn {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 0.5rem;
-  padding: 0.6rem 1.25rem;
-  border: none;
-  border-radius: var(--radius-sm);
-  font-size: var(--font-size-base);
-  line-height: 1.25;
-  font-weight: var(--font-weight-semibold);
-  cursor: pointer;
-  transition: all var(--transition);
-  white-space: nowrap;
-  font-family: inherit;
-}
-
-.btn-primary {
-  background: var(--gradient-hero);
-  color: var(--text-on-accent);
-}
-.btn-primary:hover {
-  background: var(--accent-primary-hover);
-  transform: translateY(-1px);
-  box-shadow: var(--shadow-md);
-}
-.btn-primary:active {
-  transform: translateY(0);
-}
-
-.btn-secondary {
-  background: var(--bg-elevated);
-  color: var(--text-primary);
-  border: 1px solid var(--border);
-}
-.btn-secondary:hover {
-  background: var(--bg-hover);
-  border-color: var(--accent-primary);
-}
-
-.btn-danger {
-  background: rgba(255, 107, 107, 0.15);
-  color: var(--accent-danger);
-  border: 1px solid rgba(255, 107, 107, 0.3);
-}
-.btn-danger:hover {
-  background: rgba(255, 107, 107, 0.25);
-}
-
-.btn-ghost {
-  background: transparent;
-  color: var(--text-secondary);
-  border: 1px solid transparent;
-}
-.btn-ghost:hover {
-  background: var(--bg-hover);
-  color: var(--text-primary);
-}
-
-.btn-sm {
-  padding: 0.4rem 0.875rem;
-  font-size: 0.8rem;
-}
-.btn-lg {
-  padding: 0.875rem 2rem;
-  font-size: var(--font-size-md);
-}
-.btn-block {
-  width: 100%;
-}
-
-.btn:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-  transform: none !important;
 }
 
 /* Cards */
@@ -499,7 +421,7 @@ a:hover {
   display: flex;
   align-items: center;
   gap: 0.6rem;
-  font-size: var(--font-size-lg);
+  font-size: var(--font-size-base);
   font-weight: var(--font-weight-bold);
   color: var(--text-primary);
   margin-bottom: 0.6rem;
@@ -538,7 +460,7 @@ a:hover {
 .meta-row-label {
   width: 110px;
   flex-shrink: 0;
-  font-size: var(--font-size-base);
+  font-size: var(--font-size-md);
   color: var(--text-muted);
   font-weight: var(--font-weight-semibold);
 }
@@ -549,7 +471,7 @@ a:hover {
   border-radius: 4px 4px 0 0;
   background: transparent;
   padding: 0.35rem 0.1rem;
-  font-size: var(--font-size-base);
+  font-size: var(--font-size-md);
   font-weight: var(--font-weight-medium);
   color: var(--text-primary);
 }
@@ -559,7 +481,6 @@ a:hover {
 }
 
 .input,
-.select,
 .textarea {
   width: 100%;
   background: var(--bg-surface);
@@ -574,32 +495,22 @@ a:hover {
   outline: none;
 }
 .input:hover,
-.select:hover,
 .textarea:hover {
   border-color: var(--accent-primary-border);
   box-shadow: var(--shadow-sm);
 }
 .input:focus,
-.select:focus,
 .textarea:focus {
   background: var(--bg-surface);
   border-color: var(--accent-primary);
   box-shadow: 0 0 0 4px var(--accent-primary-selected);
 }
 .input::placeholder,
-.select::placeholder,
 .textarea::placeholder,
 input::placeholder,
 textarea::placeholder {
   color: var(--text-placeholder);
   opacity: 1;
-}
-
-.select {
-  cursor: pointer;
-}
-.select option {
-  background: var(--bg-surface);
 }
 
 .textarea {
@@ -614,7 +525,7 @@ textarea::placeholder {
   gap: 0.25rem;
   padding: 0.2rem 0.6rem;
   border-radius: 100px;
-  font-size: var(--font-size-xs);
+  font-size: var(--font-size-2xs);
   font-weight: var(--font-weight-semibold);
 }
 
@@ -730,14 +641,7 @@ textarea::placeholder {
   stroke-linejoin: round;
 }
 
-/* =====================================================================
-   Trang đăng nhập (Auth) — thẻ kính mờ nổi trên nền chuyển động chậm, tab
-   Đăng nhập/Đăng ký/Thi thử tô màu accent cho mục đang chọn, nút Google/
-   Microsoft theo đúng quy tắc thương hiệu của hai hãng. Đối chiếu 6 phương
-   án tại temp/demo-html/auth-login-demo.html trước khi chốt bản này (bản
-   "F — tổng hợp"), cộng phản hồi: form hiện luôn (không ẩn theo bước),
-   Google/Microsoft đặt SAU form thay vì lên đầu.
-   ===================================================================== */
+/* Trang đăng nhập (Auth) */
 .auth-stage {
   position: relative;
   overflow: hidden;
@@ -824,15 +728,8 @@ textarea::placeholder {
   height: 52px;
   border-radius: var(--radius-md);
   background: var(--gradient-hero);
-  display: grid;
-  place-items: center;
-  color: var(--text-on-accent);
   margin-bottom: 0.9rem;
   box-shadow: var(--shadow-md);
-}
-.auth-brand-icon svg {
-  width: 27px;
-  height: 27px;
 }
 .auth-brand h1 {
   font-size: 1.05rem;
@@ -844,47 +741,12 @@ textarea::placeholder {
   color: var(--text-muted);
   margin: 0.25rem 0 0;
 }
-
-/* Tab Đăng nhập/Đăng ký/Thi thử — dùng chung cho mọi nơi cần "segmented
-   control". Mục đang chọn nổi khối trắng (--bg-card) TRÊN track --bg-hover
-   (không phải --bg-elevated: ở theme sáng --bg-elevated trùng hệt
-   --bg-card, track sẽ "biến mất"; --bg-hover luôn khác màu thẻ ở cả 2
-   theme), cộng màu chữ/icon --accent-primary — 2 tín hiệu cùng lúc (hình
-   khối + màu) để không phụ thuộc riêng vào màu sắc. */
-.segtabs {
-  display: flex;
-  background: var(--bg-hover);
-  border-radius: var(--radius-md);
-  padding: 4px;
+.auth-card > .ui-segmented {
   margin-bottom: 1.5rem;
 }
-.segtabs button {
-  flex: 1;
-  padding: 0.55rem 0.4rem;
-  border: none;
-  border-radius: var(--radius-sm);
-  background: transparent;
-  color: var(--text-muted);
-  font-weight: var(--font-weight-semibold);
-  cursor: pointer;
-  font-size: 0.8rem;
-  transition: all var(--transition);
-  font-family: inherit;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 0.35rem;
+.auth-card > .ui-segmented {
+  margin-bottom: 1.5rem;
 }
-.segtabs button svg {
-  width: var(--icon-size-compact);
-  height: var(--icon-size-compact);
-}
-.segtabs button.active {
-  background: var(--bg-card);
-  color: var(--accent-primary);
-  box-shadow: var(--shadow-sm);
-}
-
 .auth-forgot {
   display: flex;
   justify-content: flex-end;
@@ -903,6 +765,9 @@ textarea::placeholder {
 
 .input-wrap {
   position: relative;
+}
+.auth-card .ui-input {
+  width: 100%;
 }
 .input.has-icon {
   padding-left: 2.4rem;
@@ -942,9 +807,7 @@ textarea::placeholder {
   height: var(--icon-size-control);
 }
 
-/* Nút Google/Microsoft — theo đúng quy tắc thương hiệu chính thức (không
-   đổi màu logo, không đổi chữ). Xem
-   temp/demo-html/auth-login-demo.html#R để đối chiếu các biến thể. */
+/* Nút Google/Microsoft */
 .oauth-divider {
   display: flex;
   align-items: center;
@@ -969,57 +832,6 @@ textarea::placeholder {
   display: flex;
   flex-direction: column;
   gap: 0.6rem;
-}
-.btn-oauth {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 0.65rem;
-  width: 100%;
-  height: 42px;
-  border-radius: 999px;
-  font-size: 0.85rem;
-  font-weight: var(--font-weight-semibold);
-  font-family: inherit;
-  cursor: pointer;
-  transition: all var(--transition);
-}
-.btn-oauth:disabled {
-  opacity: 0.6;
-  cursor: not-allowed;
-}
-.btn-google {
-  background: #fff;
-  border: 1px solid #747775;
-  color: #1f1f1f;
-}
-.btn-google:hover:not(:disabled) {
-  background: #f8f9fa;
-  box-shadow: var(--shadow-sm);
-}
-:root[data-theme="dark"] .btn-google {
-  background: #131314;
-  border-color: #8e918f;
-  color: #e3e3e3;
-}
-:root[data-theme="dark"] .btn-google:hover:not(:disabled) {
-  background: #1b1c1d;
-}
-.btn-microsoft {
-  background: #fff;
-  border: 1px solid #8c8c8c;
-  color: #1b1b1b;
-}
-.btn-microsoft:hover:not(:disabled) {
-  background: #f5f5f5;
-}
-:root[data-theme="dark"] .btn-microsoft {
-  background: #2f2f2f;
-  border-color: #2f2f2f;
-  color: #fff;
-}
-:root[data-theme="dark"] .btn-microsoft:hover:not(:disabled) {
-  background: #3a3a3a;
 }
 .ms-logo {
   display: grid;
@@ -1065,10 +877,11 @@ textarea::placeholder {
 }
 
 .sidebar-logo {
-  display: flex;
+  display: grid;
+  grid-template-columns: calc(var(--space-6) + var(--control-height-md)) minmax(0, 1fr);
   align-items: center;
-  gap: 0.75rem;
-  padding: 0 1.25rem 1.5rem;
+  row-gap: var(--space-3);
+  padding: 0 var(--space-3) var(--space-6);
   border-bottom: 1px solid var(--border);
   margin-bottom: 1rem;
 }
@@ -1076,12 +889,10 @@ textarea::placeholder {
 .sidebar-logo-icon {
   width: 38px;
   height: 38px;
+  flex: 0 0 38px;
   background: var(--gradient-hero);
   border-radius: var(--radius-sm);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 1.1rem;
+  justify-self: center;
 }
 
 .sidebar-logo-text {
@@ -1091,7 +902,7 @@ textarea::placeholder {
 }
 .sidebar-logo-text span {
   color: var(--text-muted);
-  font-size: var(--font-size-xs);
+  font-size: var(--font-size-2xs);
   font-weight: var(--font-weight-regular);
   display: block;
 }
@@ -1106,7 +917,7 @@ textarea::placeholder {
 }
 
 .sidebar-section-title {
-  font-size: var(--font-size-base);
+  font-size: var(--font-size-md);
   font-weight: var(--font-weight-semibold);
   color: var(--text-muted);
   padding: 0.75rem 0.5rem 0.4rem;
@@ -1119,7 +930,7 @@ textarea::placeholder {
   padding: 0.625rem 0.75rem;
   border-radius: var(--radius-sm);
   color: var(--text-secondary);
-  font-size: var(--font-size-base);
+  font-size: var(--font-size-md);
   font-weight: var(--font-weight-medium);
   cursor: pointer;
   transition: all var(--transition);
@@ -1139,9 +950,9 @@ textarea::placeholder {
   background: var(--bg-surface);
 }
 .nav-icon {
-  width: 34px;
-  height: 34px;
-  flex: 0 0 34px;
+  width: var(--control-height-md);
+  height: var(--control-height-md);
+  flex: 0 0 var(--control-height-md);
   display: grid;
   place-items: center;
   border-radius: 9px;
@@ -1159,51 +970,6 @@ textarea::placeholder {
   stroke-width: var(--icon-stroke-emphasis);
   stroke-linecap: round;
   stroke-linejoin: round;
-}
-
-/* Create actions shown in the question-bank header. */
-.question-create-dropdown {
-  position: relative;
-}
-.question-create-dropdown-trigger svg {
-  width: var(--icon-size-sm);
-  height: var(--icon-size-sm);
-  fill: none;
-  stroke: currentColor;
-  stroke-width: var(--icon-stroke-emphasis);
-  stroke-linecap: round;
-  stroke-linejoin: round;
-}
-.question-create-dropdown-menu {
-  position: absolute;
-  z-index: 100;
-  top: calc(100% + 8px);
-  right: 0;
-  width: 270px;
-  padding: 0.4rem;
-  background: var(--bg-surface);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-md);
-  box-shadow: var(--shadow-lg);
-}
-.question-create-dropdown-menu a {
-  display: flex;
-  flex-direction: column;
-  gap: 0.15rem;
-  padding: 0.7rem 0.75rem;
-  color: var(--text-primary);
-  text-decoration: none;
-  border-radius: var(--radius-sm);
-}
-.question-create-dropdown-menu a:hover {
-  background: var(--accent-primary-soft);
-}
-.question-create-dropdown-menu strong {
-  font-size: 0.9rem;
-}
-.question-create-dropdown-menu span {
-  color: var(--text-secondary);
-  font-size: 0.78rem;
 }
 
 .sidebar-footer {
@@ -1235,14 +1001,14 @@ textarea::placeholder {
   min-width: 0;
 }
 .user-name {
-  font-size: var(--font-size-base);
+  font-size: var(--font-size-md);
   font-weight: var(--font-weight-semibold);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 .user-role {
-  font-size: var(--font-size-2xs);
+  font-size: var(--font-size-3xs);
   color: var(--text-muted);
 }
 
@@ -1262,7 +1028,7 @@ thead {
 }
 thead th {
   padding: 0.75rem 1rem;
-  font-size: var(--font-size-sm);
+  font-size: var(--font-size-xs);
   font-weight: var(--font-weight-semibold);
   color: var(--text-secondary);
   text-align: left;
@@ -1276,14 +1042,14 @@ tbody tr:hover {
 }
 tbody td {
   padding: 0.875rem 1rem;
-  font-size: var(--font-size-base);
+  font-size: var(--font-size-md);
 }
 
 /* Bảng bản ghi dùng chung. Mặc định mọi cột canh giữa, cột chữ thêm .col-text */
 .problem-table {
   width: 100%;
   border-collapse: collapse;
-  font-size: var(--font-size-base);
+  font-size: var(--font-size-md);
 }
 .problem-table thead {
   background: transparent;
@@ -1292,7 +1058,7 @@ tbody td {
   padding: 0.75rem;
   text-align: center;
   color: var(--accent-primary);
-  font-size: var(--font-size-base);
+  font-size: var(--font-size-md);
   font-weight: var(--font-weight-bold);
   border-bottom: 1px solid var(--border-strong);
 }
@@ -1331,7 +1097,7 @@ tbody td {
 /* Dòng phụ luôn gói trong một dòng, cắt bằng "…" để mọi bản ghi cao bằng nhau */
 .problem-table .cell-sub {
   display: block;
-  font-size: var(--font-size-xs);
+  font-size: var(--font-size-2xs);
   color: var(--text-secondary);
   overflow: hidden;
   text-overflow: ellipsis;
@@ -1383,7 +1149,7 @@ tbody td {
   color: var(--code-text);
   border-radius: var(--radius-sm);
   font-family: ui-monospace, Consolas, monospace;
-  font-size: var(--font-size-md);
+  font-size: var(--font-size-sm);
   line-height: 1.6;
 }
 .code-box pre.is-hidden {
@@ -1465,17 +1231,6 @@ tbody td {
 }
 .tc-x {
   margin-left: auto;
-  width: 24px;
-  height: 24px;
-  padding: 0;
-  display: grid;
-  place-items: center;
-  font-size: var(--font-size-xs);
-  color: var(--accent-danger);
-  border: 1px solid var(--border);
-  background: var(--bg-surface);
-  border-radius: 6px;
-  cursor: pointer;
 }
 .tc-rec .code-box pre {
   height: 6.2rem;
@@ -1600,21 +1355,15 @@ tbody td {
   align-items: center;
   justify-content: center;
   font-weight: var(--font-weight-bold);
-  font-size: var(--font-size-md);
+  font-size: var(--font-size-sm);
 }
 
 .question-content {
   margin-bottom: 1rem;
-  /* Trước không đặt gì nên ăn thẳng cỡ mặc định của body (1rem/16px) — quá
-     to giữa danh sách nhiều câu. .exam-workspace .question-content bên dưới
-     override riêng lúc làm bài thật, không bị ảnh hưởng bởi dòng này. */
   font-size: var(--font-size-sm);
 }
 
-/* Ảnh đặt cạnh (layout immini) trong LatexRenderer — nổi bên phải (không có
-   bản "trái" trên web), chữ trôi quanh. Tự đóng khung (clearfix ngay trong
-   .lr-side) nên không lan ra ảnh hưởng các khối anh em (đáp án render bằng
-   LatexRenderer riêng, nằm ngoài div này). */
+/* Ảnh đặt cạnh (layout immini) trong LatexRenderer */
 .lr-side {
   overflow: hidden; /* clearfix */
 }
@@ -1782,7 +1531,7 @@ tbody td {
   left: 50%;
   bottom: 100%;
   transform: translateX(-50%);
-  z-index: 5;
+  z-index: var(--breadcrumb-history-layer);
   margin-bottom: 2px;
   white-space: nowrap;
 }
@@ -2187,7 +1936,7 @@ tbody td {
   border-radius: var(--radius-sm);
   background: var(--bg-surface);
   color: var(--text-secondary);
-  font-size: var(--font-size-lg);
+  font-size: var(--font-size-base);
   line-height: 1;
   cursor: pointer;
 }
@@ -2216,7 +1965,7 @@ tbody td {
 }
 .exam-question-nav-heading {
   padding-right: 2.25rem;
-  font-size: var(--font-size-md);
+  font-size: var(--font-size-sm);
   font-weight: 750;
 }
 .exam-candidate-info {
@@ -2227,7 +1976,7 @@ tbody td {
 .exam-candidate-info-title {
   padding-right: 2.25rem;
   margin-bottom: 0.75rem;
-  font-size: var(--font-size-md);
+  font-size: var(--font-size-sm);
   font-weight: 750;
 }
 .exam-candidate-info dl {
@@ -2307,6 +2056,12 @@ tbody td {
   border-color: #f59e0b;
   background: #fef3c7;
 }
+.exam-bookmark-button svg {
+  stroke-width: var(--icon-stroke-emphasis);
+}
+.exam-bookmark-button.active svg {
+  fill: currentColor;
+}
 .exam-question-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, 38px);
@@ -2380,7 +2135,7 @@ tbody td {
   padding: 1rem 0 1.1rem;
   background: var(--bg-surface);
 }
-.exam-question-nav-submit .btn {
+.exam-question-nav-submit .ui-button {
   width: 100%;
 }
 
@@ -2501,7 +2256,7 @@ tbody td {
   margin-bottom: 0.45rem;
 }
 .exam-result-title {
-  font-size: var(--font-size-xl);
+  font-size: var(--font-size-lg);
   margin-bottom: 1.5rem;
 }
 .exam-result-details {
@@ -2550,7 +2305,7 @@ tbody td {
   line-height: 1;
 }
 .exam-result-score-row small {
-  font-size: var(--font-size-md);
+  font-size: var(--font-size-sm);
   color: var(--text-secondary);
 }
 .exam-result-detail-button {
@@ -2584,25 +2339,9 @@ tbody td {
   max-width: 1440px;
   margin: 0 auto;
 }
-/* Breadcrumb đầu trang. min-height bằng chiều cao nút ‹ › để hai bên thẳng hàng */
-.page-breadcrumb {
-  display: flex;
-  align-items: center;
-  gap: 0.75rem;
-  min-height: 24px;
-  margin-bottom: 0.25rem;
-  font-size: var(--font-size-base);
-}
-.page-breadcrumb .sep {
-  color: var(--border);
-}
-.page-breadcrumb .current {
-  color: var(--text-secondary);
-}
-
-/* Ghép với .page-header để có cặp nút ‹ ›, nhưng giữ canh lề riêng */
+/* Result header keeps its own bottom alignment within the shared page-header shell. */
 .result-page-header,
-.page-header.result-page-header {
+.ui-page-header.result-page-header {
   display: flex;
   align-items: flex-end;
   justify-content: space-between;
@@ -2648,7 +2387,7 @@ tbody td {
   margin-bottom: 1.5rem;
 }
 .result-overview-main h2 {
-  font-size: var(--font-size-md);
+  font-size: var(--font-size-sm);
   margin-bottom: 1rem;
 }
 .result-info-grid {
@@ -2668,7 +2407,7 @@ tbody td {
 .result-score-panel > span {
   display: block;
   color: var(--text-muted);
-  font-size: var(--font-size-xs);
+  font-size: var(--font-size-2xs);
   margin-bottom: 0.35rem;
 }
 .result-info-grid strong {
@@ -2694,7 +2433,7 @@ tbody td {
   gap: 1rem;
   margin-top: 0.75rem;
   color: var(--text-secondary);
-  font-size: var(--font-size-xs);
+  font-size: var(--font-size-2xs);
 }
 .result-counts b {
   color: var(--text-primary);
@@ -2837,32 +2576,6 @@ tbody td {
   background: var(--answer-wrong-bg);
 }
 
-.tf-toggle {
-  display: flex;
-  background: var(--bg-surface);
-  border-radius: var(--radius-sm);
-  overflow: hidden;
-  flex-shrink: 0;
-}
-.tf-toggle button {
-  padding: 0.25rem 0.5rem;
-  border: none;
-  background: transparent;
-  color: var(--text-muted);
-  cursor: pointer;
-  font-size: var(--font-size-xs);
-  font-weight: var(--font-weight-semibold);
-  transition: all var(--transition);
-}
-.tf-toggle button.active-T {
-  background: var(--accent-success);
-  color: var(--text-on-accent);
-}
-.tf-toggle button.active-F {
-  background: var(--accent-danger);
-  color: var(--text-on-accent);
-}
-
 /* Exam Timer */
 .exam-timer {
   display: flex;
@@ -2891,20 +2604,6 @@ tbody td {
   animation: pulse 0.5s infinite;
 }
 
-/* Progress */
-.progress-bar {
-  height: 6px;
-  background: var(--bg-elevated);
-  border-radius: 100px;
-  overflow: hidden;
-}
-.progress-fill {
-  height: 100%;
-  background: var(--gradient-hero);
-  border-radius: 100px;
-  transition: width 0.5s ease;
-}
-
 /* Stats */
 .stat-card {
   background: var(--gradient-card);
@@ -2926,7 +2625,7 @@ tbody td {
   font-size: 1.3rem;
 }
 .stat-value {
-  font-size: var(--font-size-xl);
+  font-size: var(--font-size-lg);
   font-weight: var(--font-weight-extrabold);
 }
 .stat-label {
@@ -2935,34 +2634,6 @@ tbody td {
 }
 
 /* Modals */
-.modal-backdrop {
-  position: fixed;
-  inset: 0;
-  background: rgba(0, 0, 0, 0.7);
-  backdrop-filter: blur(4px);
-  z-index: 1000;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 1rem;
-  animation: fadeIn 0.2s ease;
-}
-.modal {
-  background: var(--bg-card);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-xl);
-  padding: 2rem;
-  width: 100%;
-  max-width: 520px;
-  box-shadow: var(--shadow-lg);
-  animation: slideUp 0.3s ease;
-}
-.modal-title {
-  font-size: var(--font-size-lg);
-  font-weight: var(--font-weight-bold);
-  margin-bottom: 1.5rem;
-}
-
 /* Upload zone */
 .upload-zone {
   border: 2px dashed var(--border);
@@ -2983,6 +2654,10 @@ tbody td {
   margin-bottom: 1rem;
 }
 .upload-text {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--control-icon-gap);
   font-size: var(--font-size-md);
   font-weight: var(--font-weight-medium);
   margin-bottom: 0.5rem;
@@ -2992,118 +2667,10 @@ tbody td {
   color: var(--text-secondary);
 }
 
-/* Alerts */
-.alert {
-  padding: 0.875rem 1rem;
-  border-radius: var(--radius-sm);
-  font-size: var(--font-size-base);
-  display: flex;
-  align-items: flex-start;
-  gap: 0.5rem;
-  margin-bottom: 1rem;
-}
-.alert-error {
-  background: rgba(255, 107, 107, 0.1);
-  border: 1px solid rgba(255, 107, 107, 0.3);
-  color: #ff9f9f;
-}
-.alert-success {
-  background: rgba(107, 203, 119, 0.1);
-  border: 1px solid rgba(107, 203, 119, 0.3);
-  color: #6bcb77;
-}
-.alert-info {
-  background: rgba(30, 63, 170, 0.1);
-  border: 1px solid rgba(30, 63, 170, 0.3);
-  color: #a99fff;
-}
-.alert-warning {
-  background: rgba(255, 217, 61, 0.1);
-  border: 1px solid rgba(255, 217, 61, 0.3);
-  color: #ffd93d;
-}
-
-/* Skeleton loading */
-.skeleton {
-  background: var(--bg-hover);
-  animation: shimmer 1.5s infinite;
-  border-radius: var(--radius-sm);
-}
-
-/* Page header */
-.page-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  margin-bottom: 2rem;
-  flex-wrap: wrap;
-  gap: 1rem;
-}
-.page-title {
-  font-size: var(--font-size-xl);
-  font-weight: var(--font-weight-extrabold);
-}
 .page-sub {
   color: var(--text-secondary);
-  font-size: var(--font-size-base);
+  font-size: var(--font-size-md);
   margin-top: 0.25rem;
-}
-
-/* Search/Filter bar */
-.filter-bar {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.75rem;
-  background: var(--bg-surface);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-lg);
-  padding: 1rem 1.25rem;
-  margin-bottom: 1.5rem;
-}
-.filter-bar .input,
-.filter-bar .select {
-  width: auto;
-  flex: 1;
-  min-width: 140px;
-  margin-bottom: 0;
-}
-.filter-bar .search-input {
-  flex: 2;
-}
-@media (max-width: 1400px) {
-  .filter-bar .search-input {
-    flex: 1 1 100%;
-  }
-}
-
-/* Pagination */
-.pagination {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  justify-content: center;
-  margin-top: 1.5rem;
-  margin-bottom: 1.5rem;
-}
-.page-btn {
-  min-width: 36px;
-  height: 36px;
-  padding: 0 0.25rem;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  border-radius: var(--radius-sm);
-  border: 1px solid var(--border);
-  background: var(--bg-elevated);
-  cursor: pointer;
-  font-size: var(--font-size-base);
-  transition: all var(--transition);
-}
-.page-btn:hover,
-.page-btn.active {
-  border-color: var(--accent-primary);
-  background: rgba(30, 63, 170, 0.15);
-  color: var(--accent-primary);
 }
 
 .btn-format {
@@ -3145,14 +2712,6 @@ tbody td {
     transform: translateY(0);
   }
 }
-@keyframes shimmer {
-  0% {
-    background-position: 200% 0;
-  }
-  100% {
-    background-position: -200% 0;
-  }
-}
 @keyframes pulse {
   0%,
   100% {
@@ -3162,27 +2721,11 @@ tbody td {
     opacity: 0.6;
   }
 }
-@keyframes spin {
-  to {
-    transform: rotate(360deg);
-  }
-}
-
 .fade-in {
   animation: fadeIn 0.3s ease;
 }
 .slide-up {
   animation: slideUp 0.4s ease;
-}
-
-.spinner {
-  width: 20px;
-  height: 20px;
-  border: 2px solid var(--border);
-  border-top-color: var(--accent-primary);
-  border-radius: 50%;
-  animation: spin 0.7s linear infinite;
-  display: inline-block;
 }
 
 /* Empty State */
@@ -3209,41 +2752,40 @@ tbody td {
   display: none;
 }
 .sidebar-logo {
-  flex-direction: column;
-  align-items: flex-start;
-  gap: 0.75rem;
-}
-.sidebar-logo-row {
-  display: flex;
   align-items: center;
-  gap: 0.75rem;
 }
 .sidebar-hide-btn {
-  align-self: flex-start;
+  grid-column: 1;
+  justify-self: center;
+}
+.ui-button.sidebar-hide-btn svg {
+  width: var(--icon-size-md);
+  height: var(--icon-size-md);
+  transition: transform var(--transition-normal);
 }
 
 .history-nav {
   display: inline-flex;
-  gap: 0.2rem;
+  gap: var(--breadcrumb-history-gap);
   position: static;
 }
 .history-nav-host {
   position: absolute;
   left: 0;
   top: 0;
-  height: 24px;
+  height: var(--breadcrumb-history-button-size);
   display: flex;
   align-items: center;
   z-index: 5;
 }
 .history-nav-btn {
-  width: 24px;
-  height: 24px;
+  width: var(--breadcrumb-history-button-size);
+  height: var(--breadcrumb-history-button-size);
   display: grid;
   place-items: center;
   border: 0;
-  border: 1px solid transparent;
-  border-radius: 8px;
+  border: var(--control-border-width) solid transparent;
+  border-radius: var(--control-radius-sm);
   background: transparent;
   color: var(--text-secondary);
   cursor: pointer;
@@ -3258,14 +2800,14 @@ tbody td {
   border-color: var(--border);
 }
 .history-nav-btn:disabled {
-  opacity: 0.38;
+  opacity: var(--breadcrumb-history-disabled-opacity);
   cursor: default;
   background: transparent;
   border-color: transparent;
   box-shadow: none;
 }
 .history-nav-btn:active {
-  transform: scale(0.94);
+  transform: scale(var(--breadcrumb-history-pressed-scale));
 }
 .history-nav-btn svg {
   width: var(--icon-size-sm);
@@ -3275,14 +2817,6 @@ tbody td {
   stroke-width: var(--icon-stroke-strong);
   stroke-linecap: round;
   stroke-linejoin: round;
-}
-
-.modal-wide-responsive {
-  width: min(95vw, 180vh) !important;
-  max-width: none !important;
-  height: calc(95vh - 5rem) !important;
-  max-height: calc(95vh - 5rem) !important;
-  transform: translateY(-2rem);
 }
 
 /* Hàng chi tiết dính liền vào bản ghi phía trên nó, không tự tách ra. */
@@ -3296,7 +2830,7 @@ tbody td {
 
 /* Desktop: collapse the sidebar to a slim left rail.
    The page stays a row, so content only shifts horizontally — never vertically.
-   The blue logo box, toggle button and user avatar stay, centered in the rail. */
+   The toggle button and user avatar stay centered in the rail. */
 @media (min-width: 769px) {
   body.sidebar-collapsed .sidebar {
     width: 76px;
@@ -3305,7 +2839,7 @@ tbody td {
 
   /* Center every remaining element horizontally */
   body.sidebar-collapsed .sidebar-logo {
-    align-items: center;
+    grid-template-columns: 1fr;
     padding: 0 0.5rem 1rem;
     border-bottom: none;
     margin-bottom: 0;
@@ -3319,8 +2853,10 @@ tbody td {
     padding: 0.4rem;
   }
   body.sidebar-collapsed .sidebar-hide-btn {
-    padding: 0.35rem 0.5rem;
-    font-size: var(--font-size-xs);
+    grid-column: 1;
+  }
+  body.sidebar-collapsed .sidebar-hide-btn svg {
+    transform: rotate(180deg);
   }
 
   body.sidebar-collapsed .sidebar-nav {
@@ -3354,30 +2890,19 @@ tbody td {
 }
 
 @media (min-width: 769px) {
-  .main-content > .page-header {
-    padding-left: 54px;
+  .main-content > .ui-page-header {
+    padding-left: var(--breadcrumb-history-offset);
     position: relative;
   }
 }
 @media (max-width: 768px) {
-  .main-content > .page-header {
+  .main-content > .ui-page-header {
     position: relative;
-    padding-left: 52px;
+    padding-left: var(--breadcrumb-history-offset);
   }
   .history-nav-host {
     top: 0;
   }
-}
-
-/* Breadcrumbs use neutral text; blue is reserved for the active navigation tab. */
-.page-header .page-sub a,
-.page-header a:not(.btn) {
-  color: var(--text-primary);
-}
-.page-header .page-sub a:hover,
-.page-header a:not(.btn):hover {
-  color: var(--text-primary);
-  opacity: 0.72;
 }
 
 /* Responsive */
@@ -3435,10 +2960,6 @@ tbody td {
   .tf-grid {
     grid-template-columns: 1fr;
   }
-  .filter-bar .input,
-  .filter-bar .select {
-    min-width: 100%;
-  }
   .class-info-grid {
     grid-template-columns: 1fr !important;
   }
@@ -3488,27 +3009,30 @@ mjx-container[display="true"] {
   padding: 0.5rem;
 }
 .option-list-surface {
-  padding: 1rem;
+  padding: var(--space-4);
   background: var(--bg-base);
-  border-radius: 0.75rem;
+  border-radius: var(--radius-xl);
 }
 .option-card {
   display: flex;
   align-items: flex-start;
-  gap: 1rem;
-  padding: 1rem 1.25rem;
+  gap: var(--space-4);
+  padding: var(--space-4);
   background: var(--bg-surface);
-  border: 1.5px solid transparent;
-  border-left: 4px solid var(--border-strong);
-  border-radius: 0.75rem;
-  transition: all 0.2s ease;
-  margin-bottom: 1rem;
+  border: var(--border-width) solid transparent;
+  border-left: var(--space-1) solid var(--border-strong);
+  border-radius: var(--radius-xl);
+  transition:
+    background-color var(--transition-normal),
+    border-color var(--transition-normal),
+    box-shadow var(--transition-normal);
+  margin-bottom: var(--space-4);
 }
 .option-card:focus-within {
   background: var(--bg-surface);
   border-color: var(--border);
   border-left-color: var(--accent-primary);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+  box-shadow: var(--shadow-sm);
 }
 .option-card.is-correct {
   background: var(--bg-surface);
@@ -3517,95 +3041,5 @@ mjx-container[display="true"] {
 .option-card.is-correct:focus-within {
   background: var(--bg-surface);
   border-color: var(--answer-correct-border);
-  box-shadow: 0 4px 12px rgba(16, 185, 129, 0.15);
-}
-
-/* Toast — kiểu Google Material Snackbar. Cố ý KHÔNG dùng
- * --accent-danger/--tone-danger-bg... của globals.css: màu nền snackbar là
- * "inverse surface" theo đúng chuẩn Material — luôn tối, không đổi theo
- * theme sáng/tối của app — nên hằng số màu ở đây tách riêng khỏi bộ token
- * theme, không lẫn vào đó. */
-
-.g-snackbar-zone {
-  position: fixed;
-  left: 20px;
-  bottom: 20px;
-  z-index: 2000;
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  gap: 8px;
-  pointer-events: none;
-}
-
-.g-snackbar {
-  pointer-events: auto;
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  background: #323232;
-  color: #fff;
-  font-size: 0.85rem;
-  padding: 14px 16px 14px 14px;
-  border-radius: 4px;
-  box-shadow:
-    0 3px 5px -1px rgba(0, 0, 0, 0.2),
-    0 6px 10px 0 rgba(0, 0, 0, 0.14),
-    0 1px 18px 0 rgba(0, 0, 0, 0.12);
-  min-width: 280px;
-  max-width: 420px;
-  animation: g-snackbar-in 0.22s cubic-bezier(0, 0, 0.2, 1);
-}
-
-@keyframes g-snackbar-in {
-  from {
-    opacity: 0;
-    transform: translateY(10px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
-.g-snackbar-dot {
-  flex: none;
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
-  margin-top: 1px;
-}
-
-.g-snackbar-msg {
-  flex: 1;
-  word-break: break-word;
-}
-
-.g-snackbar-action {
-  flex: none;
-  background: none;
-  border: none;
-  cursor: pointer;
-  font-family: inherit;
-  font-size: 0.82rem;
-  font-weight: 700;
-  letter-spacing: 0.3px;
-  padding: 0;
-  color: #8ab4f8; /* một màu accent duy nhất cho mọi mức độ, giống "UNDO" của Gmail — mức độ đã có chấm màu lo rồi */
-}
-.g-snackbar-action:hover {
-  color: #aecbfa;
-}
-
-@media (max-width: 480px) {
-  .g-snackbar-zone {
-    left: 12px;
-    right: 12px;
-    bottom: 12px;
-  }
-  .g-snackbar {
-    min-width: 0;
-    max-width: none;
-    width: 100%;
-  }
+  box-shadow: var(--shadow-sm);
 }

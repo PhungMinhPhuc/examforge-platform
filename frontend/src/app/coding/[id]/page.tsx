@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import { use, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
@@ -19,6 +19,12 @@ import CodingSubmissionHistory from "@/modules/coding/CodingSubmissionHistory";
 import { QuestionEditor, QuestionDetail } from "@/components/QuestionEditor";
 import { treeToPlainText } from "@/lib/docTree";
 import { toast } from "@/lib/toastStore";
+import { Icon } from "@/components/icons";
+import DateTimePicker from "@/components/DateTimePicker";
+import PageHeader from "@/components/PageHeader";
+import Checkbox from "@/components/Checkbox";
+import { confirmDialog } from "@/lib/confirmDialog";
+import MessageBar from "@/components/MessageBar";
 
 // một dòng trong bảng giao/gỡ lớp
 type ClassAssignment = {
@@ -88,7 +94,10 @@ export default function CodingAssignmentPage({
   const [viewStudentId, setViewStudentId] = useState<number | null>(null);
   const [showSubmissions, setShowSubmissions] = useState(false);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState("");
+  const [loadError, setLoadError] = useState("");
+  const [assignError, setAssignError] = useState("");
+  const [editError, setEditError] = useState("");
+  const [linkCopied, setLinkCopied] = useState(false);
 
   const load = async () => {
     const result = await api.getCodingAssignment(assignmentId);
@@ -99,7 +108,7 @@ export default function CodingAssignmentPage({
   useEffect(() => {
     if (user)
       load()
-        .catch((e) => setError(e.message))
+        .catch((e) => setLoadError(e.message))
         .finally(() => setLoading(false));
   }, [user, assignmentId]);
 
@@ -119,9 +128,23 @@ export default function CodingAssignmentPage({
     await api.startCodingAssignment(assignmentId);
     await load();
   };
+  const copyPublicLink = async () => {
+    if (!assignment?.public_id) return;
+    try {
+      await navigator.clipboard.writeText(
+        `${window.location.origin}/coding/share/${assignment.public_id}`,
+      );
+      setLinkCopied(true);
+      window.setTimeout(() => setLinkCopied(false), 2000);
+    } catch {
+      setLinkCopied(false);
+      toast.error("Không thể sao chép đường dẫn");
+    }
+  };
   // ô tích = lớp đang được giao bài, bỏ tích là gỡ
   const openAssignModal = async () => {
     setShowAssignModal(true);
+    setAssignError("");
     try {
       const data = (await api.getCodingClasses(assignmentId)) as {
         classes: ClassAssignment[];
@@ -131,10 +154,7 @@ export default function CodingAssignmentPage({
         data.classes.filter((c) => c.assigned).map((c) => c.id),
       );
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Không thể tải danh sách lớp");
-      toast.error(
-        e instanceof Error ? e.message : "Không thể tải danh sách lớp",
-      );
+      setAssignError(e instanceof Error ? e.message : "Không thể tải danh sách lớp");
     }
   };
 
@@ -156,24 +176,25 @@ export default function CodingAssignmentPage({
     if (!classesToAdd.length && !classesToRemove.length) return;
     if (
       classesToRemove.length &&
-      !confirm(
+      !(await confirmDialog(
         `Gỡ bài khỏi ${classesToRemove.length} lớp: ${classesToRemove
           .map((c) => c.class_name)
           .join(", ")}?\n\n` +
           "Học sinh các lớp đó sẽ không còn thấy và không vào làm được bài này nữa. " +
           "Bài đã nộp vẫn giữ nguyên.",
-      )
+        { title: "Gỡ bài khỏi lớp", confirmLabel: "Gỡ bài", intent: "danger" },
+      ))
     )
       return;
     setAssigningClasses(true);
     try {
       await api.setCodingClasses(assignmentId, selectedClassIds);
       setShowAssignModal(false);
+      setAssignError("");
       await load();
       toast.success("Đã lưu thay đổi");
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Không thể lưu thay đổi");
-      toast.error(e instanceof Error ? e.message : "Không thể lưu thay đổi");
+      setAssignError(e instanceof Error ? e.message : "Không thể lưu thay đổi");
     } finally {
       setAssigningClasses(false);
     }
@@ -197,11 +218,12 @@ export default function CodingAssignmentPage({
       due_at: localValue(assignment.due_at),
       allow_late_submission: assignment.allow_late_submission,
     });
+    setEditError("");
     setShowEditModal(true);
   };
   const saveMetadata = async () => {
     setSavingMetadata(true);
-    setError("");
+    setEditError("");
     try {
       await api.updateCodingAssignment(assignmentId, {
         ...editData,
@@ -217,28 +239,24 @@ export default function CodingAssignmentPage({
       await load();
       toast.success("Đã cập nhật thông tin");
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Không thể cập nhật thông tin");
-      toast.error(
-        e instanceof Error ? e.message : "Không thể cập nhật thông tin",
-      );
+      setEditError(e instanceof Error ? e.message : "Không thể cập nhật thông tin");
     } finally {
       setSavingMetadata(false);
     }
   };
   const removeQuestion = async (questionId: number) => {
     if (
-      !confirm(
+      !(await confirmDialog(
         "Gỡ bài này khỏi assignment? Câu hỏi vẫn được giữ trong ngân hàng.",
-      )
+        { title: "Gỡ câu hỏi", confirmLabel: "Gỡ câu hỏi", intent: "danger" },
+      ))
     )
       return;
-    setError("");
     try {
       await api.removeCodingAssignmentQuestion(assignmentId, questionId);
       await load();
       toast.success("Đã gỡ bài");
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Không thể xóa bài");
       toast.error(e instanceof Error ? e.message : "Không thể xóa bài");
     }
   };
@@ -250,7 +268,6 @@ export default function CodingAssignmentPage({
         error: "",
       });
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Không thể tải câu hỏi");
       toast.error(e instanceof Error ? e.message : "Không thể tải câu hỏi");
     }
   };
@@ -283,7 +300,6 @@ export default function CodingAssignmentPage({
             }
           : v,
       );
-      toast.error(e instanceof Error ? e.message : "Không thể lưu câu hỏi");
     }
   };
 
@@ -292,35 +308,33 @@ export default function CodingAssignmentPage({
       <Sidebar />
       <main className="main-content">
         {loading ? (
-          <div className="skeleton" style={{ height: 180 }} />
-        ) : error ? (
-          <div className="alert alert-error">{error}</div>
+          <div className="ui-skeleton" style={{ height: 180 }} />
+        ) : loadError ? (
+          <MessageBar className="ui-message-bar--section" intent="error" onDismiss={() => router.push("/coding")}>
+            {loadError}
+          </MessageBar>
         ) : (
           assignment && (
             <>
-              <div className="page-header">
-                <div>
-                  <div className="page-breadcrumb">
-                    <Link href="/coding">Lập trình</Link>
-                    <span className="sep">/</span>
-                    <span className="current">Chi tiết</span>
-                  </div>
-                  <h1 className="page-title">{assignment.title}</h1>
-                  <p className="page-sub">
+              <PageHeader
+                breadcrumbs={[{ label: "Lập trình", href: "/coding" }, { label: assignment.title, truncate: true }]}
+                title={assignment.title}
+                description={
+                  <>
                     {questions.length} bài ·{" "}
                     {assignment.time_limit
                       ? `${assignment.time_limit} phút`
                       : "Không giới hạn thời gian"}
-                  </p>
-                </div>
-                {user?.role === "student" ? (
-                  <button className="btn btn-primary" onClick={start}>
+                  </>
+                }
+                actions={user?.role === "student" ? (
+                  <button className="ui-button ui-button--primary" onClick={start}>
                     Bắt đầu / tiếp tục
                   </button>
                 ) : (
                   <div style={{ display: "flex", gap: ".5rem" }}>
                     <button
-                      className="btn btn-secondary"
+                      className="ui-button ui-button--secondary"
                       onClick={openAssignModal}
                     >
                       Lớp áp dụng
@@ -332,7 +346,7 @@ export default function CodingAssignmentPage({
                     />
                   </div>
                 )}
-              </div>
+              />
               {user?.role === "teacher" ? (
                 <>
                   <div
@@ -348,7 +362,7 @@ export default function CodingAssignmentPage({
                       <div className="card" style={{ padding: "1.25rem" }}>
                         <h2
                           style={{
-                            fontSize: "var(--font-size-md)",
+                            fontSize: "var(--font-size-sm)",
                             marginBottom: ".75rem",
                           }}
                         >
@@ -365,7 +379,7 @@ export default function CodingAssignmentPage({
                         <h3
                           style={{
                             marginBottom: "1rem",
-                            fontSize: "var(--font-size-md)",
+                            fontSize: "var(--font-size-sm)",
                           }}
                         >
                           Danh sách bài tập ({questions.length} bài)
@@ -462,13 +476,14 @@ export default function CodingAssignmentPage({
                                 </div>
                               </div>
                               <button
-                                className="btn btn-danger btn-sm"
+                                className="ui-button ui-button--danger ui-button--small"
                                 style={{ flexShrink: 0 }}
                                 onClick={(e) => {
                                   e.stopPropagation();
                                   removeQuestion(q.id);
                                 }}
                               >
+                                <Icon name="trash" />
                                 Xóa
                               </button>
                             </div>
@@ -499,9 +514,10 @@ export default function CodingAssignmentPage({
                             Thông tin chung
                           </h2>
                           <button
-                            className="btn btn-ghost btn-sm"
+                            className="ui-button ui-button--ghost ui-button--small"
                             onClick={openEdit}
                           >
+                            <Icon name="edit" />
                             Chỉnh sửa
                           </button>
                         </div>
@@ -610,7 +626,7 @@ export default function CodingAssignmentPage({
                       <div className="card">
                         <h2
                           style={{
-                            fontSize: "var(--font-size-md)",
+                            fontSize: "var(--font-size-sm)",
                             marginBottom: ".5rem",
                           }}
                         >
@@ -641,20 +657,17 @@ export default function CodingAssignmentPage({
                               }}
                             >{`${typeof window !== "undefined" ? window.location.origin : ""}/coding/share/${assignment.public_id}`}</div>
                             <button
-                              className="btn btn-secondary btn-sm"
+                              className="ui-button ui-button--secondary ui-button--small"
                               style={{ width: "100%", marginBottom: ".5rem" }}
-                              onClick={() =>
-                                navigator.clipboard.writeText(
-                                  `${window.location.origin}/coding/share/${assignment.public_id}`,
-                                )
-                              }
+                              onClick={copyPublicLink}
                             >
-                              Sao chép link
+                              <Icon name={linkCopied ? "check" : "copy"} />
+                              {linkCopied ? "Đã sao chép" : "Sao chép link"}
                             </button>
                           </>
                         )}
                         <button
-                          className={`btn btn-sm ${assignment.allow_link_access ? "btn-danger" : "btn-primary"}`}
+                          className={`ui-button ui-button--small ${assignment.allow_link_access ? "ui-button--danger" : "ui-button--primary"}`}
                           style={{ width: "100%" }}
                           onClick={async () => {
                             await api.updateCodingAssignment(assignmentId, {
@@ -663,6 +676,7 @@ export default function CodingAssignmentPage({
                             await load();
                           }}
                         >
+                          <Icon name={assignment.allow_link_access ? "link-off" : "share"} />
                           {assignment.allow_link_access
                             ? "Dừng chia sẻ"
                             : "Chia sẻ"}
@@ -671,7 +685,7 @@ export default function CodingAssignmentPage({
                       <div className="card">
                         <h2
                           style={{
-                            fontSize: "var(--font-size-md)",
+                            fontSize: "var(--font-size-sm)",
                             marginBottom: ".5rem",
                           }}
                         >
@@ -687,7 +701,7 @@ export default function CodingAssignmentPage({
                           {students.length} học sinh đã bắt đầu hoặc nộp bài.
                         </p>
                         <button
-                          className="btn btn-primary btn-sm"
+                          className="ui-button ui-button--primary ui-button--small"
                           style={{ width: "100%" }}
                           onClick={() => setShowSubmissions(true)}
                         >
@@ -702,7 +716,7 @@ export default function CodingAssignmentPage({
                   <div className="card" style={{ padding: "1.25rem" }}>
                     <h2
                       style={{
-                        fontSize: "var(--font-size-md)",
+                        fontSize: "var(--font-size-sm)",
                         marginBottom: ".75rem",
                       }}
                     >
@@ -801,52 +815,27 @@ export default function CodingAssignmentPage({
               )}
               {showSubmissions && (
                 <div
-                  style={{
-                    position: "fixed",
-                    inset: 0,
-                    zIndex: 1250,
-                    background: "rgba(0,0,0,.5)",
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    padding: "1rem",
-                  }}
+                  className="ui-modal-backdrop"
                   onMouseDown={(e) => {
                     if (e.target === e.currentTarget) setShowSubmissions(false);
                   }}
                 >
                   <div
-                    className="card modal-wide-responsive"
-                    style={{
-                      width: "90vw",
-                      maxWidth: 1200,
-                      height: "90vh",
-                      display: "flex",
-                      flexDirection: "column",
-                      padding: 0,
-                      overflow: "hidden",
-                    }}
+                    className="ui-modal ui-modal--large"
                   >
-                    <div
-                      style={{
-                        padding: "1.5rem",
-                        borderBottom: "1px solid var(--border)",
-                        display: "flex",
-                        justifyContent: "space-between",
-                        alignItems: "center",
-                      }}
-                    >
-                      <h3 style={{ margin: 0 }}>
+                    <header className="ui-modal__header">
+                      <h3 className="ui-modal__title">
                         Danh sách bài nộp ({students.length})
                       </h3>
                       <button
-                        className="btn btn-ghost btn-sm"
-                        style={{ width: 32, height: 32, padding: 0 }}
+                        className="ui-modal__close"
+                        type="button"
+                        aria-label="Đóng"
                         onClick={() => setShowSubmissions(false)}
                       >
-                        ✕
+                        <Icon name="close" />
                       </button>
-                    </div>
+                    </header>
                     <div
                       style={{ padding: "1.5rem", overflowY: "auto", flex: 1 }}
                     >
@@ -905,7 +894,7 @@ export default function CodingAssignmentPage({
                                   </td>
                                   <td>
                                     <button
-                                      className="btn btn-secondary btn-sm"
+                                      className="ui-button ui-button--secondary ui-button--small"
                                       onClick={() =>
                                         setViewStudentId(s.student_id)
                                       }
@@ -932,45 +921,19 @@ export default function CodingAssignmentPage({
               )}
               {showAssignModal && (
                 <div
-                  style={{
-                    position: "fixed",
-                    inset: 0,
-                    zIndex: 1200,
-                    background: "var(--overlay)",
-                    display: "grid",
-                    placeItems: "center",
-                    padding: "2.5vh",
-                  }}
+                  className="ui-modal-backdrop"
                   onMouseDown={(e) => {
                     if (e.target === e.currentTarget) setShowAssignModal(false);
                   }}
                 >
                   <div
-                    className="card modal-wide-responsive"
-                    style={{
-                      width: "95vw",
-                      maxWidth: 1400,
-                      height: "95vh",
-                      padding: 0,
-                      display: "flex",
-                      flexDirection: "column",
-                      overflow: "hidden",
-                    }}
+                    className="ui-modal ui-modal--large"
                   >
-                    <div
-                      style={{
-                        padding: "1.25rem 1.5rem",
-                        borderBottom: "1px solid var(--border)",
-                        display: "flex",
-                        justifyContent: "space-between",
-                        alignItems: "flex-start",
-                      }}
-                    >
-                      <div>
-                        <h2 style={{ margin: 0 }}>Giao bài cho lớp</h2>
+                    <header className="ui-modal__header">
+                      <div className="ui-modal__heading">
+                        <h2 className="ui-modal__title">Giao bài cho lớp</h2>
                         <p
-                          className="page-sub"
-                          style={{ margin: ".25rem 0 0" }}
+                          className="ui-modal__description"
                         >
                           {assignment.title} · tích để giao, bỏ tích để gỡ. Lớp
                           bị gỡ sẽ không truy cập được bài nữa, bài đã nộp vẫn
@@ -978,12 +941,14 @@ export default function CodingAssignmentPage({
                         </p>
                       </div>
                       <button
-                        className="btn btn-ghost btn-sm"
+                        className="ui-modal__close"
+                        type="button"
+                        aria-label="Đóng"
                         onClick={() => setShowAssignModal(false)}
                       >
-                        Đóng
+                        <Icon name="close" />
                       </button>
-                    </div>
+                    </header>
                     <div
                       style={{
                         padding: "1.25rem 1.5rem",
@@ -991,6 +956,11 @@ export default function CodingAssignmentPage({
                         flex: 1,
                       }}
                     >
+                      {assignError && (
+                        <MessageBar className="ui-message-bar--section" intent="error" onDismiss={() => setAssignError("")}>
+                          {assignError}
+                        </MessageBar>
+                      )}
                       <div style={{ overflowX: "auto" }}>
                         <table className="problem-table pick-table">
                           <colgroup>
@@ -1003,8 +973,7 @@ export default function CodingAssignmentPage({
                           <thead>
                             <tr>
                               <th>
-                                <input
-                                  type="checkbox"
+                                <Checkbox
                                   aria-label="Chọn tất cả"
                                   disabled={!classes.length}
                                   checked={allClassesSelected}
@@ -1045,8 +1014,8 @@ export default function CodingAssignmentPage({
                                   }
                                 >
                                   <td onClick={(e) => e.stopPropagation()}>
-                                    <input
-                                      type="checkbox"
+                                    <Checkbox
+                                      aria-label={`Chọn lớp ${cls.class_name}`}
                                       checked={selected}
                                       onChange={(e) =>
                                         toggleClassId(cls.id, e.target.checked)
@@ -1109,7 +1078,7 @@ export default function CodingAssignmentPage({
                           : `Đang ở ${selectedClassIds.length} lớp`}
                       </strong>
                       <button
-                        className="btn btn-primary"
+                        className="ui-button ui-button--primary"
                         disabled={
                           (!classesToAdd.length && !classesToRemove.length) ||
                           assigningClasses
@@ -1155,7 +1124,7 @@ export default function CodingAssignmentPage({
                     >
                       <div>
                         <h2
-                          style={{ margin: 0, fontSize: "var(--font-size-lg)" }}
+                          style={{ margin: 0, fontSize: "var(--font-size-base)" }}
                         >
                           Chỉnh sửa thông tin
                         </h2>
@@ -1167,17 +1136,24 @@ export default function CodingAssignmentPage({
                         </p>
                       </div>
                       <button
-                        className="btn btn-ghost btn-sm"
+                        className="ui-modal__close"
+                        type="button"
+                        aria-label="Đóng"
                         onClick={() => setShowEditModal(false)}
                       >
-                        ✕
+                        <Icon name="close" />
                       </button>
                     </div>
                     <div style={{ display: "grid", gap: "1rem" }}>
+                      {editError && (
+                        <MessageBar className="ui-message-bar--section" intent="error" onDismiss={() => setEditError("")}>
+                          {editError}
+                        </MessageBar>
+                      )}
                       <label className="form-label">
                         Tên đề/bài
                         <input
-                          className="input"
+                          className="ui-input-native"
                           value={editData.title}
                           onChange={(e) =>
                             setEditData((v) => ({
@@ -1190,7 +1166,7 @@ export default function CodingAssignmentPage({
                       <label className="form-label">
                         Mô tả
                         <textarea
-                          className="textarea"
+                          className="ui-textarea"
                           rows={5}
                           value={editData.description}
                           onChange={(e) =>
@@ -1206,7 +1182,7 @@ export default function CodingAssignmentPage({
                         <input
                           type="number"
                           min="1"
-                          className="input"
+                          className="ui-input-native"
                           placeholder="Để trống nếu không giới hạn"
                           value={editData.time_limit}
                           onChange={(e) =>
@@ -1226,30 +1202,24 @@ export default function CodingAssignmentPage({
                       >
                         <label className="form-label">
                           Thời điểm mở
-                          <input
-                            type="datetime-local"
-                            className="input"
-                            style={{ width: "100%", minWidth: 0 }}
+                          <DateTimePicker
                             value={editData.available_from}
-                            onChange={(e) =>
+                            onChange={(value) =>
                               setEditData((v) => ({
                                 ...v,
-                                available_from: e.target.value,
+                                available_from: value,
                               }))
                             }
                           />
                         </label>
                         <label className="form-label">
                           Hạn nộp
-                          <input
-                            type="datetime-local"
-                            className="input"
-                            style={{ width: "100%", minWidth: 0 }}
+                          <DateTimePicker
                             value={editData.due_at}
-                            onChange={(e) =>
+                            onChange={(value) =>
                               setEditData((v) => ({
                                 ...v,
-                                due_at: e.target.value,
+                                due_at: value,
                               }))
                             }
                           />
@@ -1262,8 +1232,7 @@ export default function CodingAssignmentPage({
                           gap: ".6rem",
                         }}
                       >
-                        <input
-                          type="checkbox"
+                        <Checkbox
                           checked={editData.allow_late_submission}
                           onChange={(e) =>
                             setEditData((v) => ({
@@ -1284,13 +1253,13 @@ export default function CodingAssignmentPage({
                       }}
                     >
                       <button
-                        className="btn btn-secondary"
+                        className="ui-button ui-button--secondary"
                         onClick={() => setShowEditModal(false)}
                       >
                         Hủy
                       </button>
                       <button
-                        className="btn btn-primary"
+                        className="ui-button ui-button--primary"
                         disabled={savingMetadata || !editData.title.trim()}
                         onClick={saveMetadata}
                       >
@@ -1302,51 +1271,25 @@ export default function CodingAssignmentPage({
               )}
               {questionModal && (
                 <div
-                  style={{
-                    position: "fixed",
-                    inset: 0,
-                    zIndex: 1350,
-                    background: "rgba(0,0,0,.5)",
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    padding: "2.5vh 2.5vw",
-                  }}
+                  className="ui-modal-backdrop"
                   onMouseDown={(e) => {
                     if (e.target === e.currentTarget) setQuestionModal(null);
                   }}
                 >
                   <div
-                    className="modal-wide-responsive"
-                    style={{
-                      width: "95vw",
-                      maxWidth: 1400,
-                      height: "95vh",
-                      background: "var(--bg-surface)",
-                      borderRadius: "var(--radius-lg)",
-                      boxShadow: "var(--shadow-lg)",
-                      display: "flex",
-                      flexDirection: "column",
-                      overflow: "hidden",
-                    }}
+                    className="ui-modal ui-modal--large"
                   >
-                    <div
-                      style={{
-                        padding: "1rem 1.5rem",
-                        borderBottom: "1px solid var(--border)",
-                        display: "flex",
-                        justifyContent: "space-between",
-                        alignItems: "center",
-                      }}
-                    >
-                      <h3 style={{ margin: 0 }}>Chi tiết câu hỏi lập trình</h3>
+                    <header className="ui-modal__header">
+                      <h3 className="ui-modal__title">Chi tiết câu hỏi lập trình</h3>
                       <button
-                        className="btn btn-ghost btn-sm"
+                        className="ui-modal__close"
+                        type="button"
+                        aria-label="Đóng"
                         onClick={() => setQuestionModal(null)}
                       >
-                        ✕
+                        <Icon name="close" />
                       </button>
-                    </div>
+                    </header>
                     <div
                       style={{ flex: 1, overflowY: "auto", padding: "1.5rem" }}
                     >
@@ -1359,12 +1302,17 @@ export default function CodingAssignmentPage({
                         imageEditable
                       />
                       {questionModal.error && (
-                        <div
-                          className="alert alert-error"
-                          style={{ marginTop: "1rem" }}
+                        <MessageBar
+                          intent="error"
+                          className="ui-message-bar--spaced"
+                          onDismiss={() =>
+                            setQuestionModal((value) =>
+                              value ? { ...value, error: "" } : value,
+                            )
+                          }
                         >
                           {questionModal.error}
-                        </div>
+                        </MessageBar>
                       )}
                     </div>
                     <div
@@ -1377,13 +1325,13 @@ export default function CodingAssignmentPage({
                       }}
                     >
                       <button
-                        className="btn btn-secondary"
+                        className="ui-button ui-button--secondary"
                         onClick={() => setQuestionModal(null)}
                       >
                         Đóng
                       </button>
                       <button
-                        className="btn btn-primary"
+                        className="ui-button ui-button--primary"
                         disabled={questionModal.saving}
                         onClick={saveQuestion}
                       >

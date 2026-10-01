@@ -1,8 +1,10 @@
 import React from "react";
 import Combobox from "@/components/Combobox";
-import RichLatexEditor from "@/components/RichLatexEditor";
+import RichLatexEditor from "@/components/rich-latex-editor";
 import CodingSettingsPanel from "./CodingSettingsPanel";
 import { TreeDoc, emptyDoc } from "@/lib/docTree";
+import { Icon } from "@/components/icons";
+import { confirmDialog } from "@/lib/confirmDialog";
 
 export type QuestionDetail = {
   id?: number;
@@ -18,7 +20,15 @@ export type QuestionDetail = {
   content: TreeDoc;
   solution?: TreeDoc;
   teacher_name?: string;
-  images?: { id?: number | string; storage_path: string; url?: string; width?: number | null; img_type?: string; asset_exists?: boolean; pendingFile?: File | Blob }[];
+  images?: {
+    id?: number | string;
+    storage_path: string;
+    url?: string;
+    width?: number | null;
+    img_type?: string;
+    asset_exists?: boolean;
+    pendingFile?: File | Blob;
+  }[];
   details?: {
     id?: number;
     content: any; // TreeDoc (mc/tf) hoặc string (sa)
@@ -129,7 +139,17 @@ export const QuestionEditor = ({
   // mất lần trước, ảnh vừa chèn "biến mất" khỏi qData.images dù vẫn thấy
   // trên màn hình (chỉ là DOM thao tác tay) — bấm +/− sau đó không tìm thấy
   // ảnh trong `images` prop nữa nên im re không phản ứng.
-  const handleChange = (field: keyof QuestionDetail, value: any, newImage?: { id?: number | string; storage_path: string; width?: number | null; img_type?: string; pendingFile?: File | Blob }) => {
+  const handleChange = (
+    field: keyof QuestionDetail,
+    value: any,
+    newImage?: {
+      id?: number | string;
+      storage_path: string;
+      width?: number | null;
+      img_type?: string;
+      pendingFile?: File | Blob;
+    },
+  ) => {
     if (field === "content" && value && typeof value === "object") {
       onChange({
         ...qData,
@@ -150,7 +170,13 @@ export const QuestionEditor = ({
     idx: number,
     field: string,
     value: any,
-    newImage?: { id?: number | string; storage_path: string; width?: number | null; img_type?: string; pendingFile?: File | Blob },
+    newImage?: {
+      id?: number | string;
+      storage_path: string;
+      width?: number | null;
+      img_type?: string;
+      pendingFile?: File | Blob;
+    },
   ) => {
     const newDetails = [...(qData.details || [])];
     newDetails[idx] = { ...newDetails[idx], [field]: value };
@@ -204,8 +230,8 @@ export const QuestionEditor = ({
     <div
       className="card"
       style={{
-        marginBottom: "1.5rem",
-        border: isChild ? "1px solid var(--border)" : "none",
+        marginBottom: "var(--space-6)",
+        border: isChild ? "var(--border-width) solid var(--border)" : "none",
         background: isChild ? "var(--bg-card)" : "var(--bg-surface)",
       }}
     >
@@ -222,7 +248,7 @@ export const QuestionEditor = ({
             ? `Câu ${childIndex}${qData.id ? ` #${qData.id}` : ""}`
             : `Nội dung câu hỏi ${qData.id ? `#${qData.id}` : ""}`}
         </h3>
-        <div style={{ display: "flex", gap: "0.75rem", alignItems: "center" }}>
+        <div style={{ display: "flex", gap: "var(--space-3)", alignItems: "center" }}>
           <span className={`badge badge-${qData.question_type}`}>
             {TYPE_LABELS[qData.question_type] || qData.question_type}
           </span>
@@ -238,11 +264,11 @@ export const QuestionEditor = ({
             )}
           {onDelete && (
             <button
-              className="btn btn-danger btn-sm"
+              className="ui-button ui-button--danger ui-button--small"
               onClick={onDelete}
               title="Xóa câu hỏi này"
-              style={{ padding: "0.25rem 0.75rem", fontSize: "0.85rem" }}
             >
+              <Icon name="trash" />
               Xóa
             </button>
           )}
@@ -251,104 +277,98 @@ export const QuestionEditor = ({
 
       <div
         style={{
-          padding: "1rem",
+          padding: "var(--space-4)",
           display: "flex",
           flexDirection: "column",
-          gap: "1rem",
+          gap: "var(--space-4)",
         }}
       >
-        <div className="meta-table" style={{ marginBottom: "0.25rem" }}>
+        <div className="meta-table" style={{ marginBottom: "var(--space-1)" }}>
           {!isChild ? (
-              <>
-                <div className="meta-row">
-                  <span className="meta-row-label">Môn học</span>
-                  <Combobox
-                    className="meta-row-value"
-                    style={{ flex: 1 }}
-                    value={qData.subject || ""}
-                    onChange={(val) => handleChange("subject", val)}
-                    options={subjOptions}
-                    placeholder="Môn học"
-                  />
-                </div>
-                <div className="meta-row">
-                  <span className="meta-row-label">Khối lớp</span>
-                  <Combobox
-                    className="meta-row-value"
-                    style={{ flex: 1 }}
-                    value={qData.grade || ""}
-                    onChange={(val) =>
-                      handleChange("grade", parseInt(val) || 0)
-                    }
-                    options={gradeOptions}
-                    placeholder="Khối lớp"
-                  />
-                </div>
-              </>
-            ) : (
+            <>
               <div className="meta-row">
-                <span className="meta-row-label">Loại câu hỏi</span>
-                <select
+                <span className="meta-row-label">Môn học</span>
+                <Combobox
                   className="meta-row-value"
-                  value={qData.question_type}
-                  onChange={(e) => {
-                    const newType = e.target.value;
-                    onChange({
-                      ...qData,
-                      question_type: newType,
-                      details: defaultDetailsFor(newType),
-                    });
-                  }}
-                >
-                  {Object.entries(TYPE_LABELS)
-                    .filter(([k]) => k !== "st")
-                    .map(([k, v]) => (
-                      <option key={k} value={k}>
-                        {v}
-                      </option>
-                    ))}
-                </select>
+                  style={{ flex: 1 }}
+                  value={qData.subject || ""}
+                  onChange={(val) => handleChange("subject", val)}
+                  options={subjOptions}
+                  placeholder="Môn học"
+                />
               </div>
-            )}
+              <div className="meta-row">
+                <span className="meta-row-label">Khối lớp</span>
+                <Combobox
+                  className="meta-row-value"
+                  style={{ flex: 1 }}
+                  value={qData.grade || ""}
+                  onChange={(val) => handleChange("grade", parseInt(val) || 0)}
+                  options={gradeOptions}
+                  placeholder="Khối lớp"
+                />
+              </div>
+            </>
+          ) : (
             <div className="meta-row">
-              <span className="meta-row-label">Chương</span>
+              <span className="meta-row-label">Loại câu hỏi</span>
               <Combobox
                 className="meta-row-value"
                 style={{ flex: 1 }}
-                value={qData.chapter || ""}
-                onChange={(val) => handleChange("chapter", val)}
-                options={chapterOptions}
-                placeholder="Chương"
+                value={qData.question_type}
+                onChange={(value) => {
+                  const newType = String(value);
+                  onChange({
+                    ...qData,
+                    question_type: newType,
+                    details: defaultDetailsFor(newType),
+                  });
+                }}
+                options={Object.entries(TYPE_LABELS)
+                  .filter(([k]) => k !== "st")
+                  .map(([value, label]) => ({ value, label }))}
               />
             </div>
-            <div className="meta-row">
-              <span className="meta-row-label">Bài học</span>
-              <Combobox
-                className="meta-row-value"
-                style={{ flex: 1 }}
-                value={qData.lesson || ""}
-                onChange={(val) => handleChange("lesson", val)}
-                options={lessonOptions}
-                placeholder="Bài học"
-              />
-            </div>
-            <div className="meta-row">
-              <span className="meta-row-label">Mức độ</span>
-              <Combobox
-                className="meta-row-value"
-                style={{ flex: 1 }}
-                value={qData.complexity || 1}
-                onChange={(val) => handleChange("complexity", parseInt(val))}
-                options={Object.entries(COMPLEXITY_LABELS).map(([k, v]) => ({
-                  value: +k,
-                  label: v,
-                }))}
-                placeholder="Mức độ"
-              />
-            </div>
+          )}
+          <div className="meta-row">
+            <span className="meta-row-label">Chương</span>
+            <Combobox
+              className="meta-row-value"
+              style={{ flex: 1 }}
+              value={qData.chapter || ""}
+              onChange={(val) => handleChange("chapter", val)}
+              options={chapterOptions}
+              placeholder="Chương"
+            />
+          </div>
+          <div className="meta-row">
+            <span className="meta-row-label">Bài học</span>
+            <Combobox
+              className="meta-row-value"
+              style={{ flex: 1 }}
+              value={qData.lesson || ""}
+              onChange={(val) => handleChange("lesson", val)}
+              options={lessonOptions}
+              placeholder="Bài học"
+            />
+          </div>
+          <div className="meta-row">
+            <span className="meta-row-label">Mức độ</span>
+            <Combobox
+              className="meta-row-value"
+              style={{ flex: 1 }}
+              value={qData.complexity || 1}
+              onChange={(val) => handleChange("complexity", parseInt(val))}
+              options={Object.entries(COMPLEXITY_LABELS).map(([k, v]) => ({
+                value: +k,
+                label: v,
+              }))}
+              placeholder="Mức độ"
+            />
+          </div>
         </div>
 
-        <div style={{ marginBottom: "0.5rem", marginTop: "0.5rem" }}>
+        <div style={{ marginBottom: "var(--space-2)", marginTop: "var(--space-2)" }}>
           <label className="section-label">Nội dung đề bài</label>
           <RichLatexEditor
             key={`content-${qData.id ?? "new"}`}
@@ -374,7 +394,7 @@ export const QuestionEditor = ({
                 style={{
                   display: "flex",
                   flexDirection: "column",
-                  gap: "0.75rem",
+                  gap: "var(--space-3)",
                 }}
               >
                 {qData.details.map((det, idx) => (
@@ -384,16 +404,12 @@ export const QuestionEditor = ({
                   <input
                     key={idx}
                     type="text"
-                    className="input"
+                    className="ui-input-native"
                     value={det.content || ""}
-                    onChange={(e) => handleDetailChange(idx, "content", e.target.value)}
+                    onChange={(e) =>
+                      handleDetailChange(idx, "content", e.target.value)
+                    }
                     placeholder="Nhập đáp án..."
-                    style={{
-                      padding: "0.6rem 0.85rem",
-                      border: "1.5px solid var(--border-strong)",
-                      borderRadius: "8px",
-                      fontSize: "0.95rem",
-                    }}
                   />
                 ))}
               </div>
@@ -414,7 +430,7 @@ export const QuestionEditor = ({
                 style={{
                   display: "flex",
                   flexDirection: "column",
-                  gap: "0.75rem",
+                  gap: "var(--space-3)",
                 }}
               >
                 {qData.details.map((det, idx) => {
@@ -429,39 +445,29 @@ export const QuestionEditor = ({
                       className={`option-card ${correct && isMC ? "is-correct" : ""}`}
                     >
                       <div
-                        onClick={
-                          isMC
-                            ? () =>
-                                onChange({
-                                  ...qData,
-                                  details: qData.details!.map((d, i) => ({
-                                    ...d,
-                                    is_correct: i === idx,
-                                  })),
-                                })
-                            : undefined
-                        }
-                        title={isMC ? "Bấm để chọn làm đáp án đúng" : undefined}
                         style={{
                           flexShrink: 0,
-                          width: 34,
-                          height: 34,
-                          marginTop: 2,
-                          borderRadius: "8px",
+                          width: "var(--control-height-md)",
+                          height: "var(--control-height-md)",
+                          marginTop: "calc(var(--space-1) / 2)",
+                          borderRadius: "var(--radius-lg)",
                           display: "flex",
                           alignItems: "center",
                           justifyContent: "center",
-                          fontWeight: 800,
-                          fontSize: "1.05rem",
-                          cursor: isMC ? "pointer" : "default",
+                          fontWeight: "var(--font-weight-extrabold)",
+                          fontSize: "var(--font-size-base)",
+                          cursor: "default",
                           userSelect: "none",
                           background:
                             correct && isMC
                               ? "var(--accent-success)"
                               : "var(--bg-hover)",
-                          color: correct && isMC ? "var(--text-on-accent)" : "var(--text-primary)",
+                          color:
+                            correct && isMC
+                              ? "var(--text-on-accent)"
+                              : "var(--text-primary)",
                           border: "none",
-                          transition: "all 0.2s",
+                          transition: "background-color var(--transition-normal), color var(--transition-normal)",
                         }}
                       >
                         {letter}
@@ -484,17 +490,19 @@ export const QuestionEditor = ({
                           onImageWidthChange={handleImageWidthChange}
                           questionId={qData.id}
                           importJobId={importJobId}
-                          allowPendingImage={imageEditable && !qData.id && !importJobId}
+                          allowPendingImage={
+                            imageEditable && !qData.id && !importJobId
+                          }
                         />
                         {!isMC && (
-                          <div style={{ marginTop: "0.6rem" }}>
+                          <div style={{ marginTop: "var(--space-2)" }}>
                             <label
                               style={{
                                 display: "block",
-                                fontSize: "0.78rem",
-                                fontWeight: 600,
+                                fontSize: "var(--font-size-xs)",
+                                fontWeight: "var(--font-weight-semibold)",
                                 color: "var(--text-secondary)",
-                                marginBottom: "0.3rem",
+                                marginBottom: "var(--space-1)",
                               }}
                             >
                               Giải thích cho ý {letter}
@@ -503,7 +511,12 @@ export const QuestionEditor = ({
                               key={`${qData.question_type}-expl-${idx}-${det.id ?? "new"}`}
                               content={det.explaination}
                               onChange={(val, newImage) =>
-                                handleDetailChange(idx, "explaination", val, newImage)
+                                handleDetailChange(
+                                  idx,
+                                  "explaination",
+                                  val,
+                                  newImage,
+                                )
                               }
                               placeholder="Giải thích vì sao ý này đúng/sai (tùy chọn)"
                               imageEditable={imageEditable}
@@ -511,101 +524,50 @@ export const QuestionEditor = ({
                               onImageWidthChange={handleImageWidthChange}
                               questionId={qData.id}
                               importJobId={importJobId}
-                              allowPendingImage={imageEditable && !qData.id && !importJobId}
+                              allowPendingImage={
+                                imageEditable && !qData.id && !importJobId
+                              }
                             />
                           </div>
                         )}
                       </div>
 
-                      <div style={{ flexShrink: 0, marginTop: 4 }}>
+                      <div style={{ flexShrink: 0, marginTop: "var(--space-1)" }}>
                         {isMC ? (
-                          <label
-                            style={{
-                              display: "inline-flex",
-                              alignItems: "center",
-                              gap: "0.5rem",
-                              cursor: "pointer",
-                              whiteSpace: "nowrap",
-                            }}
+                          <button
+                            type="button"
+                            className="ui-answer-toggle"
+                            aria-pressed={correct}
+                            aria-label={`${correct ? "Bỏ chọn" : "Chọn"} phương án ${letter} làm đáp án đúng`}
+                            onClick={() =>
+                              handleDetailChange(idx, "is_correct", !correct)
+                            }
                           >
-                            <input
-                              type="radio"
-                              name={`correct_${qData.id}_${isChild ? childIndex : "parent"}`}
-                              checked={correct}
-                              onChange={() =>
-                                onChange({
-                                  ...qData,
-                                  details: qData.details!.map((d, i) => ({
-                                    ...d,
-                                    is_correct: i === idx,
-                                  })),
-                                })
-                              }
-                            />
-                            <span
-                              style={{
-                                fontSize: "0.85rem",
-                                color: correct
-                                  ? "var(--accent-success)"
-                                  : "var(--text-secondary)",
-                                fontWeight: correct ? 700 : 500,
-                              }}
-                            >
-                              Đúng
-                            </span>
-                          </label>
+                            Đúng
+                          </button>
                         ) : (
                           <div
-                            style={{
-                              display: "inline-flex",
-                              flexDirection: "column",
-                              background: "var(--bg-hover)",
-                              borderRadius: 8,
-                              overflow: "hidden",
-                              width: 64,
-                              boxShadow: "inset 0 0 0 1px rgba(0,0,0,0.05)",
-                            }}
+                            className="ui-segmented ui-segmented--fit ui-binary-choice ui-binary-choice--vertical ui-binary-choice--small"
+                            role="group"
+                            aria-label={`Đáp án cho ý ${letter}`}
                           >
                             <button
                               type="button"
+                              className="ui-segmented__item ui-binary-choice__true"
+                              aria-pressed={correct}
                               onClick={() =>
                                 handleDetailChange(idx, "is_correct", true)
                               }
-                              style={{
-                                padding: "0.4rem 0",
-                                border: "none",
-                                borderBottom: "1px solid var(--border)",
-                                cursor: "pointer",
-                                fontSize: "0.85rem",
-                                background: correct
-                                  ? "var(--accent-success)"
-                                  : "var(--bg-surface)",
-                                color: correct
-                                  ? "var(--text-on-accent)"
-                                  : "var(--text-primary)",
-                                fontWeight: correct ? 700 : 500,
-                              }}
                             >
                               Đúng
                             </button>
                             <button
                               type="button"
+                              className="ui-segmented__item ui-binary-choice__false"
+                              aria-pressed={!correct}
                               onClick={() =>
                                 handleDetailChange(idx, "is_correct", false)
                               }
-                              style={{
-                                padding: "0.4rem 0",
-                                border: "none",
-                                cursor: "pointer",
-                                fontSize: "0.85rem",
-                                background: !correct
-                                  ? "var(--accent-danger)"
-                                  : "var(--bg-surface)",
-                                color: !correct
-                                  ? "var(--text-on-accent)"
-                                  : "var(--text-primary)",
-                                fontWeight: !correct ? 700 : 500,
-                              }}
                             >
                               Sai
                             </button>
@@ -623,59 +585,65 @@ export const QuestionEditor = ({
           <CodingSettingsPanel qData={qData} onChange={onChange} />
         )}
 
-        {qData.question_type !== "st" &&
-          qData.question_type !== "cd" && (
-            <div style={{ marginTop: "1rem" }}>
-              <label className="section-label">
-                {qData.question_type === "tf"
-                  ? "Lời giải chung"
-                  : "Lời giải chi tiết"}
-              </label>
-              <RichLatexEditor
-                key={`solution-${qData.id ?? "new"}`}
-                content={qData.solution}
-                onChange={(val, newImage) => handleChange("solution", val, newImage)}
-                imageEditable={imageEditable}
-                images={qData.images}
-                onImageWidthChange={handleImageWidthChange}
-                questionId={qData.id}
-                importJobId={importJobId}
-                allowPendingImage={imageEditable && !qData.id && !importJobId}
-              />
-            </div>
-          )}
+        {qData.question_type !== "st" && qData.question_type !== "cd" && (
+          <div style={{ marginTop: "var(--space-4)" }}>
+            <label className="section-label">
+              {qData.question_type === "tf"
+                ? "Lời giải chung"
+                : "Lời giải chi tiết"}
+            </label>
+            <RichLatexEditor
+              key={`solution-${qData.id ?? "new"}`}
+              content={qData.solution}
+              onChange={(val, newImage) =>
+                handleChange("solution", val, newImage)
+              }
+              imageEditable={imageEditable}
+              images={qData.images}
+              onImageWidthChange={handleImageWidthChange}
+              questionId={qData.id}
+              importJobId={importJobId}
+              allowPendingImage={imageEditable && !qData.id && !importJobId}
+            />
+          </div>
+        )}
 
         {!isChild && qData.question_type === "st" && (
           <div
             style={{
-              marginTop: "1rem",
-              borderTop: "2px dashed var(--border)",
-              paddingTop: "1.5rem",
+              marginTop: "var(--space-4)",
+              borderTop: "calc(var(--border-width) * 2) dashed var(--border)",
+              paddingTop: "var(--space-6)",
             }}
           >
             <div
               style={{
-                marginBottom: "1.5rem",
+                marginBottom: "var(--space-6)",
                 display: "flex",
                 alignItems: "center",
-                gap: "1rem",
+                gap: "var(--space-4)",
+                flexWrap: "wrap",
               }}
             >
               <h3
                 style={{
                   margin: 0,
-                  paddingLeft: "0.5rem",
-                  borderLeft: "4px solid var(--accent-primary)",
+                  paddingLeft: "var(--space-2)",
+                  borderLeft: "var(--space-1) solid var(--accent-primary)",
                 }}
               >
                 Các câu hỏi con
               </h3>
               <div
-                style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "var(--space-2)",
+                  flexWrap: "wrap",
+                }}
               >
-                <div style={{ width: "170px" }}>
+                <div style={{ width: "var(--combobox-min-width)" }}>
                   <Combobox
-                    className="select"
                     value={newChildType}
                     onChange={(val) => {
                       if (qData.children && qData.children.length > 0) {
@@ -695,15 +663,10 @@ export const QuestionEditor = ({
                 </div>
                 <button
                   type="button"
-                  className="btn btn-primary"
-                  style={{
-                    padding: "0.25rem 0.75rem",
-                    fontSize: "0.85rem",
-                    height: "38px",
-                  }}
+                  className="ui-button ui-button--primary"
                   onClick={handleAddChild}
                 >
-                  + Thêm
+                  <Icon name="plus" /> Thêm
                 </button>
               </div>
             </div>
@@ -712,7 +675,7 @@ export const QuestionEditor = ({
               style={{
                 display: "flex",
                 flexDirection: "column",
-                gap: "1.5rem",
+                gap: "var(--space-6)",
               }}
             >
               {(qData.children || []).map((child, idx) => (
@@ -724,8 +687,12 @@ export const QuestionEditor = ({
                     newChildren[idx] = newChild;
                     onChange({ ...qData, children: newChildren });
                   }}
-                  onDelete={() => {
-                    if (!confirm("Xóa câu hỏi con này?")) return;
+                  onDelete={async () => {
+                    if (!(await confirmDialog("Xóa câu hỏi con này?", {
+                      title: "Xóa câu hỏi con",
+                      confirmLabel: "Xóa câu hỏi",
+                      intent: "danger",
+                    }))) return;
                     const newChildren = [...(qData.children || [])];
                     newChildren.splice(idx, 1);
                     onChange({ ...qData, children: newChildren });
@@ -741,7 +708,7 @@ export const QuestionEditor = ({
                 <div
                   style={{
                     textAlign: "center",
-                    padding: "2rem",
+                    padding: "var(--space-8)",
                     background: "var(--bg-elevated)",
                     color: "var(--text-muted)",
                     borderRadius: "var(--radius-md)",
@@ -755,15 +722,15 @@ export const QuestionEditor = ({
                   style={{
                     display: "flex",
                     justifyContent: "center",
-                    marginTop: "1rem",
+                    marginTop: "var(--space-4)",
                   }}
                 >
                   <button
                     type="button"
-                    className="btn btn-secondary"
+                    className="ui-button ui-button--secondary"
                     onClick={handleAddChild}
                   >
-                    + Thêm câu hỏi con
+                    <Icon name="plus" /> Thêm câu hỏi con
                   </button>
                 </div>
               )}

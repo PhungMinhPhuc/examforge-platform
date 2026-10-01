@@ -1,0 +1,316 @@
+.export-contest-modal__workspace {
+  display: grid;
+  grid-template-columns:
+    calc(var(--control-min-width-lg) * 2)
+    minmax(calc(var(--control-min-width-lg) * 3.5), 0.9fr)
+    minmax(calc(var(--control-min-width-lg) * 3.5), 1.1fr);
+  flex: 1;
+  min-height: 0;
+}
+.export-contest-modal__navigation {
+  min-width: 0;
+  overflow-y: auto;
+}
+.export-contest-modal__settings {
+  min-width: 0;
+  padding: var(--space-6);
+  overflow-y: auto;
+  border-left: var(--border-width) solid var(--border);
+  background: var(--bg-base);
+  color: var(--text-primary);
+  font-size: var(--control-font-size-md);
+  line-height: var(--line-height-normal);
+}
+.export-contest-modal__settings--organized {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-6);
+}
+.export-contest-modal__settings--organized .export-contest-modal__basic-grid {
+  margin-bottom: 0;
+}
+.export-contest-modal__title-with-icon,
+.export-contest-modal__format-label {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+.export-contest-modal__title-with-icon {
+  font-weight: var(--font-weight-semibold);
+}
+.export-contest-modal__title-with-icon svg { color: var(--accent-primary); }
+.export-contest-modal__group {
+  display: grid;
+  gap: var(--space-3);
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+.export-contest-modal__group legend {
+  margin-bottom: var(--space-2);
+  color: var(--text-primary);
+  font-size: var(--control-font-size-md);
+  font-weight: var(--font-weight-semibold);
+}
+.export-contest-modal__settings--organized .ui-checkbox,
+.export-contest-modal__settings--organized .ui-radio,
+.export-contest-modal__settings--organized .ui-checkbox__label,
+.export-contest-modal__settings--organized .ui-radio__label {
+  align-items: center;
+}
+.export-contest-modal__settings--organized .ui-checkbox__label,
+.export-contest-modal__settings--organized .ui-radio__label {
+  display: inline-flex;
+  gap: var(--space-2);
+}
+.export-contest-modal__settings--organized input[inputmode="decimal"] { text-align: center; }
+.export-contest-modal__settings--organized input.export-contest-modal__duration-input {
+  text-align: left;
+}
+.export-contest-modal__shuffle-mode .ui-segmented__item { font-size: var(--font-size-xs); }
+.export-contest-modal__basic-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-6);
+  margin-bottom: var(--space-4);
+}
+.export-contest-modal__column,
+.export-contest-modal__stack,
+.export-contest-modal__field {
+  display: grid;
+}
+.export-contest-modal__column,
+.export-contest-modal__stack {
+  align-content: start;
+  grid-auto-rows: max-content;
+  gap: var(--space-4);
+}
+.export-contest-modal__field {
+  gap: var(--space-2);
+}
+.export-contest-modal__label {
+  color: var(--text-primary);
+  font-size: inherit;
+  font-weight: var(--font-weight-semibold);
+}
+.export-contest-modal__choice-row {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--space-4);
+}
+.export-contest-modal__choice {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  cursor: pointer;
+}
+.export-contest-modal__panel {
+  display: grid;
+  gap: var(--space-3);
+  padding: var(--space-4);
+  border: var(--border-width) solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--bg-surface);
+}
+.export-contest-modal__panel-title {
+  font-size: inherit;
+  font-weight: var(--font-weight-semibold);
+}
+.export-contest-modal__warning {
+  color: var(--accent-warning);
+  line-height: var(--line-height-normal);
+}
+.export-contest-modal__panel-header,
+.export-contest-modal__inline-field,
+.export-contest-modal__option,
+.export-contest-modal__option-controls {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+.export-contest-modal__panel-header {
+  justify-content: space-between;
+  flex-wrap: wrap;
+}
+.export-contest-modal__inline-label {
+  color: var(--text-primary);
+  font-size: var(--control-font-size-sm);
+}
+.export-contest-modal__eyebrow {
+  color: var(--text-primary);
+  font-size: inherit;
+  font-weight: var(--font-weight-semibold);
+}
+.export-contest-modal__compact-input {
+  width: var(--control-min-width-md);
+  text-align: center;
+}
+.export-contest-modal__compact-input--narrow {
+  width: var(--control-min-width-sm);
+}
+.export-contest-modal__option {
+  justify-content: space-between;
+  flex-wrap: wrap;
+  padding: var(--space-3);
+  border: var(--border-width) solid var(--border);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+}
+.export-contest-modal__option--selected {
+  border-color: var(--accent-primary);
+  background: var(--accent-primary-soft);
+}
+.export-contest-modal__option > label {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  cursor: pointer;
+}
+.export-contest-modal__segmented {
+  align-self: start;
+}
+.export-contest-modal__settings .ui-checkbox:not(.ui-checkbox--disabled),
+.export-contest-modal__settings .ui-radio:not(.ui-radio--disabled) {
+  color: var(--text-primary);
+}
+.export-contest-modal__editor-frame {
+  overflow: hidden;
+  border: var(--border-width) solid var(--border);
+  border-radius: var(--radius-md);
+}
+.export-contest-modal__preview {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  padding: var(--space-2) var(--space-3);
+  background: var(--bg-hover);
+}
+.export-contest-modal__preview-header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  margin-bottom: var(--space-2);
+}
+.export-contest-modal__preview-ribbon { margin-left: auto; }
+.export-contest-modal__page-count {
+  color: var(--accent-primary);
+  font-size: var(--control-font-size-sm);
+  font-weight: var(--font-weight-semibold);
+}
+.export-contest-modal__preview-title {
+  margin: 0;
+  color: var(--text-primary);
+  font-size: var(--control-font-size-md);
+}
+.export-contest-modal__zoom {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+}
+.export-contest-modal__zoom-input {
+  width: var(--control-min-width-sm);
+  text-align: center;
+}
+.export-contest-modal__zoom-unit {
+  color: var(--text-secondary);
+  font-size: var(--control-font-size-sm);
+}
+.export-contest-modal__preview-frame {
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+  border-radius: var(--radius-sm);
+  background: var(--bg-surface);
+  box-shadow: var(--shadow-md);
+}
+.export-contest-modal__preview-frame iframe {
+  width: 100%;
+  height: 100%;
+  border: 0;
+}
+.export-contest-modal__empty-preview {
+  width: 100%;
+  height: 100%;
+  display: grid;
+  place-items: center;
+  color: var(--text-muted);
+}
+.export-contest-modal__progress {
+  flex: 1;
+  display: grid;
+  place-items: center;
+  align-content: center;
+  gap: var(--space-4);
+  padding: var(--space-8);
+  text-align: center;
+}
+.export-contest-modal__progress-title {
+  margin: 0;
+  font-size: var(--font-size-base);
+}
+.export-contest-modal__progress-track {
+  width: min(100%, 31.25rem);
+}
+.export-contest-modal__progress-message {
+  color: var(--text-primary);
+  font-weight: var(--font-weight-semibold);
+}
+.export-contest-modal__footer {
+  justify-content: space-between;
+}
+.export-contest-modal__tip {
+  max-width: 60%;
+  color: var(--text-secondary);
+  font-size: var(--control-font-size-sm);
+  font-style: italic;
+}
+.export-contest-modal__tip strong {
+  color: var(--accent-primary);
+}
+.export-contest-modal__actions {
+  display: flex;
+  gap: var(--space-3);
+}
+@keyframes export-modal-pulse {
+  0% {
+    transform: scale(0.95);
+    box-shadow: 0 0 0 0 var(--accent-primary-border);
+  }
+  70% {
+    transform: scale(1);
+    box-shadow: 0 0 0 15px transparent;
+  }
+  100% {
+    transform: scale(0.95);
+    box-shadow: 0 0 0 0 transparent;
+  }
+}
+@media (max-width: 900px) {
+  .export-contest-modal__workspace {
+    grid-template-columns: 1fr;
+  }
+  .export-contest-modal__navigation {
+    flex-direction: row;
+    overflow-x: auto;
+    border-left: 0;
+    border-bottom: var(--border-width) solid var(--border);
+  }
+  .export-contest-modal__settings {
+    border-top: var(--border-width) solid var(--border);
+    border-left: 0;
+  }
+  .export-contest-modal__preview {
+    min-height: 50dvh;
+  }
+}
+@media (max-width: 640px) {
+  .export-contest-modal__basic-grid {
+    grid-template-columns: 1fr;
+  }
+  .export-contest-modal__tip {
+    display: none;
+  }
+}

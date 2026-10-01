@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
+import { Icon } from "@/components/icons";
 
 export default function QuestionCreateDropdown() {
   const [open, setOpen] = useState(false);
@@ -16,37 +17,42 @@ export default function QuestionCreateDropdown() {
   }, []);
 
   return (
-    <div className="question-create-dropdown" ref={rootRef}>
+    <div className="ui-dropdown-anchor" ref={rootRef}>
       <button
         type="button"
-        className="btn btn-primary question-create-dropdown-trigger"
+        className="ui-button ui-button--primary"
         onClick={() => setOpen((value) => !value)}
         aria-expanded={open}
         aria-haspopup="menu"
       >
+        <Icon name="plus" />
         Tạo câu hỏi
-        <svg viewBox="0 0 20 20" aria-hidden="true">
-          <path d="m6 8 4 4 4-4" />
-        </svg>
+        <Icon name="chevron-down" />
       </button>
 
       {open && (
-        <div className="question-create-dropdown-menu" role="menu">
+        <div className="ui-dropdown__menu" role="menu">
           <Link
+            className="ui-dropdown__option"
             href="/questions/create"
             role="menuitem"
             onClick={() => setOpen(false)}
           >
-            <strong>Tạo câu hỏi mới</strong>
-            <span>Nhập nội dung và đáp án thủ công</span>
+            <strong className="ui-dropdown__label">Tạo câu hỏi mới</strong>
+            <span className="ui-dropdown__description">
+              Nhập nội dung và đáp án thủ công
+            </span>
           </Link>
           <Link
+            className="ui-dropdown__option"
             href="/questions/upload"
             role="menuitem"
             onClick={() => setOpen(false)}
           >
-            <strong>Nhập câu hỏi</strong>
-            <span>Nhập nhiều câu hỏi từ tài liệu</span>
+            <strong className="ui-dropdown__label">Nhập câu hỏi</strong>
+            <span className="ui-dropdown__description">
+              Nhập nhiều câu hỏi từ tài liệu
+            </span>
           </Link>
         </div>
       )}

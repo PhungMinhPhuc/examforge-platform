@@ -63,6 +63,12 @@
   display: inline-flex;
 }
 
+.ui-picker__popup--portal {
+  position: fixed;
+  z-index: var(--layer-popover);
+  display: inline-flex;
+}
+
 .ui-picker__popup[hidden] {
   display: none;
 }

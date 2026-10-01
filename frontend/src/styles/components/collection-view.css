@@ -1,0 +1,191 @@
+.ui-collection {
+  display: grid;
+  gap: var(--collection-gap);
+}
+
+.ui-collection__entry {
+  min-width: 0;
+}
+
+.ui-collection--grid {
+  grid-template-columns: repeat(
+    auto-fill,
+    minmax(min(100%, var(--collection-card-min-width)), 1fr)
+  );
+}
+
+.ui-collection--list {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.ui-collection-item {
+  min-width: 0;
+  display: grid;
+  gap: var(--collection-item-gap);
+  padding: var(--collection-item-padding);
+  border: var(--control-border-width) solid var(--collection-item-border-color);
+  border-radius: var(--collection-item-radius);
+  background: var(--collection-item-bg);
+  box-shadow: var(--collection-item-shadow);
+}
+
+.ui-collection-item--interactive {
+  cursor: pointer;
+  transition:
+    border-color var(--transition-normal),
+    box-shadow var(--transition-normal);
+}
+
+.ui-collection-item--interactive:hover {
+  border-color: var(--collection-item-hover-border-color);
+  box-shadow: var(--collection-item-hover-shadow);
+}
+
+.ui-collection-item__main {
+  min-width: 0;
+  display: grid;
+  gap: var(--space-1);
+}
+
+.ui-collection-item__leading {
+  grid-area: leading;
+  align-self: start;
+}
+
+.ui-collection-item__badges,
+.ui-collection-item__metadata,
+.ui-collection-item__actions {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--collection-actions-gap);
+}
+
+.ui-collection-item__badges {
+  margin-bottom: var(--space-1);
+}
+
+.ui-collection-item__badges > * {
+  flex: none;
+  white-space: nowrap;
+}
+
+.ui-collection-item__description,
+.ui-collection-item__metadata {
+  color: var(--text-secondary);
+  font-size: var(--collection-supporting-size);
+  line-height: var(--collection-supporting-line-height);
+}
+
+.ui-collection-item__actions {
+  align-self: start;
+  justify-content: flex-end;
+}
+
+.ui-collection-item__details {
+  padding-top: var(--space-3);
+  border-top: var(--control-border-width) solid var(--border);
+  color: var(--text-secondary);
+  font-size: var(--collection-supporting-size);
+  line-height: var(--collection-supporting-line-height);
+}
+
+.ui-collection-controls {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+.ui-collection-item__placeholder {
+  width: var(--control-height-lg);
+  height: var(--control-height-lg);
+  display: block;
+  border: var(--control-border-width) solid var(--accent-primary-border);
+  border-radius: var(--radius-lg);
+  background: var(--accent-primary-soft);
+}
+
+.ui-collection-item__code {
+  padding: var(--space-1) var(--space-2);
+  border-radius: var(--control-radius-sm);
+  background: var(--bg-elevated);
+  color: var(--text-muted);
+  font: var(--font-size-3xs)/var(--line-height-normal) var(--font-family-code);
+}
+
+.ui-collection--grid .ui-collection__entry,
+.ui-collection--grid .ui-collection-item {
+  height: 100%;
+}
+
+
+.ui-collection--grid .ui-collection-item {
+  grid-template-areas:
+    "leading main"
+    "actions actions"
+    "details details";
+  grid-template-columns: auto minmax(0, 1fr);
+}
+
+.ui-collection--grid .ui-collection-item__main { grid-area: main; }
+.ui-collection--grid .ui-collection-item__actions {
+  grid-area: actions;
+  align-self: end;
+  justify-content: flex-start;
+  margin-top: auto;
+}
+.ui-collection--grid .ui-collection-item__details { grid-area: details; }
+
+.ui-collection--list .ui-collection-item {
+  grid-template-areas:
+    "leading main actions"
+    "details details details";
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+}
+
+.ui-collection--list .ui-collection-item__main { grid-area: main; }
+.ui-collection--list .ui-collection-item__actions {
+  grid-area: actions;
+  align-self: center;
+}
+.ui-collection--list .ui-collection-item__details { grid-area: details; }
+
+.ui-collection-item__title {
+  margin: 0;
+  color: var(--text-primary);
+  font-size: var(--collection-title-size);
+  font-weight: var(--collection-title-weight);
+  line-height: var(--collection-title-line-height);
+}
+
+.ui-collection-item__title > a {
+  color: inherit;
+  font: inherit;
+  text-decoration: none;
+}
+
+.ui-collection-item__actions > * {
+  flex: none;
+}
+
+.ui-collection-item__meta {
+  margin: 0;
+  color: var(--text-secondary);
+  font-size: var(--font-size-sm);
+}
+
+@media (max-width: 600px) {
+  .ui-collection--list .ui-collection-item {
+    grid-template-areas:
+      "leading main"
+      "actions actions"
+      "details details";
+    grid-template-columns: auto minmax(0, 1fr);
+  }
+
+  .ui-collection--list .ui-collection-item__actions {
+    justify-content: flex-start;
+  }
+}

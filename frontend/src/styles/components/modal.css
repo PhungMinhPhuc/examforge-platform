@@ -1,0 +1,263 @@
+/* Shared dialog/modal structure. */
+
+:root {
+  --modal-layer: var(--layer-modal);
+  --confirm-dialog-layer: var(--layer-confirm-dialog);
+  --modal-close-size: calc(var(--control-height-sm) + var(--space-1));
+  --modal-close-icon-size: var(--control-icon-size);
+  --modal-close-offset-block: calc(-1 * var(--space-1));
+  --modal-header-padding-block: var(--space-4);
+  --modal-header-padding-inline: var(--space-6);
+  --modal-body-padding: var(--space-6);
+  --modal-footer-padding-block: var(--space-4);
+  --modal-footer-padding-inline: var(--space-6);
+}
+
+.ui-modal-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: var(--modal-layer);
+  display: grid;
+  place-items: center;
+  padding: var(--space-4);
+  overflow-y: auto;
+  background: var(--overlay);
+  backdrop-filter: blur(4px);
+  animation: fadeIn var(--transition-normal);
+}
+
+.ui-modal {
+  width: min(100%, 52rem);
+  max-height: calc(100dvh - var(--space-8));
+  overflow: hidden;
+  border: var(--border-width) solid var(--border);
+  border-radius: var(--radius-xl);
+  background: var(--bg-surface);
+  color: var(--text-primary);
+  box-shadow: var(--shadow-lg);
+}
+
+.ui-modal--small {
+  width: min(100%, 32.5rem);
+}
+
+.ui-modal--medium {
+  width: min(92vw, 51.25rem);
+}
+
+.ui-modal--large {
+  width: 95vw;
+  height: min(95dvh, 62.5rem);
+  max-height: calc(100dvh - var(--space-8));
+  display: flex;
+  flex-direction: column;
+}
+
+.ui-modal--large > .ui-modal__body,
+.ui-modal--large > form > .ui-modal__body {
+  min-height: 0;
+  flex: 1;
+}
+
+.ui-modal-backdrop--nested {
+  z-index: var(--layer-modal-nested);
+}
+.ui-modal-backdrop--editor {
+  z-index: var(--layer-editor-dialog);
+}
+.ui-modal-backdrop--math {
+  place-items: start center;
+  padding-top: max(var(--space-4), 5dvh);
+}
+.ui-modal-backdrop--image {
+  z-index: var(--layer-image-dialog);
+}
+
+.ui-modal--image-editor {
+  width: min(90vw, 56.25rem);
+  height: min(90dvh, 56.25rem);
+  background: var(--bg-surface);
+}
+
+.ui-modal__image-workspace {
+  position: relative;
+  min-height: 0;
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: auto;
+  background: var(--code-bg);
+}
+
+.ui-modal__image-workspace img {
+  max-width: 100%;
+  display: block;
+}
+
+.ui-modal__controls {
+  display: grid;
+  gap: var(--space-3);
+  padding: var(--space-4) var(--space-6);
+  border-top: var(--border-width) solid var(--border);
+  background: var(--bg-surface);
+}
+
+.ui-modal__control-row,
+.ui-modal__control-group {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+}
+.ui-modal__control-row {
+  gap: var(--space-4);
+}
+.ui-modal__control-group {
+  gap: var(--space-2);
+}
+.ui-modal__control-label {
+  color: var(--text-muted);
+  font-size: var(--font-size-xs);
+}
+.ui-modal__range-row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+.ui-modal__range-row input {
+  flex: 1;
+  accent-color: var(--accent-primary);
+}
+.ui-modal__range-value {
+  min-width: 3rem;
+  color: var(--text-secondary);
+  text-align: right;
+}
+
+.ui-modal form {
+  display: contents;
+}
+
+.ui-modal__header {
+  min-height: calc(
+    var(--modal-close-size) + var(--modal-header-padding-block) * 2
+  );
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--space-4);
+  padding: var(--modal-header-padding-block) var(--modal-header-padding-inline);
+  border-bottom: var(--border-width) solid var(--border);
+}
+
+.ui-modal__heading {
+  min-width: 0;
+}
+
+.ui-modal__title {
+  margin: 0;
+  color: var(--text-primary);
+  font-size: var(--font-size-base);
+  font-weight: var(--font-weight-bold);
+  line-height: var(--line-height-tight);
+}
+
+.ui-modal__description {
+  margin: var(--space-1) 0 0;
+  color: var(--text-muted);
+  font-size: var(--font-size-md);
+  line-height: var(--line-height-normal);
+}
+
+.ui-modal__close {
+  appearance: none;
+  width: var(--modal-close-size);
+  min-width: var(--modal-close-size);
+  height: var(--modal-close-size);
+  display: inline-grid;
+  place-items: center;
+  flex: none;
+  padding: 0;
+  border: var(--control-border-width) solid transparent;
+  border-radius: var(--control-radius-md);
+  background: transparent;
+  color: var(--text-secondary);
+  cursor: pointer;
+  transform: translateY(var(--modal-close-offset-block));
+  transition:
+    background-color var(--transition-normal),
+    border-color var(--transition-normal),
+    box-shadow var(--transition-normal);
+}
+
+.ui-modal__close:hover:not(:disabled) {
+  border-color: var(--border);
+  background: var(--bg-hover);
+  color: var(--text-primary);
+}
+
+.ui-modal__close:focus-visible {
+  outline: var(--focus-outline-width) solid var(--focus-outline-color);
+  outline-offset: var(--focus-outline-offset);
+}
+
+.ui-modal__close svg {
+  width: var(--modal-close-icon-size);
+  height: var(--modal-close-icon-size);
+}
+
+.ui-modal__body {
+  padding: var(--modal-body-padding);
+  overflow-y: auto;
+}
+
+
+.ui-modal__footer {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: var(--space-3);
+  padding: var(--modal-footer-padding-block) var(--modal-footer-padding-inline);
+  border-top: var(--border-width) solid var(--border);
+}
+
+.ui-confirm-dialog-backdrop {
+  z-index: var(--confirm-dialog-layer);
+}
+
+.ui-confirm-dialog__message {
+  color: var(--text-secondary);
+  line-height: var(--line-height-normal);
+  white-space: pre-line;
+}
+
+@media (max-width: 700px) {
+  .ui-modal-backdrop {
+    padding: var(--space-2);
+  }
+
+  .ui-modal,
+  .ui-modal--small,
+  .ui-modal--medium,
+  .ui-modal--large {
+    width: 100%;
+    max-height: calc(100dvh - var(--space-4));
+  }
+
+  .ui-modal__header {
+    padding: var(--space-3) var(--space-4);
+  }
+
+  .ui-modal__body {
+    padding: var(--space-4);
+  }
+
+  .ui-modal__footer {
+    flex-wrap: wrap;
+    padding: var(--space-3) var(--space-4);
+  }
+
+  .ui-confirm-dialog .ui-modal__footer > .ui-button {
+    flex: 1 1 var(--control-min-width-md);
+  }
+}

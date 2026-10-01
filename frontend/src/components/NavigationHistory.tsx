@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { createPortal } from "react-dom";
 import { APP_HISTORY_KEY } from "@/lib/appHistory";
+import { Icon } from "@/components/icons";
 
 export default function NavigationHistory() {
   const router = useRouter();
@@ -15,7 +16,7 @@ export default function NavigationHistory() {
     let node: HTMLDivElement | null = null;
     const attach = () => {
       if (node?.isConnected) return true;
-      const header = document.querySelector(".main-content > .page-header");
+      const header = document.querySelector(".main-content > .ui-page-header");
       if (!header) return false;
       node = document.createElement("div");
       node.className = "history-nav-host";
@@ -74,9 +75,7 @@ export default function NavigationHistory() {
         title="Quay lại trang trước"
         aria-label="Quay lại trang trước"
       >
-        <svg viewBox="0 0 24 24" aria-hidden="true">
-          <path d="M15 18l-6-6 6-6" />
-        </svg>
+        <Icon name="chevron-left" />
       </button>
       <button
         type="button"
@@ -86,9 +85,7 @@ export default function NavigationHistory() {
         title="Đi tới trang kế tiếp"
         aria-label="Đi tới trang kế tiếp"
       >
-        <svg viewBox="0 0 24 24" aria-hidden="true">
-          <path d="M9 6l6 6-6 6" />
-        </svg>
+        <Icon name="chevron-right" />
       </button>
     </div>,
     host,

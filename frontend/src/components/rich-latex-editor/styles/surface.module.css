@@ -1,0 +1,115 @@
+.surface {
+  min-height: var(--rle-min-height, 120px);
+  max-height: var(--rle-max-height, none);
+  padding: var(--space-4);
+  overflow: auto;
+  outline: 0;
+}
+.surface:empty::before { color: var(--text-placeholder); content: attr(data-placeholder); pointer-events: none; }
+.surface :global(.rle-table) {
+  width: 100%;
+  margin-block: var(--space-3);
+  border-collapse: collapse;
+  table-layout: fixed;
+  background: var(--bg-surface);
+  color: var(--text-primary);
+  font: inherit;
+  cursor: text;
+}
+.surface :global(.rle-table td) {
+  min-width: var(--control-height-lg);
+  height: var(--control-height-lg);
+  padding: var(--space-2);
+  vertical-align: middle;
+  border: var(--border-width) solid currentColor;
+  background: var(--bg-surface);
+  font: inherit;
+  line-height: inherit;
+}
+.surface :global(.rle-table td:focus) { outline: 0; }
+.surface :global(.rle-table[data-rle-active="true"]) {
+  outline: var(--border-width) solid var(--accent-primary);
+  outline-offset: var(--border-width);
+}
+.surface :global(.rle-table td::before) { background: transparent; }
+.surface :global(.rle-table td:hover::after) { background: transparent; }
+.surface :global(.rle-table td[data-rle-column-boundary="true"]::after) {
+  background: var(--accent-primary);
+}
+.surface :global(.rle-table td[data-rle-row-boundary="true"]::before) {
+  background: var(--accent-primary);
+}
+.surface[data-rle-column-resize],
+.surface[data-rle-column-resize] * { cursor: col-resize !important; }
+.surface[data-rle-row-resize],
+.surface[data-rle-row-resize] * { cursor: row-resize !important; }
+.surface :global(.rle-table td[data-rle-selected="true"]) {
+  background: var(--accent-primary-soft);
+  outline: var(--border-width) solid var(--accent-primary);
+  outline-offset: calc(var(--border-width) * -1);
+}
+.surface :global(.rle-table[data-rle-fully-selected="true"]) {
+  box-shadow: inset 0 0 0 var(--border-width) var(--accent-primary);
+  background: var(--accent-primary-soft);
+}
+.surface :global(.rle-table[data-rle-fully-selected="true"] td) {
+  background: var(--accent-primary-soft);
+}
+.surface :global(.rle-image) {
+  position: relative;
+  max-width: 100%;
+  min-height: var(--control-height-lg);
+  margin-block: var(--space-3);
+  padding: 0;
+  border: var(--border-width) solid transparent;
+  border-radius: var(--radius-none);
+  background: var(--bg-surface);
+  color: var(--text-primary);
+  cursor: pointer;
+}
+.surface :global(.rle-image-img) {
+  display: block;
+  width: var(--rle-image-width, auto);
+  max-width: 100%;
+  margin-inline: auto;
+  border-radius: var(--radius-none);
+}
+
+.surface :global(.ui-editor-feedback) {
+  padding: var(--space-2) var(--space-3);
+  border: var(--border-width) solid var(--answer-wrong-border);
+  border-radius: var(--radius-md);
+  background: var(--tone-danger-bg);
+  color: var(--accent-danger);
+  font-size: var(--font-size-md);
+  line-height: var(--line-height-normal);
+}
+.surface :global(.rle-image.side-right) {
+  width: var(--rle-image-width, 40%);
+  margin-inline-start: var(--space-4);
+  float: right;
+}
+.surface :global(.rle-image.side-right > .rle-image-img) {
+  width: 100%;
+  margin-inline: 0;
+}
+/* The modular editor exposes image actions only through its ribbon. The
+   document codec is shared with the legacy editor and still emits its old
+   inline chrome, so keep that chrome out of this surface. */
+.surface :global(.rle-image-head),
+.surface :global(.rle-image-zoom) { display: none; }
+.surface :global(.rle-image[data-rle-selected="true"]) {
+  border-color: transparent;
+  background: var(--bg-surface);
+  outline: 0;
+}
+.surface :global(.rle-image[data-rle-selected="true"] > .rle-image-img) {
+  border-color: transparent;
+  border-radius: var(--radius-none);
+  outline: var(--border-width) solid var(--accent-primary);
+  outline-offset: var(--border-width);
+}
+.surface :global(.rle-p) {
+  margin-block: 0 var(--space-2);
+  text-align: justify;
+}

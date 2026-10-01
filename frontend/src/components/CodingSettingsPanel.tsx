@@ -2,6 +2,9 @@ import React from "react";
 import { QuestionDetail } from "./QuestionEditor";
 import Editor from "@monaco-editor/react";
 import NumberInput from "./NumberInput";
+import Combobox from "./Combobox";
+import { Icon } from "@/components/icons";
+import Checkbox from "@/components/Checkbox";
 
 export default function CodingSettingsPanel({
   qData,
@@ -99,7 +102,7 @@ export default function CodingSettingsPanel({
             <label className="form-label">Time C/C++ (s)</label>
             <NumberInput
               step="0.1"
-              className="input"
+              className="ui-input-native"
               value={details.time_limit_c_cpp}
               onChange={(v) => updateDetails("time_limit_c_cpp", v)}
             />
@@ -108,7 +111,7 @@ export default function CodingSettingsPanel({
             <label className="form-label">Time Java (s)</label>
             <NumberInput
               step="0.1"
-              className="input"
+              className="ui-input-native"
               value={details.time_limit_java}
               onChange={(v) => updateDetails("time_limit_java", v)}
             />
@@ -117,7 +120,7 @@ export default function CodingSettingsPanel({
             <label className="form-label">Time Python (s)</label>
             <NumberInput
               step="0.1"
-              className="input"
+              className="ui-input-native"
               value={details.time_limit_python}
               onChange={(v) => updateDetails("time_limit_python", v)}
             />
@@ -125,7 +128,7 @@ export default function CodingSettingsPanel({
           <div className="form-group">
             <label className="form-label">Memory (MB)</label>
             <NumberInput
-              className="input"
+              className="ui-input-native"
               value={details.memory_limit}
               onChange={(v) => updateDetails("memory_limit", v)}
             />
@@ -133,7 +136,7 @@ export default function CodingSettingsPanel({
           <div className="form-group">
             <label className="form-label">Max Submissions</label>
             <NumberInput
-              className="input"
+              className="ui-input-native"
               value={details.max_submissions}
               onChange={(v) => updateDetails("max_submissions", v)}
             />
@@ -166,7 +169,7 @@ export default function CodingSettingsPanel({
           <div style={{ display: "flex", gap: ".5rem", alignItems: "center" }}>
             <button
               type="button"
-              className="btn btn-secondary btn-sm"
+              className="ui-button ui-button--secondary ui-button--small"
               onClick={togglePublicAll}
               disabled={!testcases.length}
             >
@@ -174,10 +177,10 @@ export default function CodingSettingsPanel({
             </button>
             <button
               type="button"
-              className="btn btn-primary btn-sm"
+              className="ui-button ui-button--primary ui-button--small"
               onClick={addTestcase}
             >
-              + Thêm Testcase
+              <Icon name="plus" /> Thêm Testcase
             </button>
           </div>
         </div>
@@ -210,8 +213,7 @@ export default function CodingSettingsPanel({
                     />
                   </label>
                   <label className="tc-flag">
-                    <input
-                      type="checkbox"
+                    <Checkbox
                       checked={!!tc.is_sample}
                       onChange={(e) =>
                         updateTestcase(idx, "is_sample", e.target.checked)
@@ -220,8 +222,7 @@ export default function CodingSettingsPanel({
                     Hiện trên đề
                   </label>
                   <label className="tc-flag">
-                    <input
-                      type="checkbox"
+                    <Checkbox
                       checked={tc.is_public}
                       onChange={(e) =>
                         updateTestcase(idx, "is_public", e.target.checked)
@@ -231,11 +232,11 @@ export default function CodingSettingsPanel({
                   </label>
                   <button
                     type="button"
-                    className="tc-x"
+                    className="ui-button ui-button--danger ui-button--icon ui-button--small tc-x"
                     title="Xóa test case"
                     onClick={() => removeTestcase(idx)}
                   >
-                    ✕
+                    <Icon name="x" />
                   </button>
                 </div>
                 <div className="io-pair">
@@ -274,17 +275,17 @@ export default function CodingSettingsPanel({
           Solution Code
         </h4>
         <div style={{ display: "flex", gap: "1rem", marginBottom: "0.5rem" }}>
-          <select
-            className="select"
+          <Combobox
             style={{ width: "200px" }}
-            value={details.solution_language}
-            onChange={(e) => updateDetails("solution_language", e.target.value)}
-          >
-            <option value="cpp">C++</option>
-            <option value="c">C</option>
-            <option value="java">Java</option>
-            <option value="python">Python</option>
-          </select>
+            value={details.solution_language || ""}
+            onChange={(value) => updateDetails("solution_language", value)}
+            options={[
+              { value: "cpp", label: "C++" },
+              { value: "c", label: "C" },
+              { value: "java", label: "Java" },
+              { value: "python", label: "Python" },
+            ]}
+          />
         </div>
         <div
           style={{

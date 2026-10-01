@@ -51,16 +51,16 @@ export default function NumberInput({
   return (
     <input
       {...rest}
-      type="number"
-      min={min}
-      max={max}
+      type="text"
+      inputMode="decimal"
       value={text}
       onFocus={(e) => {
         focusedRef.current = true;
         onFocus?.(e);
       }}
       onChange={(e) => {
-        const raw = e.target.value;
+        const raw = e.target.value.replace(",", ".");
+        if (!/^-?\d*(?:\.\d*)?$/.test(raw)) return;
         setText(raw);
         if (raw !== "" && raw !== "-" && raw !== "." && raw !== "-.") {
           const n = Number(raw);

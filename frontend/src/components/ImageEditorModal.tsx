@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import Cropper from "cropperjs";
 import "cropperjs/dist/cropper.css";
+import { Icon } from "@/components/icons";
 
 // Modal này giờ CHỈ dùng cho ảnh raster (PNG/JPG) — SVG (TikZ) là ảnh vector,
 // không có gì để cắt/đổi độ phân giải, nên không mở modal này nữa (xem nút
@@ -88,87 +89,65 @@ export default function ImageEditorModal({ src, onSave, onClose }: Props) {
   };
 
   return (
-    <div style={overlay}>
-      <div style={container}>
-        {/* Header */}
-        <div style={header}>
-          <span style={{ color: "#fff", fontWeight: 600, fontSize: 15 }}>
-            Cắt ảnh
-          </span>
-          <button onClick={onClose} style={closeBtn}>
-            ✕
+    <div className="ui-modal-backdrop ui-modal-backdrop--image">
+      <section className="ui-modal ui-modal--image-editor" role="dialog" aria-modal="true" aria-labelledby="image-editor-title">
+        <header className="ui-modal__header">
+          <div className="ui-modal__heading"><h2 className="ui-modal__title" id="image-editor-title">Cắt ảnh</h2></div>
+          <button className="ui-modal__close" type="button" aria-label="Đóng" onClick={onClose}>
+            <Icon name="close" />
           </button>
-        </div>
+        </header>
 
         {/* Preview area */}
-        <div
-          style={{
-            flex: 1,
-            minHeight: 0,
-            background: "#111",
-            position: "relative",
-            overflow: "auto",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-          }}
-        >
+        <div className="ui-modal__image-workspace">
           <img
             ref={imgRef}
             src={src}
             alt=""
-            style={{ maxWidth: "100%", display: "block" }}
             crossOrigin="anonymous"
           />
         </div>
 
         {/* Controls */}
-        <div style={controls}>
-          <div style={controlRow}>
+        <div className="ui-modal__controls">
+          <div className="ui-modal__control-row">
             {/* Rotate */}
-            <div style={group}>
-              <span style={label}>Xoay</span>
-              <button style={btn} onClick={() => rotate(-90)}>
-                ↺ 90°
+            <div className="ui-modal__control-group">
+              <span className="ui-modal__control-label">Xoay</span>
+              <button className="ui-button ui-button--secondary ui-button--small" type="button" onClick={() => rotate(-90)}>
+                <Icon name="rotate-ccw" /> 90°
               </button>
-              <button style={btn} onClick={() => rotate(90)}>
-                ↻ 90°
+              <button className="ui-button ui-button--secondary ui-button--small" type="button" onClick={() => rotate(90)}>
+                <Icon name="rotate-cw" /> 90°
               </button>
-              <button style={btn} onClick={() => rotate(-45)}>
-                ↺ 45°
+              <button className="ui-button ui-button--secondary ui-button--small" type="button" onClick={() => rotate(-45)}>
+                <Icon name="rotate-ccw" /> 45°
               </button>
-              <button style={btn} onClick={() => rotate(45)}>
-                ↻ 45°
+              <button className="ui-button ui-button--secondary ui-button--small" type="button" onClick={() => rotate(45)}>
+                <Icon name="rotate-cw" /> 45°
               </button>
             </div>
 
             {/* Zoom cropper view */}
-            <div style={group}>
-              <span style={label}>Xem</span>
-              <button style={btn} onClick={() => zoom(0.1)}>
-                ＋
+            <div className="ui-modal__control-group">
+              <span className="ui-modal__control-label">Xem</span>
+              <button className="ui-button ui-button--secondary ui-button--icon ui-button--small" type="button" aria-label="Phóng to" onClick={() => zoom(0.1)}>
+                <Icon name="zoom-in" />
               </button>
-              <button style={btn} onClick={() => zoom(-0.1)}>
-                －
+              <button className="ui-button ui-button--secondary ui-button--icon ui-button--small" type="button" aria-label="Thu nhỏ" onClick={() => zoom(-0.1)}>
+                <Icon name="zoom-out" />
               </button>
             </div>
 
             {/* Reset */}
-            <button style={{ ...btn, marginLeft: "auto" }} onClick={reset}>
+            <button className="ui-button ui-button--secondary ui-button--small" type="button" onClick={reset}>
               Reset
             </button>
           </div>
 
           {/* Resize output size */}
-          <div
-            style={{
-              display: "flex",
-              alignItems: "center",
-              gap: 10,
-              marginTop: 10,
-            }}
-          >
-            <span style={label}>Kích thước xuất</span>
+          <div className="ui-modal__range-row">
+            <span className="ui-modal__control-label">Kích thước xuất</span>
             <input
               type="range"
               min={10}
@@ -176,21 +155,14 @@ export default function ImageEditorModal({ src, onSave, onClose }: Props) {
               step={5}
               value={sizePercent}
               onChange={(e) => setSizePercent(Number(e.target.value))}
-              style={{ flex: 1, accentColor: "#1e3faa" }}
             />
-            <span
-              style={{
-                color: "#e0e0e0",
-                fontSize: 13,
-                minWidth: 42,
-                textAlign: "right",
-              }}
-            >
+            <span className="ui-modal__range-value">
               {sizePercent}%
             </span>
             {sizePercent !== 100 && (
               <button
-                style={{ ...btn, padding: "4px 8px", fontSize: 11 }}
+                className="ui-button ui-button--secondary ui-button--small"
+                type="button"
                 onClick={() => setSizePercent(100)}
               >
                 Reset
@@ -198,118 +170,17 @@ export default function ImageEditorModal({ src, onSave, onClose }: Props) {
             )}
           </div>
 
-          <div
-            style={{
-              display: "flex",
-              gap: 10,
-              justifyContent: "flex-end",
-              marginTop: 12,
-            }}
-          >
-            <button
-              onClick={onClose}
-              style={{ ...btn, background: "#374151", padding: "8px 20px" }}
-            >
+          <div className="ui-modal__footer" style={{ padding: 0, borderTop: 0 }}>
+            <button className="ui-button ui-button--secondary" type="button" onClick={onClose}>
               Hủy
             </button>
-            <button
-              onClick={handleSave}
-              disabled={saving}
-              style={{
-                ...btn,
-                background: "#1e3faa",
-                padding: "8px 20px",
-                opacity: saving ? 0.7 : 1,
-              }}
-            >
+            <button className="ui-button ui-button--primary" type="button" onClick={handleSave} disabled={saving}>
               {saving ? "Đang lưu..." : "Lưu"}
             </button>
           </div>
         </div>
-      </div>
+      </section>
     </div>
   );
 }
 
-// styles
-
-const overlay: React.CSSProperties = {
-  position: "fixed",
-  inset: 0,
-  zIndex: 9999,
-  background: "rgba(0,0,0,0.8)",
-  display: "flex",
-  alignItems: "center",
-  justifyContent: "center",
-  padding: 16,
-};
-
-const container: React.CSSProperties = {
-  background: "#1e1e2e",
-  borderRadius: 12,
-  width: "90vw",
-  maxWidth: 900,
-  maxHeight: "90vh",
-  display: "flex",
-  flexDirection: "column",
-  overflow: "hidden",
-  boxShadow: "0 20px 60px rgba(0,0,0,0.6)",
-};
-
-const header: React.CSSProperties = {
-  display: "flex",
-  alignItems: "center",
-  justifyContent: "space-between",
-  padding: "12px 16px",
-  background: "#12121f",
-  borderBottom: "1px solid #2d2d3d",
-  flexShrink: 0,
-};
-
-const closeBtn: React.CSSProperties = {
-  background: "none",
-  border: "none",
-  color: "#aaa",
-  cursor: "pointer",
-  fontSize: 18,
-  lineHeight: 1,
-  padding: 4,
-};
-
-const controls: React.CSSProperties = {
-  padding: "12px 16px",
-  background: "#12121f",
-  borderTop: "1px solid #2d2d3d",
-  flexShrink: 0,
-};
-
-const controlRow: React.CSSProperties = {
-  display: "flex",
-  gap: 16,
-  flexWrap: "wrap",
-  alignItems: "center",
-};
-
-const group: React.CSSProperties = {
-  display: "flex",
-  gap: 6,
-  alignItems: "center",
-};
-
-const label: React.CSSProperties = {
-  color: "#888",
-  fontSize: 12,
-  marginRight: 2,
-};
-
-const btn: React.CSSProperties = {
-  padding: "6px 12px",
-  borderRadius: 6,
-  border: "none",
-  cursor: "pointer",
-  background: "#2d2d3d",
-  color: "#e0e0e0",
-  fontSize: 13,
-  fontWeight: 500,
-  transition: "background 0.15s",
-};

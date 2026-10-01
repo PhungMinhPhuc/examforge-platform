@@ -1,0 +1,249 @@
+.ribbon {
+  border-bottom: var(--border-width) solid var(--border-strong);
+  background: var(--bg-surface);
+  font: var(--font-size-md) / var(--line-height-normal) var(--font-family-ui);
+  position: relative;
+  z-index: 2;
+}
+
+.tabRow {
+  height: var(--editor-ribbon-row-height);
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding-inline: var(--space-2);
+  border-bottom: var(--border-width) solid var(--border-strong);
+}
+
+.quickActions,
+.tabList {
+  display: flex;
+  align-self: stretch;
+  align-items: center;
+}
+
+.quickActions {
+  gap: var(--editor-ribbon-group-gap);
+  padding-inline-end: var(--space-2);
+  border-inline-end: var(--border-width) solid var(--border-strong);
+}
+
+.tabList { gap: var(--editor-ribbon-group-gap); }
+
+.contextual { color: var(--accent-primary); }
+
+.toggle {
+  width: var(--editor-ribbon-button-size);
+  height: var(--editor-ribbon-button-size);
+  align-self: center;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  margin-inline-start: auto;
+  padding: 0;
+  border: var(--control-border-width) solid transparent;
+  border-radius: var(--editor-ribbon-button-radius);
+  background: transparent;
+  color: var(--text-secondary);
+  cursor: pointer;
+}
+
+.toggle:hover { background: var(--bg-hover); }
+
+.toggle svg {
+  width: var(--editor-ribbon-icon-size);
+  height: var(--editor-ribbon-icon-size);
+  transition: transform var(--transition-normal);
+}
+
+.toggle[aria-expanded="true"] svg { transform: rotate(180deg); }
+
+.toolRow {
+  height: var(--editor-ribbon-row-height);
+  display: flex;
+  align-items: center;
+  gap: var(--editor-ribbon-group-gap);
+  padding-inline: var(--space-2);
+  border-top: var(--border-width) solid var(--border-strong);
+}
+
+.toolGroup {
+  display: flex;
+  align-items: center;
+  gap: var(--editor-ribbon-group-gap);
+  padding-inline: var(--space-2);
+  border-inline-end: var(--border-width) solid var(--border-strong);
+}
+
+.toolGroup:last-child { border-inline-end: 0; }
+
+.toolButton {
+  min-width: var(--editor-ribbon-button-size);
+  height: var(--editor-ribbon-button-size);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--control-icon-gap);
+  padding-inline: var(--space-1);
+  border: var(--control-border-width) solid
+    var(--editor-ribbon-button-border-color);
+  border-radius: var(--editor-ribbon-button-radius);
+  background: var(--bg-surface);
+  color: var(--text-primary);
+  cursor: pointer;
+  box-shadow: var(--editor-ribbon-button-shadow);
+}
+
+.toolButton.iconOnly {
+  width: var(--editor-ribbon-button-size);
+  padding: 0;
+}
+
+.toolButton:hover { background: var(--bg-hover); }
+.toolButton:active,
+.toolButton[aria-pressed="true"] {
+  border-color: var(--accent-primary);
+  background: var(--accent-primary-soft);
+  color: var(--accent-primary);
+}
+
+.toolButton svg {
+  width: var(--editor-ribbon-icon-size);
+  height: var(--editor-ribbon-icon-size);
+}
+
+.colorSplit {
+  position: relative;
+  display: inline-flex;
+}
+
+.colorSplit > .toolButton { border-radius: 0; }
+
+.colorSplit > .colorApply {
+  width: var(--editor-ribbon-button-size);
+  min-width: var(--editor-ribbon-button-size);
+  padding: 0;
+  border-radius: var(--editor-ribbon-button-radius) 0 0
+    var(--editor-ribbon-button-radius);
+}
+
+.colorSplit > .colorMenuToggle {
+  width: calc(var(--editor-ribbon-button-size) / 2);
+  min-width: calc(var(--editor-ribbon-button-size) / 2);
+  padding: 0;
+  border-inline-start: 0;
+  border-radius: 0 var(--editor-ribbon-button-radius)
+    var(--editor-ribbon-button-radius) 0;
+}
+
+.colorMenuToggle svg {
+  width: var(--control-icon-size);
+  height: var(--control-icon-size);
+}
+
+.colorMenu {
+  position: absolute;
+  z-index: 10;
+  top: calc(100% + var(--space-1));
+  left: 0;
+  width: 238px;
+  padding: var(--space-3);
+  border: var(--control-border-width) solid var(--border-strong);
+  border-radius: var(--control-radius-md);
+  background: var(--bg-surface);
+  box-shadow: var(--shadow-md);
+}
+
+.colorMenuTitle {
+  margin: 0 0 var(--space-2);
+  color: var(--text-secondary);
+  font-size: var(--font-size-2xs);
+  font-weight: var(--font-weight-semibold);
+}
+
+.automaticColor {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin: 0 0 var(--space-3);
+  padding: var(--space-2);
+  border: 0;
+  border-bottom: var(--control-border-width) solid var(--border);
+  background: transparent;
+  color: var(--text-primary);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.automaticColor:hover { background: var(--bg-hover); }
+
+.automaticColor[aria-checked="true"] {
+  background: var(--accent-primary-soft);
+  color: var(--accent-primary);
+}
+
+.automaticColorSample {
+  width: var(--control-affix-size-sm);
+  height: var(--control-affix-size-sm);
+  border: var(--control-border-width) solid var(--border-strong);
+  background: var(--text-primary);
+}
+
+.colorSwatches {
+  display: grid;
+  grid-template-columns: repeat(8, 1fr);
+  gap: var(--space-1);
+}
+
+.colorSwatch {
+  aspect-ratio: 1;
+  padding: 0;
+  border: var(--control-border-width) solid var(--border-strong);
+  border-radius: var(--radius-xs);
+  cursor: pointer;
+}
+
+.colorSwatch:hover,
+.colorSwatch[aria-checked="true"] {
+  outline: var(--focus-outline-width) solid var(--focus-outline-color);
+  outline-offset: var(--focus-outline-offset);
+}
+
+.moreColors {
+  width: 100%;
+  margin-top: var(--space-2);
+  padding: var(--space-2);
+  border: 0;
+  border-top: var(--control-border-width) solid var(--border);
+  background: transparent;
+  color: var(--text-primary);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.moreColors:hover { background: var(--bg-hover); }
+
+.tab:focus-visible,
+.toggle:focus-visible,
+.toolButton:focus-visible,
+.automaticColor:focus-visible,
+.colorSwatch:focus-visible,
+.moreColors:focus-visible {
+  outline: var(--focus-outline-width) solid var(--focus-outline-color);
+  outline-offset: var(--focus-outline-offset);
+}
+
+@media (max-width: 700px) {
+  .toolRow { overflow-x: auto; }
+}
+
+.colorInput {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+  pointer-events: none;
+}

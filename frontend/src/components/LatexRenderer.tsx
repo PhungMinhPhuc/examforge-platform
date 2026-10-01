@@ -1,7 +1,9 @@
 "use client";
 
 import { useEffect, useRef, useState, useCallback } from "react";
+import { renderToStaticMarkup } from "react-dom/server";
 import ImageEditorModal, { ImageEditResult } from "./ImageEditorModal";
+import { Icon } from "@/components/icons";
 import { A4_REFERENCE_WIDTH_PX, TreeDoc, isTreeDoc, imagesById, treeToHtml, resolveImgSrc } from "@/lib/docTree";
 import { queueTypeset } from "@/lib/mathjax";
 
@@ -15,6 +17,9 @@ interface Props {
   imageZoomable?: boolean;
   onImageWidthChange?: (storagePath: string, width: number) => void;
 }
+
+const ZOOM_IN_ICON = renderToStaticMarkup(<Icon name="zoom-in" />);
+const ZOOM_OUT_ICON = renderToStaticMarkup(<Icon name="zoom-out" />);
 
 /** Ảnh SVG (TikZ) chưa đặt `width` (kích thước gốc) — đánh dấu
  * `data-native-scale` ở docTree.ts::imgHtml / immersedFigureHtml — phóng lên
@@ -121,7 +126,7 @@ function wirePreviewImageZoom(
     const controls = document.createElement("span");
     controls.className = `lr-preview-zoom${inline ? " is-inline" : ""}`;
     const localOnly = !onWidthChange;
-    controls.innerHTML = `<button type="button" data-dir="-1">−</button><input type="number" min="1"><span>%</span><button type="button" data-dir="1">+</button>`;
+    controls.innerHTML = `<button type="button" class="ui-button ui-button--transparent ui-button--icon ui-button--small" aria-label="Thu nhỏ" data-dir="-1">${ZOOM_OUT_ICON}</button><input type="text" inputmode="numeric" pattern="[0-9]*"><span>%</span><button type="button" class="ui-button ui-button--transparent ui-button--icon ui-button--small" aria-label="Phóng to" data-dir="1">${ZOOM_IN_ICON}</button>`;
     const input = controls.querySelector("input") as HTMLInputElement;
     const renderedWidth = img.getBoundingClientRect().width;
     const baseWidthPx = renderedWidth || Math.round((row.width ?? 0.15) * A4_REFERENCE_WIDTH_PX);
@@ -184,10 +189,10 @@ function immersedFigureHtml(figureId: number | string, images: ReturnType<typeof
   const widthPx = row.width != null ? Math.round(row.width * A4_REFERENCE_WIDTH_PX) : null;
   const sizeCss = widthPx ? `width:${widthPx}px; height:auto;` : `width:auto; height:auto;`;
   const zoomCluster = `<span class="lr-local-zoom">
-        <button type="button" class="lr-zoom-btn" data-dir="-1" title="Thu nhỏ (chỉ mình bạn thấy)">−</button>
-        <input type="number" class="lr-zoom-input" value="100" min="1" title="Gõ thẳng % (chỉ mình bạn thấy)">
+        <button type="button" class="lr-zoom-btn ui-button ui-button--transparent ui-button--icon ui-button--small" data-dir="-1" title="Thu nhỏ (chỉ mình bạn thấy)" aria-label="Thu nhỏ">${ZOOM_OUT_ICON}</button>
+        <input type="text" inputmode="numeric" pattern="[0-9]*" class="lr-zoom-input" value="100" title="Gõ thẳng % (chỉ mình bạn thấy)">
         <span class="lr-zoom-sign">%</span>
-        <button type="button" class="lr-zoom-btn" data-dir="1" title="Phóng to (chỉ mình bạn thấy)">+</button>
+        <button type="button" class="lr-zoom-btn ui-button ui-button--transparent ui-button--icon ui-button--small" data-dir="1" title="Phóng to (chỉ mình bạn thấy)" aria-label="Phóng to">${ZOOM_IN_ICON}</button>
       </span>`;
   // Ảnh gốc SVG (TikZ) — đánh dấu để applyNativeSvgScale phóng x1.5 lên
   // naturalWidth NGAY khi ảnh load, TRƯỚC khi wireLocalZoom đo kích thước đã
@@ -196,7 +201,7 @@ function immersedFigureHtml(figureId: number | string, images: ReturnType<typeof
   const scaleAttr = !widthPx && row.img_type === "tikz" ? ` data-native-scale="1.5"` : "";
   return `<span class="lr-side-fig" data-base-px="${widthPx ?? ""}">
     ${zoomCluster}
-    <img src="${imgSrc}" alt="Hình vẽ" data-img-key="${imgSrc}"${scaleAttr} style="${sizeCss} display:block; border-radius: var(--radius-sm); border: 1px solid var(--border); object-fit: contain; background-color: #fff;"/>
+    <img src="${imgSrc}" alt="Hình vẽ" data-img-key="${imgSrc}"${scaleAttr} style="${sizeCss} display:block; border-radius: var(--radius-none); border: var(--border-width) solid var(--border); object-fit: contain; background-color: var(--bg-surface);"/>
   </span>`;
 }
 

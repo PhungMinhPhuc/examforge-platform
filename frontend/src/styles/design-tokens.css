@@ -27,6 +27,7 @@
   --duration-fast: 100ms;
   --duration-normal: 160ms;
   --duration-slow: 400ms;
+  --letter-spacing-wide: 0.04em;
   --ease-standard: cubic-bezier(0.33, 0, 0.67, 1);
   --transition-fast: var(--duration-fast) var(--ease-standard);
   --transition-normal: var(--duration-normal) var(--ease-standard);
@@ -93,6 +94,24 @@
   --control-line-height-md: 20px;
   --control-line-height-lg: 22px;
 
+  /* Collection view */
+  --collection-gap: var(--space-3);
+  --collection-card-min-width: 17.5rem;
+  --collection-item-gap: var(--space-2);
+  --collection-item-padding: var(--space-4);
+  --collection-item-radius: var(--radius-lg);
+  --collection-item-bg: var(--bg-surface);
+  --collection-item-border-color: var(--border);
+  --collection-item-hover-border-color: var(--border-strong);
+  --collection-item-shadow: var(--shadow-sm);
+  --collection-item-hover-shadow: var(--shadow-md);
+  --collection-title-size: var(--font-size-base);
+  --collection-title-weight: var(--font-weight-semibold);
+  --collection-title-line-height: var(--line-height-tight);
+  --collection-supporting-size: var(--font-size-sm);
+  --collection-supporting-line-height: var(--line-height-normal);
+  --collection-actions-gap: var(--space-2);
+
   /* Shared control shape */
   --control-radius-sm: var(--radius-sm);
   --control-radius-md: var(--radius-md);
@@ -111,6 +130,15 @@
   --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
   --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
   --shadow-glow: 0 0 20px rgba(30, 63, 170, 0.15);
+
+  /* Overlay layers */
+  --layer-modal: 1000;
+  --layer-modal-nested: 1400;
+  --layer-toast: 2000;
+  --layer-editor-dialog: 9998;
+  --layer-image-dialog: 9999;
+  --layer-confirm-dialog: 10000;
+  --layer-popover: 10100;
 }
 
 :root[data-theme="dark"] {

@@ -8,6 +8,7 @@ import "../styles/components/index.css";
 import { AuthProvider } from "@/lib/auth-context";
 import FloatingChatbot from "@/components/FloatingChatbot";
 import ToastViewport from "@/components/ToastViewport";
+import ConfirmDialogViewport from "@/components/ConfirmDialogViewport";
 import { NO_FLASH_THEME_SCRIPT } from "@/lib/theme";
 
 export const metadata: Metadata = {
@@ -24,10 +25,13 @@ export default function RootLayout({
   return (
     <html lang="vi" suppressHydrationWarning data-scroll-behavior="smooth">
       <head>
-        {/* Đặt data-theme TRƯỚC khi trang vẽ ra — tránh chớp sáng rồi mới
-            chuyển tối. Phải là script chặn (không strategy="afterInteractive"
-            như MathJax bên dưới), nên viết thẳng ở đây thay vì <Script>. */}
-        <script dangerouslySetInnerHTML={{ __html: NO_FLASH_THEME_SCRIPT }} />
+        {/* Chạy trước hydration để đặt theme mà không tạo thẻ script thô
+            trong cây React hoặc gây chớp giao diện sáng/tối. */}
+        <Script
+          id="theme-bootstrap"
+          strategy="beforeInteractive"
+          dangerouslySetInnerHTML={{ __html: NO_FLASH_THEME_SCRIPT }}
+        />
       </head>
       <body suppressHydrationWarning>
         <AuthProvider>
@@ -35,6 +39,7 @@ export default function RootLayout({
           <FloatingChatbot />
         </AuthProvider>
         <ToastViewport />
+        <ConfirmDialogViewport />
         {/* MathJax: afterInteractive tránh SSR trong <head>, loại bỏ hydration mismatch */}
         <Script
           id="MathJax-config"

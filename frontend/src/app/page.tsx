@@ -7,6 +7,7 @@ import api from "@/lib/api";
 import { toast } from "@/lib/toastStore";
 import Combobox from "@/components/Combobox";
 import { GoogleIcon, Icon, MicrosoftIcon } from "@/components/icons";
+import MessageBar from "@/components/MessageBar";
 
 type AuthTab = "login" | "register" | "guest";
 /** Google/Microsoft chưa nối OAuth thật ở backend — nút hiện đúng chuẩn
@@ -18,18 +19,18 @@ function OAuthRow({ mode }: { mode: "Đăng nhập" | "Đăng ký" }) {
     <div className="oauth-row">
       <button
         type="button"
-        className="btn-oauth btn-google"
+        className="ui-button ui-provider-button ui-provider-button--google"
         onClick={() => notify("Google")}
       >
-        <GoogleIcon size={18} />
+        <GoogleIcon size="var(--icon-size-md)" />
         {mode} bằng Google
       </button>
       <button
         type="button"
-        className="btn-oauth btn-microsoft"
+        className="ui-button ui-provider-button ui-provider-button--microsoft"
         onClick={() => notify("Microsoft")}
       >
-        <MicrosoftIcon size={18} />
+        <MicrosoftIcon size="var(--icon-size-md)" />
         {mode} bằng Microsoft
       </button>
     </div>
@@ -120,53 +121,49 @@ export default function HomePage() {
 
       <div className="auth-card">
         <div className="auth-brand">
-          <div className="auth-brand-icon">
-            <svg className="icon" viewBox="0 0 24 24">
-              <path d="M12 3 3 8l9 5 9-5-9-5Z" />
-              <path d="M3 12l9 5 9-5" />
-              <path d="M3 16l9 5 9-5" />
-            </svg>
-          </div>
+          <div className="auth-brand-icon" aria-hidden="true" />
           <h1>Ngân hàng câu hỏi</h1>
           <p>Hệ thống CSDL — đăng nhập để tiếp tục</p>
         </div>
 
-        <div className="segtabs">
+        <div className="ui-segmented" role="tablist" aria-label="Chọn hình thức truy cập">
           <button
             type="button"
-            className={tab === "login" ? "active" : ""}
+            className="ui-segmented__item"
+            role="tab"
+            aria-selected={tab === "login"}
             onClick={() => switchTab("login")}
           >
-            <svg className="icon" viewBox="0 0 24 24">
-              <path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4" />
-              <path d="M10 17l5-5-5-5" />
-              <path d="M15 12H3" />
-            </svg>
+            <Icon name="login-arrow" />
             Đăng nhập
           </button>
           <button
             type="button"
-            className={tab === "register" ? "active" : ""}
+            className="ui-segmented__item"
+            role="tab"
+            aria-selected={tab === "register"}
             onClick={() => switchTab("register")}
           >
-            <svg className="icon" viewBox="0 0 24 24">
-              <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" />
-              <circle cx="9" cy="7" r="4" />
-              <path d="M19 8v6M22 11h-6" />
-            </svg>
+            <Icon name="user-plus" />
             Đăng ký
           </button>
           <button
             type="button"
-            className={tab === "guest" ? "active" : ""}
+            className="ui-segmented__item"
+            role="tab"
+            aria-selected={tab === "guest"}
             onClick={() => switchTab("guest")}
           >
-            <Icon className="icon" name="exam-paper" />
+            <Icon name="exam-paper" />
             Thi thử
           </button>
         </div>
 
-        {error && <div className="alert alert-error">{error}</div>}
+        {error && (
+          <MessageBar className="ui-message-bar--section" intent="error" onDismiss={() => setError("")}>
+            {error}
+          </MessageBar>
+        )}
 
         {tab === "login" && (
           <form onSubmit={handleLogin} className="fade-in">
@@ -231,10 +228,10 @@ export default function HomePage() {
             <button
               id="btn-login"
               type="submit"
-              className="btn btn-primary btn-block btn-lg"
+              className="ui-button ui-button--primary ui-button--block ui-button--large"
               disabled={loading}
             >
-              {loading ? <span className="spinner" /> : "Đăng nhập"}
+              {loading ? <span className="ui-spinner" /> : "Đăng nhập"}
             </button>
 
             <div className="oauth-divider">
@@ -309,10 +306,10 @@ export default function HomePage() {
             <button
               id="btn-register"
               type="submit"
-              className="btn btn-primary btn-block btn-lg"
+              className="ui-button ui-button--primary ui-button--block ui-button--large"
               disabled={loading}
             >
-              {loading ? <span className="spinner" /> : "Tạo tài khoản"}
+              {loading ? <span className="ui-spinner" /> : "Tạo tài khoản"}
             </button>
 
             <div className="oauth-divider">
@@ -344,7 +341,7 @@ export default function HomePage() {
             <button
               id="btn-guest-exam"
               type="submit"
-              className="btn btn-primary btn-block btn-lg"
+              className="ui-button ui-button--primary ui-button--block ui-button--large"
             >
               Vào thi ngay
             </button>

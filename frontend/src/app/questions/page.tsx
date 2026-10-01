@@ -4,6 +4,7 @@ import { useEffect, useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/lib/auth-context";
 import Sidebar from "@/components/Sidebar";
+import PageHeader from "@/components/PageHeader";
 import useScrollRestoration from "@/lib/useScrollRestoration";
 import QuestionCreateDropdown from "@/components/QuestionCreateDropdown";
 import LatexRenderer from "@/components/LatexRenderer";
@@ -14,6 +15,12 @@ import TrueFalseOptionList from "@/components/TrueFalseOptionList";
 import ShortAnswerDisplay from "@/components/ShortAnswerDisplay";
 import { mcCorrectLabel } from "@/lib/docTree";
 import { toast } from "@/lib/toastStore";
+import { Icon } from "@/components/icons";
+import MessageBar from "@/components/MessageBar";
+import { confirmDialog } from "@/lib/confirmDialog";
+import QuestionCardRail from "@/components/QuestionCardRail";
+import Pagination from "@/components/Pagination";
+import QuestionFilters from "@/components/QuestionFilters";
 
 type Question = {
   id: number;
@@ -134,7 +141,11 @@ export default function QuestionsPage() {
   }, [user, fetchQuestions]);
 
   const handleDelete = async (id: number) => {
-    if (!confirm("Xóa câu hỏi này?")) return;
+    if (!(await confirmDialog("Xóa câu hỏi này?", {
+      title: "Xóa câu hỏi",
+      confirmLabel: "Xóa câu hỏi",
+      intent: "danger",
+    }))) return;
     await api.deleteQuestion(id);
     fetchQuestions();
   };
@@ -146,12 +157,17 @@ export default function QuestionsPage() {
       return;
     }
     if (
-      !confirm(
+      !(await confirmDialog(
         `Xóa TẤT CẢ ${total.toLocaleString()} mục trong ngân hàng câu hỏi? Hành động này không thể hoàn tác.`,
-      )
+        { title: "Xóa toàn bộ câu hỏi", confirmLabel: "Tiếp tục", intent: "danger" },
+      ))
     )
       return;
-    if (!confirm("Xác nhận lần nữa: xóa toàn bộ câu hỏi của bạn?")) return;
+    if (!(await confirmDialog("Xác nhận lần nữa: xóa toàn bộ câu hỏi của bạn?", {
+      title: "Xác nhận xóa vĩnh viễn",
+      confirmLabel: "Xóa toàn bộ",
+      intent: "danger",
+    }))) return;
     setDeletingAll(true);
     try {
       const res = await api.deleteAllQuestions();
@@ -281,7 +297,6 @@ export default function QuestionsPage() {
       setDetailModal((d) =>
         d ? { ...d, saving: false, error: "Lỗi lưu câu hỏi" } : d,
       );
-      toast.error("Lỗi lưu câu hỏi");
     }
   };
 
@@ -297,158 +312,44 @@ export default function QuestionsPage() {
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
 
-  const renderPagination = () => {
-    if (totalPages <= 1) return null;
-    return (
-      <div className="pagination">
-        <button
-          className="page-btn"
-          style={{ padding: "0 0.7rem" }}
-          onClick={() => handlePageChange(1)}
-          disabled={page === 1}
-        >
-          « Đầu
-        </button>
-        <button
-          className="page-btn"
-          onClick={() => handlePageChange(Math.max(1, page - 1))}
-          disabled={page === 1}
-        >
-          ‹
-        </button>
-        {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
-          const p = Math.max(1, Math.min(page - 2, totalPages - 4)) + i;
-          return (
-            <button
-              key={p}
-              className={`page-btn ${page === p ? "active" : ""}`}
-              onClick={() => handlePageChange(p)}
-            >
-              {p}
-            </button>
-          );
-        })}
-        <button
-          className="page-btn"
-          onClick={() => handlePageChange(Math.min(totalPages, page + 1))}
-          disabled={page === totalPages}
-        >
-          ›
-        </button>
-        <button
-          className="page-btn"
-          style={{ padding: "0 0.75rem" }}
-          onClick={() => handlePageChange(totalPages)}
-          disabled={page === totalPages}
-        >
-          Cuối »
-        </button>
-      </div>
-    );
-  };
-
   return (
     <div className="page-wrapper">
       <Sidebar />
       <main className="main-content">
-        <div className="page-header">
-          <div>
-            <h1 className="page-title">Ngân hàng câu hỏi</h1>
-            <p className="page-sub">
-              Tổng: {total.toLocaleString()} mục -{" "}
-              {totalQuestions.toLocaleString()} câu hỏi
-            </p>
-          </div>
-          {user?.role === "teacher" && (
-            <div style={{ display: "flex", gap: "0.5rem" }}>
+        <PageHeader
+          title="Ngân hàng câu hỏi"
+          description={<>Tổng: {total.toLocaleString()} mục - {totalQuestions.toLocaleString()} câu hỏi</>}
+          actions={user?.role === "teacher" ? (<>
               <QuestionCreateDropdown />
               <button
-                className="btn btn-danger"
+                className="ui-button ui-button--danger-solid"
                 onClick={handleDeleteAll}
                 disabled={deletingAll || total === 0}
               >
+                {!deletingAll ? <Icon name="trash" /> : null}
                 {deletingAll ? "Đang xóa..." : "Xóa tất cả"}
               </button>
-            </div>
-          )}
-        </div>
+          </>) : undefined}
+        />
 
         {/* Filters */}
-        <div className="filter-bar">
-          <input
-            className="input search-input"
-            placeholder=" Tìm nội dung..."
-            value={filters.search}
-            onChange={(e) => setFilter("search", e.target.value)}
-          />
-          <select
-            className="select"
-            value={filters.subject}
-            onChange={(e) => setFilter("subject", e.target.value)}
-          >
-            <option value="">Tất cả môn</option>
-            {Object.keys(subjects).map((s) => (
-              <option key={s} value={s}>
-                {s}
-              </option>
-            ))}
-          </select>
-          <select
-            className="select"
-            value={filters.grade}
-            onChange={(e) => setFilter("grade", e.target.value)}
-          >
-            <option value="">Tất cả khối</option>
-            {[10, 11, 12].map((g) => (
-              <option key={g} value={String(g)}>
-                Lớp {g}
-              </option>
-            ))}
-          </select>
-          <select
-            className="select"
-            value={filters.question_type}
-            onChange={(e) => setFilter("question_type", e.target.value)}
-          >
-            <option value="">Tất cả loại</option>
-            {Object.entries(TYPE_LABELS).map(([k, v]) => (
-              <option key={k} value={k}>
-                {v}
-              </option>
-            ))}
-          </select>
-          <select
-            className="select"
-            value={filters.complexity}
-            onChange={(e) => setFilter("complexity", e.target.value)}
-          >
-            <option value="">Tất cả mức</option>
-            {Object.entries(COMPLEXITY_LABELS).map(([k, v]) => (
-              <option key={k} value={k}>
-                {v}
-              </option>
-            ))}
-          </select>
-          <button
-            className="btn btn-secondary"
-            onClick={() => {
-              setFilters({
-                subject: "",
-                grade: "",
-                chapter: "",
-                question_type: "",
-                complexity: "",
-                search: "",
-              });
-              setPage(1);
-            }}
-          >
-            Xóa lọc
-          </button>
-        </div>
+        <QuestionFilters
+          search={filters.search}
+          onChange={setFilter}
+          onReset={() => {
+            setFilters({ subject: "", grade: "", chapter: "", question_type: "", complexity: "", search: "" });
+            setPage(1);
+          }}
+          selects={[
+            { key: "subject", value: filters.subject, options: [{ value: "", label: "Tất cả môn" }, ...Object.keys(subjects).map((s) => ({ value: s, label: s }))] },
+            { key: "grade", value: filters.grade, options: [{ value: "", label: "Tất cả khối" }, ...[10, 11, 12].map((g) => ({ value: String(g), label: `Lớp ${g}` }))] },
+            { key: "question_type", value: filters.question_type, options: [{ value: "", label: "Tất cả loại" }, ...Object.entries(TYPE_LABELS).map(([value, label]) => ({ value, label }))] },
+            { key: "complexity", value: filters.complexity, options: [{ value: "", label: "Tất cả mức" }, ...Object.entries(COMPLEXITY_LABELS).map(([value, label]) => ({ value, label }))] },
+          ]}
+        />
 
         {/* Pagination Top */}
-        {renderPagination()}
+        <Pagination page={page} totalPages={totalPages} onPageChange={handlePageChange} />
 
         {/* Question list */}
         {loading ? (
@@ -460,7 +361,7 @@ export default function QuestionsPage() {
               .map((_, i) => (
                 <div
                   key={i}
-                  className="skeleton"
+                  className="ui-skeleton"
                   style={{ height: "100px", borderRadius: "var(--radius-lg)" }}
                 />
               ))}
@@ -545,7 +446,7 @@ export default function QuestionsPage() {
                           {node.subject && (
                             <span
                               style={{
-                                fontSize: "var(--font-size-xs)",
+                                fontSize: "var(--font-size-2xs)",
                                 color: "var(--text-muted)",
                               }}
                             >
@@ -555,7 +456,7 @@ export default function QuestionsPage() {
                           {node.chapter && (
                             <span
                               style={{
-                                fontSize: "var(--font-size-xs)",
+                                fontSize: "var(--font-size-2xs)",
                                 color: "var(--text-muted)",
                               }}
                               title={node.chapter}
@@ -808,20 +709,18 @@ export default function QuestionsPage() {
                     }}
                   >
                     <div
+                      className="ui-question-card-layout"
                       style={{
                         display: "flex",
                         alignItems: "flex-start",
                         gap: "1rem",
                       }}
                     >
-                      <div
-                        className="question-num"
-                        style={{
-                          flexShrink: 0,
-                        }}
-                      >
-                        {(page - 1) * 20 + idx + 1}
-                      </div>
+                      <QuestionCardRail
+                        number={(page - 1) * 20 + idx + 1}
+                        onDetail={() => openDetail(q.id)}
+                        onDelete={user?.role === "teacher" ? () => handleDelete(q.id) : undefined}
+                      />
                       <div style={{ flex: 1, minWidth: 0 }}>
                         <div
                           style={{
@@ -863,7 +762,7 @@ export default function QuestionsPage() {
                           {q.subject && (
                             <span
                               style={{
-                                fontSize: "var(--font-size-xs)",
+                                fontSize: "var(--font-size-2xs)",
                                 color: "var(--text-muted)",
                               }}
                             >
@@ -873,7 +772,7 @@ export default function QuestionsPage() {
                           {q.chapter && (
                             <span
                               style={{
-                                fontSize: "var(--font-size-xs)",
+                                fontSize: "var(--font-size-2xs)",
                                 color: "var(--text-muted)",
                               }}
                               title={q.chapter}
@@ -902,29 +801,6 @@ export default function QuestionsPage() {
                           )}
                         {renderNode(q, false)}
                       </div>
-                      <div
-                        style={{
-                          display: "flex",
-                          flexDirection: "column",
-                          gap: "0.5rem",
-                          flexShrink: 0,
-                        }}
-                      >
-                        <button
-                          className="btn btn-secondary btn-sm"
-                          onClick={() => openDetail(q.id)}
-                        >
-                          Chi tiết
-                        </button>
-                        {user?.role === "teacher" && (
-                          <button
-                            className="btn btn-danger btn-sm"
-                            onClick={() => handleDelete(q.id)}
-                          >
-                            Xóa
-                          </button>
-                        )}
-                      </div>
                     </div>
 
                     {q.question_type === "st" &&
@@ -951,65 +827,39 @@ export default function QuestionsPage() {
         )}
 
         {/* Pagination Bottom */}
-        {renderPagination()}
+        <Pagination page={page} totalPages={totalPages} onPageChange={handlePageChange} />
 
         {/* Detail / edit popup */}
         {detailModal && (
           <div
-            style={{
-              position: "fixed",
-              inset: 0,
-              zIndex: 1000,
-              background: "rgba(0,0,0,0.5)",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              padding: "2.5vh 2.5vw",
-            }}
+            className="ui-modal-backdrop"
             onMouseDown={(e) => {
               if (e.target === e.currentTarget) setDetailModal(null);
             }}
           >
             <div
-              className="modal-wide-responsive"
-              style={{
-                width: "95vw",
-                maxWidth: 1400,
-                height: "95vh",
-                background: "var(--bg-surface)",
-                borderRadius: "var(--radius-lg)",
-                boxShadow: "var(--shadow-lg)",
-                display: "flex",
-                flexDirection: "column",
-                overflow: "hidden",
-              }}
+              className="ui-modal ui-modal--large"
             >
-              <div
-                style={{
-                  padding: "1rem 1.5rem",
-                  borderBottom: "1px solid var(--border)",
-                  display: "flex",
-                  justifyContent: "space-between",
-                  alignItems: "center",
-                }}
-              >
-                <h3 style={{ margin: 0 }}>Chi tiết câu hỏi</h3>
-                <button
-                  onClick={() => setDetailModal(null)}
-                  style={{
-                    background: "none",
-                    border: "none",
-                    cursor: "pointer",
-                    fontSize: 20,
-                    color: "var(--text-secondary)",
-                    lineHeight: 1,
-                    padding: 4,
-                  }}
-                >
-                  ✕
+              <header className="ui-modal__header">
+                <h3 className="ui-modal__title">Chi tiết câu hỏi</h3>
+                <button className="ui-modal__close" type="button" aria-label="Đóng" onClick={() => setDetailModal(null)}>
+                  <Icon name="close" />
                 </button>
-              </div>
-              <div style={{ padding: "1.5rem", flex: 1, overflowY: "auto" }}>
+              </header>
+              <div className="ui-modal__body">
+                {detailModal.error && (
+                  <MessageBar
+                    className="ui-message-bar--section"
+                    intent="error"
+                    onDismiss={() =>
+                      setDetailModal((current) =>
+                        current ? { ...current, error: "" } : current,
+                      )
+                    }
+                  >
+                    {detailModal.error}
+                  </MessageBar>
+                )}
                 {user?.role === "teacher" ? (
                   <QuestionEditor
                     qData={detailModal.question}
@@ -1030,17 +880,6 @@ export default function QuestionsPage() {
                   />
                 )}
               </div>
-              {detailModal.error && (
-                <div
-                  style={{
-                    padding: "0 1.5rem 1rem",
-                    color: "var(--accent-danger)",
-                    fontSize: "var(--font-size-base)",
-                  }}
-                >
-                  {detailModal.error}
-                </div>
-              )}
               <div
                 style={{
                   padding: "1rem 1.5rem",
@@ -1051,14 +890,14 @@ export default function QuestionsPage() {
                 }}
               >
                 <button
-                  className="btn btn-secondary"
+                  className="ui-button ui-button--secondary"
                   onClick={() => setDetailModal(null)}
                 >
                   Đóng
                 </button>
                 {user?.role === "teacher" && (
                   <button
-                    className="btn btn-primary"
+                    className="ui-button ui-button--primary"
                     onClick={saveDetail}
                     disabled={detailModal.saving}
                   >

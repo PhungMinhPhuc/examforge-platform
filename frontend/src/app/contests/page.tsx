@@ -4,12 +4,19 @@ import { useEffect, useState } from "react";
 import { useAuth } from "@/lib/auth-context";
 import { useRouter } from "next/navigation";
 import Sidebar from "@/components/Sidebar";
+import PageHeader from "@/components/PageHeader";
 import api from "@/lib/api";
 import Link from "next/link";
 import ExportContestModal from "@/components/ExportContestModal";
 import DetailsMenu from "@/components/DetailsMenu";
 import useScrollRestoration from "@/lib/useScrollRestoration";
 import { toast } from "@/lib/toastStore";
+import { Icon } from "@/components/icons";
+import Checkbox from "@/components/Checkbox";
+import { confirmDialog } from "@/lib/confirmDialog";
+import ViewModeToggle from "@/components/ViewModeToggle";
+import { CollectionItem, CollectionView } from "@/components/CollectionView";
+import useViewModePreference from "@/lib/useViewModePreference";
 
 type Contest = {
   id: number;
@@ -31,6 +38,10 @@ export default function ContestsPage() {
   const [contests, setContests] = useState<Contest[]>([]);
   const [loading, setLoading] = useState(true);
   const [expandedHistory, setExpandedHistory] = useState<number | null>(null);
+  const [viewMode, setViewMode] = useViewModePreference(
+    "ui.contests.view-mode",
+    "list",
+  );
 
   // Export Modal states
   const [showExportModal, setShowExportModal] = useState(false);
@@ -89,35 +100,36 @@ export default function ContestsPage() {
     <div className="page-wrapper">
       <Sidebar />
       <main className="main-content">
-        <div className="page-header">
-          <div>
-            <h1 className="page-title">{"Đề thi và bài tập"}</h1>
-            <p className="page-sub">{contests.length} đề thi</p>
-          </div>
-          {user?.role === "teacher" && (
-            <Link href="/contests/new" className="btn btn-primary">
-              {" "}
-              Tạo đề thi
-            </Link>
+        <PageHeader
+          title="Đề thi và bài tập"
+          description={`${contests.length} đề thi`}
+          actions={(
+            <div className="ui-collection-controls">
+              <ViewModeToggle value={viewMode} onChange={setViewMode} />
+              {user?.role === "teacher" && (
+                <Link href="/contests/new" className="ui-button ui-button--primary">
+                  <Icon name="plus" />
+                  Tạo đề thi
+                </Link>
+              )}
+            </div>
           )}
-        </div>
-        <div style={{ display: "flex", gap: ".5rem", marginBottom: "1.25rem" }}>
-          <Link href="/contests" className="btn btn-primary">
+        />
+        <nav className="ui-tablist" style={{ marginBottom: "1.25rem" }} role="tablist" aria-label="Loại đề thi">
+          <Link href="/contests" className="ui-tab" role="tab" aria-selected="true">
             Đề thi
           </Link>
-          <Link href="/coding" className="btn btn-secondary">
+          <Link href="/coding" className="ui-tab" role="tab" aria-selected="false">
             Lập trình
           </Link>
-        </div>
+        </nav>
 
         {loading ? (
-          <div
-            style={{ display: "flex", flexDirection: "column", gap: "0.75rem" }}
-          >
+          <div style={{ display: "flex", flexDirection: "column", gap: "0.75rem" }}>
             {[1, 2, 3].map((i) => (
               <div
                 key={i}
-                className="skeleton"
+                className="ui-skeleton"
                 style={{ height: "80px", borderRadius: "var(--radius-lg)" }}
               />
             ))}
@@ -128,178 +140,87 @@ export default function ContestsPage() {
             <h3>Chưa có đề thi nào</h3>
           </div>
         ) : (
-          <div
-            style={{ display: "flex", flexDirection: "column", gap: "0.75rem" }}
-          >
-            {contests.map((c) => (
-              <div
-                key={c.id}
-                className="card"
-                role="link"
-                tabIndex={0}
-                onClick={() =>
-                  router.push(
-                    user?.role === "teacher"
-                      ? `/contests/${c.id}`
-                      : `/exam/${c.id}`,
-                  )
-                }
-                onKeyDown={(e) => {
-                  if (e.key === "Enter" || e.key === " ")
-                    router.push(
-                      user?.role === "teacher"
-                        ? `/contests/${c.id}`
-                        : `/exam/${c.id}`,
-                    );
-                }}
-                style={{
-                  display: "flex",
-                  flexDirection: "column",
-                  padding: 0,
-                  cursor: "pointer",
-                }}
-              >
-                <div
-                  style={{
-                    display: "flex",
-                    alignItems: "center",
-                    gap: "1rem",
-                    padding: "1.15rem 1.25rem",
-                  }}
-                >
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    <div
-                      style={{
-                        display: "flex",
-                        alignItems: "center",
-                        gap: ".5rem",
-                        marginBottom: ".45rem",
-                      }}
-                    >
-                      <span className="badge badge-mode">
-                        {c.time_limit ? "Có tính giờ" : "Bài tập"}
-                      </span>
-                      <span
-                        className={`badge ${c.status === "active" ? "badge-active" : "badge-inactive"}`}
-                      >
-                        {c.status === "active" ? "Đang mở" : "Bản nháp"}
-                      </span>
-                    </div>
-                    <Link
-                      href={
-                        user?.role === "teacher"
-                          ? `/contests/${c.id}`
-                          : `/exam/${c.id}`
-                      }
-                      style={{
-                        fontWeight: 750,
-                        fontSize: "1.05rem",
-                        color: "var(--text-primary)",
-                        textDecoration: "none",
-                      }}
-                    >
-                      {c.title}
-                    </Link>
-                    <div
-                      style={{
-                        fontSize: "0.8rem",
-                        color: "var(--text-secondary)",
-                        display: "flex",
-                        gap: "1rem",
-                        flexWrap: "wrap",
-                      }}
-                    >
-                      <span>
-                        {c.time_limit
-                          ? `${c.time_limit} phút`
-                          : "Không giới hạn thời gian"}
-                      </span>
-                      <span>{c.question_count} câu</span>
-                      {c.class_name && <span>{c.class_name}</span>}
-                      {c.due_at && (
-                        <span>
-                          Hạn {new Date(c.due_at).toLocaleString("vi-VN")}
-                        </span>
-                      )}
-                    </div>
-                  </div>
-                  {user?.role !== "teacher" && (
-                    <span className={`badge badge-${c.status}`}>
-                      {c.status === "active" ? "Đang mở" : "Đóng"}
+          <CollectionView
+            items={contests}
+            mode={viewMode}
+            getKey={(c) => c.id}
+            ariaLabel="Danh sách đề thi"
+            renderItem={(c) => (
+              <CollectionItem
+                href={user?.role === "teacher" ? `/contests/${c.id}` : `/exam/${c.id}`}
+                badges={(
+                  <>
+                    <span className="badge badge-mode">
+                      {c.time_limit ? "Có tính giờ" : "Bài tập"}
                     </span>
-                  )}
-                  {user?.role === "teacher" ? (
-                    <div
-                      style={{
-                        display: "flex",
-                        gap: "0.5rem",
-                        alignItems: "center",
-                      }}
-                      onClick={(e) => e.stopPropagation()}
-                      onKeyDown={(e) => e.stopPropagation()}
-                    >
+                    <span className={`badge ${c.status === "active" ? "badge-active" : "badge-inactive"}`}>
+                      {c.status === "active" ? "Đang mở" : "Bản nháp"}
+                    </span>
+                  </>
+                )}
+                title={<Link href={user?.role === "teacher" ? `/contests/${c.id}` : `/exam/${c.id}`}>{c.title}</Link>}
+                metadata={(
+                  <>
+                    <span>{c.time_limit ? `${c.time_limit} phút` : "Không giới hạn thời gian"}</span>
+                    <span>{c.question_count} câu</span>
+                    {c.class_name && <span>{c.class_name}</span>}
+                    {c.due_at && <span>Hạn {new Date(c.due_at).toLocaleString("vi-VN")}</span>}
+                  </>
+                )}
+                actions={user?.role === "teacher" ? (
+                  <>
                       <Link
                         href={`/contests/${c.id}`}
-                        className="btn btn-primary btn-sm"
+                        className="ui-button ui-button--secondary ui-button--small"
                       >
                         Chi tiết
                       </Link>
-                      <DetailsMenu style={{ position: "relative" }}>
+                      <DetailsMenu className="ui-dropdown-anchor">
                         <summary
-                          className="btn btn-secondary btn-sm"
-                          style={{ listStyle: "none", cursor: "pointer" }}
+                          className="ui-dropdown__trigger ui-button ui-button--secondary ui-button--icon ui-button--small"
+                          aria-label="Mở menu thao tác"
                         >
-                          •••
+                          <Icon name="more-horizontal" />
                         </summary>
                         <div
-                          className="card"
-                          style={{
-                            position: "absolute",
-                            right: 0,
-                            top: "calc(100% + .4rem)",
-                            zIndex: 20,
-                            width: 170,
-                            padding: ".4rem",
-                            display: "grid",
-                            gap: ".25rem",
-                            boxShadow: "var(--shadow-lg)",
-                          }}
+                          className="ui-dropdown__menu ui-dropdown__menu--compact"
+                          role="menu"
                         >
                           <button
-                            className="btn btn-ghost btn-sm"
-                            style={{ justifyContent: "flex-start" }}
+                            className="ui-dropdown__option"
+                            role="menuitem"
                             onClick={() => openShare(c)}
                           >
-                            Giao bài
+                            <span className="ui-dropdown__label">Giao bài</span>
                           </button>
                           <button
-                            className="btn btn-ghost btn-sm"
-                            style={{ justifyContent: "flex-start" }}
+                            className="ui-dropdown__option"
+                            role="menuitem"
                             onClick={() => {
                               setSelectedContest(c);
                               setShowExportModal(true);
                             }}
                           >
-                            Xuất đề
+                            <span className="ui-dropdown__label">Xuất đề</span>
                           </button>
                           <button
-                            className="btn btn-ghost btn-sm"
-                            style={{ justifyContent: "flex-start" }}
+                            className="ui-dropdown__option"
+                            role="menuitem"
                             onClick={() => toggleStatus(c)}
                           >
-                            {c.status === "active" ? "Đóng đề" : "Mở đề"}
+                            <span className="ui-dropdown__label">
+                              {c.status === "active" ? "Đóng đề" : "Mở đề"}
+                            </span>
                           </button>
                           <button
-                            className="btn btn-ghost btn-sm"
-                            style={{
-                              justifyContent: "flex-start",
-                              color: "var(--accent-danger)",
-                            }}
+                            className="ui-dropdown__option ui-dropdown__option--danger"
+                            role="menuitem"
                             onClick={async () => {
                               if (
-                                !confirm(
+                                !(await confirmDialog(
                                   "Bạn có chắc muốn xóa đề thi này không?",
-                                )
+                                  { title: "Xóa đề thi", confirmLabel: "Xóa đề", intent: "danger" },
+                                ))
                               )
                                 return;
                               await api.updateContestStatus(c.id, "deleted");
@@ -308,21 +229,17 @@ export default function ContestsPage() {
                               );
                             }}
                           >
-                            Xóa
+                            <span className="ui-dropdown__label">Xóa</span>
                           </button>
                         </div>
                       </DetailsMenu>
-                    </div>
+                    </>
                   ) : (
-                    <div
-                      style={{ display: "flex", gap: "0.5rem" }}
-                      onClick={(e) => e.stopPropagation()}
-                      onKeyDown={(e) => e.stopPropagation()}
-                    >
+                    <>
                       {c.attempts && c.attempts.length === 1 && (
                         <Link
                           href={`/results/${c.attempts[0].id}`}
-                          className="btn btn-secondary btn-sm"
+                          className="ui-button ui-button--secondary ui-button--small"
                           style={{
                             background: "var(--bg-elevated)",
                             color: "var(--text-primary)",
@@ -339,41 +256,31 @@ export default function ContestsPage() {
                               expandedHistory === c.id ? null : c.id,
                             )
                           }
-                          className="btn btn-secondary btn-sm"
-                          style={{
-                            background: "var(--bg-elevated)",
-                            color: "var(--text-primary)",
-                            border: "1px solid var(--border)",
-                          }}
+                          className="ui-button ui-button--secondary ui-button--small"
+                          aria-expanded={expandedHistory === c.id}
                         >
-                          Lịch sử ({c.attempts.length}){" "}
-                          {expandedHistory === c.id ? "▲" : "▼"}
+                          Lịch sử ({c.attempts.length})
+                          <Icon
+                            name={
+                              expandedHistory === c.id
+                                ? "chevron-up"
+                                : "chevron-down"
+                            }
+                          />
                         </button>
                       )}
                       <Link
                         href={`/exam/${c.id}`}
-                        className="btn btn-primary btn-sm"
+                        className="ui-button ui-button--primary ui-button--small"
                       >
                         {c.attempts && c.attempts.length > 0
                           ? "Làm lại"
                           : "Làm bài"}
                       </Link>
-                    </div>
+                    </>
                   )}
-                </div>
-
-                {expandedHistory === c.id &&
-                  c.attempts &&
-                  c.attempts.length > 1 && (
-                    <div
-                      onClick={(event) => event.stopPropagation()}
-                      onKeyDown={(event) => event.stopPropagation()}
-                      style={{
-                        padding: "1rem 1.25rem",
-                        borderTop: "1px solid var(--border)",
-                        background: "rgba(0,0,0,0.02)",
-                      }}
-                    >
+                details={expandedHistory === c.id && c.attempts && c.attempts.length > 1 ? (
+                  <>
                       <div
                         style={{
                           fontWeight: 600,
@@ -441,7 +348,7 @@ export default function ContestsPage() {
                               </span>
                               <Link
                                 href={`/results/${att.id}`}
-                                className="btn btn-ghost btn-sm"
+                                className="ui-button ui-button--ghost ui-button--small"
                               >
                                 Xem kết quả
                               </Link>
@@ -449,11 +356,11 @@ export default function ContestsPage() {
                           </div>
                         ))}
                       </div>
-                    </div>
-                  )}
-              </div>
-            ))}
-          </div>
+                    </>
+                ) : undefined}
+              />
+            )}
+          />
         )}
       </main>
 
@@ -465,50 +372,38 @@ export default function ContestsPage() {
       )}
       {shareContest && (
         <div
-          style={{
-            position: "fixed",
-            inset: 0,
-            zIndex: 1000,
-            background: "var(--overlay)",
-            display: "grid",
-            placeItems: "center",
-            padding: "2.5vh",
-          }}
+          className="ui-modal-backdrop"
           onMouseDown={(e) => {
             if (e.target === e.currentTarget) setShareContest(null);
           }}
         >
           <div
-            className="card modal-wide-responsive"
-            style={{
-              width: "95vw",
-              maxWidth: 1400,
-              height: "95vh",
-              overflowY: "auto",
-            }}
+            className="ui-modal ui-modal--large"
           >
-            <div className="card-header">
-              <div>
-                <h2>Giao bài</h2>
-                <p className="page-sub">{shareContest.title}</p>
+            <header className="ui-modal__header">
+              <div className="ui-modal__heading">
+                <h2 className="ui-modal__title">Giao bài</h2>
+                <p className="ui-modal__description">{shareContest.title}</p>
               </div>
               <button
-                className="btn btn-secondary"
+                className="ui-modal__close"
+                type="button"
+                aria-label="Đóng"
                 onClick={() => setShareContest(null)}
               >
-                Đóng
+                <Icon name="close" />
               </button>
-            </div>
-            <h3 style={{ margin: "1.5rem 0 .75rem" }}>Giao cho lớp</h3>
-            <div style={{ display: "grid", gap: ".5rem" }}>
+            </header>
+            <div className="ui-modal__body">
+              <h3 style={{ margin: "0 0 .75rem" }}>Giao cho lớp</h3>
+              <div style={{ display: "grid", gap: ".5rem" }}>
               {classes.map((cls) => (
                 <label
                   key={cls.id}
                   className="card"
                   style={{ padding: ".85rem", display: "flex", gap: ".75rem" }}
                 >
-                  <input
-                    type="checkbox"
+                  <Checkbox
                     checked={selectedClasses.includes(cls.id)}
                     onChange={(e) =>
                       setSelectedClasses((v) =>
@@ -521,9 +416,10 @@ export default function ContestsPage() {
                   {cls.class_name}
                 </label>
               ))}
+              </div>
             </div>
             <button
-              className="btn btn-primary"
+              className="ui-button ui-button--primary"
               style={{ marginTop: "1rem" }}
               disabled={!selectedClasses.length || sharing}
               onClick={assignToClasses}

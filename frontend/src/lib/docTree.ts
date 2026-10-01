@@ -2,18 +2,38 @@
 // ghi HTML/chữ trơn phải khớp đúng backend/src/engine/doctree/schema.py và
 // doctree/write/html.py|text.py (một lược đồ, hai nơi triển khai).
 
-export type Mark = "bold" | "italic" | "underline" | "highlight";
+export type Mark =
+  | "bold"
+  | "italic"
+  | "underline"
+  | "highlight"
+  | "subscript"
+  | "superscript";
 
 export type InlineNode =
   | { type: "text"; text: string; marks?: Mark[]; color?: string }
   | { type: "math"; tex: string }
+  | { type: "math_block"; tex: string }
   | { type: "hard_break" }
   | { type: "image_inline"; figure_id: number | string };
 
+export type CodeBlockNode = {
+  type: "code_block";
+  text: string;
+  lang?: string | null;
+};
+
 export type TableCell = {
-  content: InlineNode[];
+  content: Array<InlineNode | TableNode | CodeBlockNode>;
   colspan?: number;
   rowspan?: number;
+};
+export type TableNode = {
+  type: "table";
+  rows: TableCell[][];
+  align?: string[];
+  widths?: number[];
+  row_heights?: number[];
 };
 export type ColumnNode = {
   width: number;
@@ -29,16 +49,10 @@ export type BlockNode =
       align?: "left" | "center" | "right" | "justify";
     }
   | { type: "math_block"; tex: string }
-  | {
-      type: "table";
-      rows: TableCell[][];
-      align?: string[];
-      widths?: number[];
-      row_heights?: number[];
-    }
+  | TableNode
   | { type: "list"; items: BlockNode[][]; ordered?: boolean }
   | { type: "image"; figure_id: number | string; caption?: string | null }
-  | { type: "code_block"; text: string; lang?: string | null }
+  | CodeBlockNode
   | { type: "columns"; columns: ColumnNode[]; align?: string; gap?: number };
 
 export type TreeDoc = {
@@ -65,11 +79,12 @@ export function emptyDoc(): TreeDoc {
 // q_shortans_details.content) — không phải cây. Hai component dùng chung
 // điều kiện này để rẽ nhánh.
 export function isTreeDoc(value: unknown): value is TreeDoc {
+  const candidate = value as { type?: unknown; content?: unknown } | null;
   return (
-    !!value &&
-    typeof value === "object" &&
-    (value as any).type === "doc" &&
-    Array.isArray((value as any).content)
+    !!candidate &&
+    typeof candidate === "object" &&
+    candidate.type === "doc" &&
+    Array.isArray(candidate.content)
   );
 }
 
@@ -122,6 +137,8 @@ const TAG_OF: Record<Mark, string> = {
   italic: "em",
   underline: "u",
   highlight: "mark",
+  subscript: "sub",
+  superscript: "sup",
 };
 
 function escapeHtml(s: string): string {
@@ -155,7 +172,7 @@ function defaultMathFmt(tex: string, display: boolean): string {
  * đó. Dùng chung cho mọi nơi dựng `<img>` từ cây (treeToHtml lẫn ảnh trôi
  * immini ở LatexRenderer.tsx). */
 export function resolveImgSrc(storagePath: string): string {
-  let src = (storagePath || "").replace(/\\\\/g, "/");
+  const src = (storagePath || "").replace(/\\\\/g, "/");
   // URL preview trong trình duyệt (`blob:`) và ảnh dán dạng `data:` đã là
   // URL hoàn chỉnh; không được ghép thêm tiền tố API.
   if (!src || /^(?:https?:|blob:|data:)/i.test(src)) return src;
@@ -192,7 +209,7 @@ function imgHtml(
 }
 
 function inlineHtml(
-  nodes: InlineNode[],
+  nodes: Array<InlineNode | TableNode | CodeBlockNode>,
   images: ImagesById,
   mathFmt: (tex: string, display: boolean) => string,
 ): string {
@@ -209,9 +226,16 @@ function inlineHtml(
         return s;
       }
       if (n.type === "math") return mathFmt(n.tex, false);
+      if (n.type === "math_block")
+        return `<span class="doc-math-block">${mathFmt(n.tex, true)}</span>`;
       if (n.type === "hard_break") return "<br>";
+      if (n.type === "code_block") {
+        const lang = escapeHtml(n.lang || "");
+        return `<pre class="doc-code" data-lang="${lang}"><code>${escapeHtml(n.text)}</code></pre>`;
+      }
       if (n.type === "image_inline")
         return imgHtml(n.figure_id, images, "doc-figure-inline");
+      if (n.type === "table") return blockHtml([n], images, mathFmt);
       return "";
     })
     .join("");
@@ -294,12 +318,14 @@ export function treeToHtml(
   return blockHtml(nodes, images, mathFmt);
 }
 
-function inlineText(nodes: InlineNode[]): string {
+function inlineText(nodes: Array<InlineNode | TableNode | CodeBlockNode>): string {
   return (nodes || [])
     .map((n) => {
       if (n.type === "text") return n.text;
       if (n.type === "math") return n.tex;
       if (n.type === "hard_break") return "\n";
+      if (n.type === "code_block") return n.text;
+      if (n.type === "table") return blockText([n]);
       return "";
     })
     .join("");

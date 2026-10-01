@@ -1,13 +1,23 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { useAuth } from "@/lib/auth-context";
 import Sidebar from "@/components/Sidebar";
 import api from "@/lib/api";
 import Link from "next/link";
+import PageHeader from "@/components/PageHeader";
 import useScrollRestoration from "@/lib/useScrollRestoration";
 import { toast } from "@/lib/toastStore";
+import { Icon } from "@/components/icons";
+import Checkbox from "@/components/Checkbox";
+import MessageBar from "@/components/MessageBar";
+import { confirmDialog } from "@/lib/confirmDialog";
+import AnchoredOverlay from "@/components/AnchoredOverlay";
+import { Spinner } from "@/components/Loading";
+import ViewModeToggle from "@/components/ViewModeToggle";
+import { CollectionItem, CollectionView } from "@/components/CollectionView";
+import useViewModePreference from "@/lib/useViewModePreference";
 
 interface Student {
   id: number;
@@ -75,7 +85,7 @@ export default function ClassDetailPage() {
 
   const [classData, setClassData] = useState<ClassDetail | null>(null);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState("");
+  const [loadError, setLoadError] = useState("");
   // giữ tab trong URL, không thì quay lại trang là rơi về Tổng quan
   const [activeTab, setActiveTab] = useState<Tab>(
     (searchParams.get("tab") as Tab) || "overview",
@@ -92,6 +102,10 @@ export default function ClassDetailPage() {
   >([]);
   const [pickerError, setPickerError] = useState("");
   const [removingKey, setRemovingKey] = useState("");
+  const [assignmentViewMode, setAssignmentViewMode] = useViewModePreference(
+    "ui.class-assignments.view-mode",
+    "grid",
+  );
   const [submissionModal, setSubmissionModal] = useState<{
     item: Contest;
     rows: any[];
@@ -114,6 +128,8 @@ export default function ClassDetailPage() {
   const [searchResults, setSearchResults] = useState<any[]>([]);
   const [searchLoading, setSearchLoading] = useState(false);
   const [showDropdown, setShowDropdown] = useState(false);
+  const [activeStudentIndex, setActiveStudentIndex] = useState(-1);
+  const studentSearchRef = useRef<HTMLSpanElement>(null);
 
   useEffect(() => {
     if (!studentIdentifier.trim()) {
@@ -124,13 +140,15 @@ export default function ClassDetailPage() {
 
     const delayDebounceFn = setTimeout(async () => {
       setSearchLoading(true);
+      setAddStudentError("");
       try {
         const results = await api.searchStudents(studentIdentifier.trim());
         setSearchResults(results);
+        setActiveStudentIndex(-1);
         setShowDropdown(true);
       } catch (err) {
         console.error("Search failed", err);
-        toast.error("Lỗi khi tìm học sinh");
+        setAddStudentError("Lỗi khi tìm học sinh");
       } finally {
         setSearchLoading(false);
       }
@@ -141,13 +159,14 @@ export default function ClassDetailPage() {
 
   const fetchClassData = () => {
     setLoading(true);
+    setLoadError("");
     api
       .getClass(classId)
       .then((res: any) => {
         setClassData(res);
       })
       .catch((err) => {
-        setError(err.message || "Không thể tải thông tin lớp học");
+        setLoadError(err.message || "Không thể tải thông tin lớp học");
       })
       .finally(() => {
         setLoading(false);
@@ -203,11 +222,12 @@ export default function ClassDetailPage() {
   const removeFromClass = async (item: Contest) => {
     const isCoding = item.assignment_type === "coding";
     if (
-      !confirm(
+      !(await confirmDialog(
         `Gỡ "${item.title}" khỏi lớp ${classData?.class_name || "này"}?\n\n` +
           `Học sinh trong lớp sẽ không còn thấy và không vào làm được ${isCoding ? "bài" : "đề"} này nữa. ` +
           "Bài đã nộp vẫn giữ nguyên.",
-      )
+        { title: "Gỡ bài khỏi lớp", confirmLabel: "Gỡ bài", intent: "danger" },
+      ))
     )
       return;
     setRemovingKey(`${item.assignment_type}-${item.id}`);
@@ -216,7 +236,6 @@ export default function ClassDetailPage() {
       await fetchClassData();
       toast.success("Đã gỡ khỏi lớp");
     } catch (err: any) {
-      setError(err.message || "Không thể gỡ khỏi lớp");
       toast.error(err.message || "Không thể gỡ khỏi lớp");
     } finally {
       setRemovingKey("");
@@ -329,7 +348,7 @@ export default function ClassDetailPage() {
   if (authLoading) {
     return (
       <div
-        className="spinner"
+        className="ui-spinner"
         style={{ margin: "5rem auto", display: "block" }}
       />
     );
@@ -346,66 +365,57 @@ export default function ClassDetailPage() {
       <Sidebar />
       <main className="main-content">
         {/* Header */}
-        <div className="page-header">
-          <div>
-            <p className="page-sub" style={{ marginBottom: "0.35rem" }}>
-              <Link href="/classes">Lớp học</Link> / Chi tiết
-            </p>
-            <h1 className="page-title">
-              {loading ? "Đang tải..." : classData?.class_name || "Lớp học"}
-            </h1>
-            {classData?.teacher_name && (
-              <p className="page-sub">Giáo viên: {classData.teacher_name}</p>
-            )}
-          </div>
-          <div style={{ display: "flex", gap: "0.75rem" }}>
+        <PageHeader
+          breadcrumbs={[{ label: "Lớp học", href: "/classes" }, { label: classData?.class_name || "Chi tiết lớp", truncate: true }]}
+          title={loading ? "Đang tải..." : classData?.class_name || "Lớp học"}
+          description={classData?.teacher_name ? `Giáo viên: ${classData.teacher_name}` : undefined}
+          actions={<>
             {user?.role === "teacher" &&
               classData &&
               user?.user_id === classData.teacher_id && (
                 <button
-                  className="btn btn-danger"
+                  className="ui-button ui-button--danger"
                   onClick={async () => {
                     if (
-                      !confirm(
+                      !(await confirmDialog(
                         `Xóa lớp "${classData.class_name}"?\nHọc sinh sẽ bị gỡ khỏi lớp và các đề thi của lớp sẽ chuyển thành không gán lớp (đề và kết quả vẫn được giữ). Không thể hoàn tác.`,
-                      )
+                        { title: "Xóa lớp học", confirmLabel: "Xóa lớp", intent: "danger" },
+                      ))
                     )
                       return;
                     try {
                       await api.deleteClass(classData.id);
                       router.push("/classes");
                     } catch (e: unknown) {
-                      setError(e instanceof Error ? e.message : "Lỗi xóa lớp");
                       toast.error(
                         e instanceof Error ? e.message : "Lỗi xóa lớp",
                       );
                     }
                   }}
                 >
+                  <Icon name="trash" />
                   Xóa lớp
                 </button>
               )}
-            <button
-              className="btn btn-secondary"
-              onClick={() => router.push("/classes")}
-            >
-              Quay lại
-            </button>
-          </div>
-        </div>
+          </>}
+        />
 
-        {error && <div className="alert alert-error">{error}</div>}
+        {loadError && (
+          <MessageBar className="ui-message-bar--section" intent="error" onDismiss={() => router.push("/classes")}>
+            {loadError}
+          </MessageBar>
+        )}
 
         {loading ? (
           <div
             style={{ display: "flex", flexDirection: "column", gap: "1.5rem" }}
           >
             <div
-              className="skeleton"
+              className="ui-skeleton"
               style={{ height: "160px", borderRadius: "var(--radius-lg)" }}
             />
             <div
-              className="skeleton"
+              className="ui-skeleton"
               style={{ height: "360px", borderRadius: "var(--radius-lg)" }}
             />
           </div>
@@ -505,9 +515,10 @@ export default function ClassDetailPage() {
                     {classData.public_id}
                   </code>
                   <button
-                    className="btn btn-secondary btn-sm btn-block"
+                    className="ui-button ui-button--secondary ui-button--small ui-button--block"
                     onClick={copyCode}
                   >
+                    <Icon name={copied ? "check" : "copy"} />
                     {copied ? "Đã sao chép" : "Sao chép mã"}
                   </button>
                 </div>
@@ -579,14 +590,20 @@ export default function ClassDetailPage() {
                   }}
                 >
                   <h3 style={{ margin: 0 }}>Danh sách bài tập</h3>
-                  {user?.role === "teacher" && (
-                    <button
-                      className="btn btn-primary"
-                      onClick={openAssignmentPicker}
-                    >
-                      Giao bài mới
-                    </button>
-                  )}
+                  <div className="ui-collection-controls">
+                    <ViewModeToggle
+                      value={assignmentViewMode}
+                      onChange={setAssignmentViewMode}
+                    />
+                    {user?.role === "teacher" && (
+                      <button
+                        className="ui-button ui-button--primary"
+                        onClick={openAssignmentPicker}
+                      >
+                        Giao bài mới
+                      </button>
+                    )}
+                  </div>
                 </div>
 
                 {contestCount === 0 ? (
@@ -595,109 +612,41 @@ export default function ClassDetailPage() {
                     <p>Lớp này chưa có bài tập hay đề thi nào.</p>
                   </div>
                 ) : (
-                  <div
-                    style={{
-                      display: "grid",
-                      gridTemplateColumns:
-                        "repeat(auto-fill, minmax(340px, 1fr))",
-                      gap: "1rem",
-                    }}
-                  >
-                    {classData.contests.map((c) => (
-                      <div
-                        key={`${c.assignment_type}-${c.id}`}
-                        className="card"
-                        style={{
-                          height: "100%",
-                          padding: "1.15rem 1.25rem",
-                          display: "flex",
-                          flexDirection: "column",
-                        }}
-                      >
-                        <Link
-                          href={
-                            c.assignment_type === "coding"
-                              ? `/coding/${c.id}`
-                              : `/contests/${c.id}`
-                          }
-                          style={{ textDecoration: "none" }}
-                        >
-                          <h4
-                            style={{
-                              marginBottom: "0.7rem",
-                              color: "var(--text-primary)",
-                              fontSize: "1.05rem",
-                            }}
-                          >
-                            {c.title}
-                          </h4>
-                        </Link>
-                        <div
-                          style={{
-                            display: "flex",
-                            gap: "0.45rem",
-                            alignItems: "center",
-                            flexWrap: "wrap",
-                            marginBottom: ".65rem",
-                          }}
-                        >
-                          <span
-                            className={`badge ${c.assignment_type === "coding" ? "badge-cd" : ""}`}
-                            style={{ whiteSpace: "nowrap" }}
-                          >
-                            {c.assignment_type === "coding"
-                              ? "Lập trình"
-                              : "Đề thi"}
-                          </span>
-                          <span
-                            className={`badge ${c.status === "published" || c.status === "active" ? "badge-active" : "badge-inactive"}`}
-                            style={{ whiteSpace: "nowrap" }}
-                          >
-                            {c.status === "published" || c.status === "active"
-                              ? "Đang mở"
-                              : "Bản nháp"}
-                          </span>
-                        </div>
-                        <div
-                          style={{
-                            fontSize: ".82rem",
-                            color: "var(--text-secondary)",
-                          }}
-                        >
-                          {scheduleLabel(c)}
-                        </div>
-                        {user?.role === "teacher" && (
-                          <div
-                            style={{
-                              display: "flex",
-                              gap: ".5rem",
-                              marginTop: "auto",
-                              paddingTop: ".8rem",
-                            }}
-                          >
+                  <CollectionView
+                    items={classData.contests}
+                    mode={assignmentViewMode}
+                    getKey={(c) => `${c.assignment_type}-${c.id}`}
+                    ariaLabel="Danh sách bài tập"
+                    renderItem={(c) => (
+                      <CollectionItem
+                        href={c.assignment_type === "coding" ? `/coding/${c.id}` : `/contests/${c.id}`}
+                        badges={(
+                          <>
+                            <span className={`badge ${c.assignment_type === "coding" ? "badge-cd" : ""}`}>
+                              {c.assignment_type === "coding" ? "Lập trình" : "Đề thi"}
+                            </span>
+                            <span className={`badge ${c.status === "published" || c.status === "active" ? "badge-active" : "badge-inactive"}`}>
+                              {c.status === "published" || c.status === "active" ? "Đang mở" : "Bản nháp"}
+                            </span>
+                          </>
+                        )}
+                        title={<Link href={c.assignment_type === "coding" ? `/coding/${c.id}` : `/contests/${c.id}`}>{c.title}</Link>}
+                        metadata={<span>{scheduleLabel(c)}</span>}
+                        actions={user?.role === "teacher" ? (
+                          <>
+                            <button className="ui-button ui-button--secondary ui-button--small" onClick={() => openClassSubmissions(c)}>Bài làm của lớp</button>
                             <button
-                              className="btn btn-secondary btn-sm"
-                              onClick={() => openClassSubmissions(c)}
-                            >
-                              Bài làm của lớp
-                            </button>
-                            <button
-                              className="btn btn-ghost btn-sm"
-                              style={{ color: "var(--accent-danger)" }}
-                              disabled={
-                                removingKey === `${c.assignment_type}-${c.id}`
-                              }
+                              className="ui-button ui-button--danger ui-button--small"
+                              disabled={removingKey === `${c.assignment_type}-${c.id}`}
                               onClick={() => removeFromClass(c)}
                             >
-                              {removingKey === `${c.assignment_type}-${c.id}`
-                                ? "Đang gỡ…"
-                                : "Gỡ khỏi lớp"}
+                              {removingKey === `${c.assignment_type}-${c.id}` ? "Đang gỡ…" : "Gỡ khỏi lớp"}
                             </button>
-                          </div>
-                        )}
-                      </div>
-                    ))}
-                  </div>
+                          </>
+                        ) : undefined}
+                      />
+                    )}
+                  />
                 )}
               </div>
             )}
@@ -715,131 +664,141 @@ export default function ClassDetailPage() {
                 >
                   <h3 style={{ margin: 0 }}>Danh sách học sinh</h3>
                   {user?.role === "teacher" && (
-                    <div style={{ position: "relative" }}>
+                    <div>
                       <form
                         onSubmit={handleAddStudent}
                         style={{ display: "flex", gap: "0.5rem" }}
                       >
-                        <input
-                          type="text"
-                          className="input"
-                          placeholder="ID, Tên hoặc Email..."
-                          value={studentIdentifier}
-                          onChange={(e) => setStudentIdentifier(e.target.value)}
-                          onFocus={() => {
-                            if (searchResults.length > 0) setShowDropdown(true);
-                          }}
-                          onBlur={() =>
-                            setTimeout(() => setShowDropdown(false), 200)
-                          }
-                          style={{ width: "240px", marginBottom: 0 }}
-                          disabled={addStudentLoading}
-                        />
+                        <span
+                          ref={studentSearchRef}
+                          className="ui-input"
+                          style={{ width: "var(--combobox-min-width)" }}
+                        >
+                          <span className="ui-input__before" aria-hidden="true">
+                            <Icon name="search" size="var(--control-icon-size)" />
+                          </span>
+                          <input
+                            type="search"
+                            role="combobox"
+                            className="ui-input__control"
+                            placeholder="ID, tên hoặc email..."
+                            value={studentIdentifier}
+                            aria-autocomplete="list"
+                            aria-expanded={showDropdown}
+                            aria-controls="student-search-results"
+                            aria-activedescendant={
+                              activeStudentIndex >= 0
+                                ? `student-search-option-${activeStudentIndex}`
+                                : undefined
+                            }
+                            onChange={(e) => setStudentIdentifier(e.target.value)}
+                            onFocus={() => {
+                              if (studentIdentifier.trim()) setShowDropdown(true);
+                            }}
+                            onBlur={() =>
+                              setTimeout(() => setShowDropdown(false), 200)
+                            }
+                            onKeyDown={(event) => {
+                              if (
+                                (event.key === "ArrowDown" || event.key === "ArrowUp") &&
+                                searchResults.length
+                              ) {
+                                event.preventDefault();
+                                const step = event.key === "ArrowDown" ? 1 : -1;
+                                setShowDropdown(true);
+                                setActiveStudentIndex((current) =>
+                                  (current + step + searchResults.length) % searchResults.length,
+                                );
+                              } else if (
+                                event.key === "Enter" &&
+                                showDropdown &&
+                                activeStudentIndex >= 0
+                              ) {
+                                event.preventDefault();
+                                handleAddStudentById(
+                                  searchResults[activeStudentIndex].id.toString(),
+                                );
+                              } else if (event.key === "Escape") {
+                                setShowDropdown(false);
+                              }
+                            }}
+                            disabled={addStudentLoading}
+                          />
+                          {studentIdentifier && (
+                            <button
+                              className="ui-input__after"
+                              type="button"
+                              aria-label="Xóa nội dung tìm kiếm"
+                              onClick={() => {
+                                setStudentIdentifier("");
+                                setSearchResults([]);
+                                setShowDropdown(false);
+                                setActiveStudentIndex(-1);
+                              }}
+                            >
+                              <Icon name="x" size="var(--control-icon-size)" />
+                            </button>
+                          )}
+                        </span>
                         <button
                           type="submit"
-                          className="btn btn-primary"
+                          className="ui-button ui-button--primary"
                           disabled={
                             addStudentLoading || !studentIdentifier.trim()
                           }
                         >
+                          {!addStudentLoading && <Icon name="user-plus" />}
                           {addStudentLoading ? "Đang thêm..." : "Thêm"}
                         </button>
                       </form>
                       {showDropdown && (
-                        <ul
-                          style={{
-                            position: "absolute",
-                            top: "100%",
-                            left: 0,
-                            right: "80px", // leave space for the button
-                            background: "var(--bg-elevated)",
-                            border: "1px solid var(--border)",
-                            borderRadius: "var(--radius-md)",
-                            boxShadow: "0 4px 12px rgba(0,0,0,0.1)",
-                            zIndex: 10,
-                            listStyle: "none",
-                            padding: "0.5rem 0",
-                            margin: "0.25rem 0 0 0",
-                            maxHeight: "200px",
-                            overflowY: "auto",
-                          }}
+                        <AnchoredOverlay
+                          anchorRef={studentSearchRef}
+                          id="student-search-results"
+                          className="ui-combobox__listbox ui-combobox__listbox--portal"
+                          role="listbox"
+                          style={{ width: "var(--combobox-min-width)" }}
                         >
                           {searchLoading ? (
-                            <li
-                              style={{
-                                padding: "0.5rem 1rem",
-                                color: "var(--text-muted)",
-                                fontSize: "0.85rem",
-                                textAlign: "center",
-                              }}
-                            >
-                              Đang tìm...
-                            </li>
+                            <div className="ui-combobox__loading">
+                              <Spinner size="small" label="Đang tìm…" />
+                            </div>
                           ) : searchResults.length === 0 ? (
-                            <li
-                              style={{
-                                padding: "0.5rem 1rem",
-                                color: "var(--text-muted)",
-                                fontSize: "0.85rem",
-                                textAlign: "center",
-                              }}
-                            >
+                            <div className="ui-combobox__empty">
                               Không tìm thấy
-                            </li>
+                            </div>
                           ) : (
-                            searchResults.map((st) => (
-                              <li
+                            searchResults.map((st, index) => (
+                              <div
                                 key={st.id}
+                                id={`student-search-option-${index}`}
+                                className={`ui-combobox__option ui-combobox__option--stacked ${activeStudentIndex === index ? "ui-combobox__option--active" : ""}`}
+                                role="option"
+                                aria-selected="false"
+                                onMouseEnter={() => setActiveStudentIndex(index)}
                                 onMouseDown={() =>
                                   handleAddStudentById(st.id.toString())
                                 }
-                                style={{
-                                  padding: "0.5rem 1rem",
-                                  cursor: "pointer",
-                                  borderBottom: "1px solid var(--border)",
-                                  transition: "background 0.2s",
-                                }}
-                                onMouseEnter={(e) =>
-                                  (e.currentTarget.style.background =
-                                    "var(--bg-hover)")
-                                }
-                                onMouseLeave={(e) =>
-                                  (e.currentTarget.style.background =
-                                    "transparent")
-                                }
                               >
-                                <div
-                                  style={{
-                                    fontWeight: 600,
-                                    fontSize: "0.9rem",
-                                  }}
-                                >
-                                  [ID: {st.id}] {st.name}
-                                </div>
-                                <div
-                                  style={{
-                                    fontSize: "0.8rem",
-                                    color: "var(--text-secondary)",
-                                  }}
-                                >
+                                <span>
+                                  {st.id} - {st.name}
+                                </span>
+                                <span className="ui-combobox__option-secondary">
                                   {st.email}
-                                </div>
-                              </li>
+                                </span>
+                              </div>
                             ))
                           )}
-                        </ul>
+                        </AnchoredOverlay>
                       )}
                     </div>
                   )}
                 </div>
 
                 {addStudentError && (
-                  <div
-                    className="alert alert-error"
-                    style={{ marginBottom: "1rem" }}
-                  >
+                  <MessageBar className="ui-message-bar--section" intent="error" onDismiss={() => setAddStudentError("")}>
                     {addStudentError}
-                  </div>
+                  </MessageBar>
                 )}
 
                 {studentCount === 0 ? (
@@ -894,77 +853,51 @@ export default function ClassDetailPage() {
       </main>
       {showAssignmentPicker && (
         <div
+          className="ui-modal-backdrop"
           onMouseDown={(e) => {
             if (e.target === e.currentTarget) setShowAssignmentPicker(false);
           }}
-          style={{
-            position: "fixed",
-            inset: 0,
-            zIndex: 1000,
-            background: "var(--overlay)",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            padding: "2.5vh",
-          }}
         >
           <div
-            className="card modal-wide-responsive"
-            style={{
-              width: "95vw",
-              maxWidth: 1400,
-              height: "95vh",
-              display: "flex",
-              flexDirection: "column",
-              padding: 0,
-              overflow: "hidden",
-            }}
+            className="ui-modal ui-modal--large"
           >
-            <div
-              style={{
-                padding: "1.25rem 1.5rem",
-                borderBottom: "1px solid var(--border)",
-                display: "flex",
-                justifyContent: "space-between",
-                alignItems: "center",
-              }}
-            >
-              <div>
-                <h2 style={{ margin: 0 }}>
+            <header className="ui-modal__header">
+              <div className="ui-modal__heading">
+                <h2 className="ui-modal__title">
                   Giao bài cho {classData?.class_name || "lớp học"}
                 </h2>
-                <p className="page-sub" style={{ margin: ".25rem 0 0" }}>
+                <p className="ui-modal__description">
                   Chọn một đề đã tạo; cùng một đề có thể giao cho nhiều lớp.
                 </p>
               </div>
               <div style={{ display: "flex", gap: ".5rem" }}>
                 <Link
-                  className="btn btn-primary"
+                  className="ui-button ui-button--primary"
                   href={`/contests/new?class_id=${classId}`}
                 >
+                  <Icon name="plus" />
                   Tạo đề thi
                 </Link>
                 <button
-                  className="btn btn-secondary"
+                  className="ui-modal__close"
+                  type="button"
+                  aria-label="Đóng"
                   onClick={() => setShowAssignmentPicker(false)}
                 >
-                  Đóng
+                  <Icon name="close" />
                 </button>
               </div>
-            </div>
+            </header>
             <div
               style={{ padding: "1.25rem 1.5rem", overflowY: "auto", flex: 1 }}
             >
               {pickerError && (
-                <div
-                  className="alert alert-error"
-                  style={{ marginBottom: "1rem" }}
-                >
+                <MessageBar className="ui-message-bar--section" intent="error" onDismiss={() => setPickerError("")}>
                   {pickerError}
-                </div>
+                </MessageBar>
               )}
               {pickerLoading ? (
-                <div className="spinner" style={{ margin: "4rem auto" }} />
+                <div className="ui-spinner" style={{ margin: "4rem auto" }} />
               ) : availableAssignments.length === 0 ? (
                 <div className="empty-state">
                   <h3>Chưa có đề để giao</h3>
@@ -984,8 +917,7 @@ export default function ClassDetailPage() {
                     <thead>
                       <tr>
                         <th>
-                          <input
-                            type="checkbox"
+                          <Checkbox
                             aria-label="Chọn tất cả"
                             disabled={!selectableKeys.length}
                             checked={allSelected}
@@ -1023,8 +955,8 @@ export default function ClassDetailPage() {
                             }
                           >
                             <td onClick={(e) => e.stopPropagation()}>
-                              <input
-                                type="checkbox"
+                              <Checkbox
+                                aria-label={`Chọn ${item.title}`}
                                 disabled={item.assigned}
                                 checked={item.assigned || selected}
                                 onChange={(e) =>
@@ -1084,10 +1016,11 @@ export default function ClassDetailPage() {
             >
               <strong>Đã chọn: {selectedAssignmentKeys.length} đề/bài</strong>
               <button
-                className="btn btn-primary"
+                className="ui-button ui-button--primary"
                 disabled={!selectedAssignmentKeys.length || !!assigningKey}
                 onClick={assignSelected}
               >
+                {!assigningKey && <Icon name="plus" />}
                 {assigningKey ? "Đang thêm…" : "Thêm vào lớp"}
               </button>
             </div>
@@ -1098,46 +1031,20 @@ export default function ClassDetailPage() {
       {/* Bài làm của riêng lớp này */}
       {submissionModal && (
         <div
-          style={{
-            position: "fixed",
-            inset: 0,
-            zIndex: 1200,
-            background: "var(--overlay)",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            padding: "2.5vh",
-          }}
+          className="ui-modal-backdrop"
           onMouseDown={(e) => {
             if (e.target === e.currentTarget) setSubmissionModal(null);
           }}
         >
           <div
-            className="card modal-wide-responsive"
-            style={{
-              width: "90vw",
-              maxWidth: 1100,
-              maxHeight: "90vh",
-              display: "flex",
-              flexDirection: "column",
-              padding: 0,
-              overflow: "hidden",
-            }}
+            className="ui-modal ui-modal--large"
           >
-            <div
-              style={{
-                padding: "1.25rem 1.5rem",
-                borderBottom: "1px solid var(--border)",
-                display: "flex",
-                justifyContent: "space-between",
-                alignItems: "flex-start",
-              }}
-            >
-              <div>
-                <h2 style={{ margin: 0, fontSize: "1.1rem" }}>
+            <header className="ui-modal__header">
+              <div className="ui-modal__heading">
+                <h2 className="ui-modal__title">
                   Bài làm của lớp · {submissionModal.item.title}
                 </h2>
-                <p className="page-sub" style={{ margin: ".25rem 0 0" }}>
+                <p className="ui-modal__description">
                   {classData?.class_name} · {distinctDoerCount}/{studentCount}{" "}
                   học sinh đã làm
                   {submissionModal.item.assignment_type !== "coding" &&
@@ -1147,19 +1054,30 @@ export default function ClassDetailPage() {
                 </p>
               </div>
               <button
-                className="btn btn-ghost btn-sm"
+                className="ui-modal__close"
+                type="button"
+                aria-label="Đóng"
                 onClick={() => setSubmissionModal(null)}
               >
-                Đóng
+                <Icon name="close" />
               </button>
-            </div>
+            </header>
             <div
               style={{ padding: "1.25rem 1.5rem", overflowY: "auto", flex: 1 }}
             >
               {submissionModal.error ? (
-                <div className="alert alert-error">{submissionModal.error}</div>
+                <MessageBar
+                  intent="error"
+                  onDismiss={() =>
+                    setSubmissionModal((current) =>
+                      current ? { ...current, error: "" } : current,
+                    )
+                  }
+                >
+                  {submissionModal.error}
+                </MessageBar>
               ) : submissionModal.loading ? (
-                <div className="spinner" style={{ margin: "3rem auto" }} />
+                <div className="ui-spinner" style={{ margin: "3rem auto" }} />
               ) : submissionModal.rows.length === 0 ? (
                 <div className="empty-state">
                   <p>Chưa có học sinh nào trong lớp làm bài này.</p>
@@ -1212,7 +1130,7 @@ export default function ClassDetailPage() {
                           <td>
                             <Link
                               href={`/coding/${submissionModal.item.id}`}
-                              className="btn btn-secondary btn-sm"
+                              className="ui-button ui-button--secondary ui-button--small"
                             >
                               Chi tiết
                             </Link>
@@ -1279,7 +1197,7 @@ export default function ClassDetailPage() {
                           <td>
                             <Link
                               href={`/results/${sub.result_id}`}
-                              className="btn btn-secondary btn-sm"
+                              className="ui-button ui-button--secondary ui-button--small"
                             >
                               Chi tiết
                             </Link>

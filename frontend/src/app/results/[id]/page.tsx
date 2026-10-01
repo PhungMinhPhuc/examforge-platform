@@ -14,6 +14,9 @@ import { mcCorrectLabel } from "@/lib/docTree";
 import api from "@/lib/api";
 import Link from "next/link";
 import { toast } from "@/lib/toastStore";
+import PageHeader from "@/components/PageHeader";
+import { confirmDialog } from "@/lib/confirmDialog";
+import { Icon } from "@/components/icons/Icon";
 
 type Submission = {
   question_id: number;
@@ -248,7 +251,7 @@ export default function ResultPage({
           height: "100vh",
         }}
       >
-        <span className="spinner" />
+        <span className="ui-spinner" />
       </div>
     );
 
@@ -257,36 +260,28 @@ export default function ResultPage({
       {user && <Sidebar />}
       <main className="main-content result-page-content">
         {/* Header */}
-        <div className="page-header result-page-header">
-          <div>
-            <div className="page-breadcrumb">
-              <Link
-                href={backHref}
-                onClick={(e) => {
-                  // lùi lịch sử để giữ đúng trang và vị trí cuộn cũ; vào thẳng
-                  // bằng link thì mới đi tới backHref
-                  if (hasAppHistory()) {
-                    e.preventDefault();
-                    router.back();
-                  }
-                }}
-              >
-                Đề thi và bài tập
-              </Link>
-              <span className="sep">/</span>
-              <span className="current">Kết quả chi tiết</span>
-            </div>
-            <h1>{result?.title}</h1>
-          </div>
-          {user?.role === "teacher" && (
+        <PageHeader
+          className="result-page-header"
+          breadcrumbs={[
+            { label: "Đề thi và bài tập", href: backHref, onClick: (event) => { if (hasAppHistory()) { event.preventDefault(); router.back(); } } },
+            { label: result?.title || "Bài thi", truncate: true },
+            { label: "Kết quả" },
+          ]}
+          title="Kết quả chi tiết"
+          description={result?.title}
+          actions={user?.role === "teacher" ? (
             <DetailsMenu className="result-actions">
-              <summary className="btn btn-secondary btn-sm">Thao tác</summary>
+              <summary className="ui-button ui-button--secondary">Thao tác</summary>
               <div className="result-actions-menu">
                 <button
-                  className="btn btn-ghost btn-sm"
-                  onClick={() => {
+                  className="ui-button ui-button--danger ui-button--small"
+                  onClick={async () => {
                     if (!result) return;
-                    if (confirm("Bạn có chắc chắn muốn xóa bài thi này?")) {
+                    if (await confirmDialog("Bạn có chắc chắn muốn xóa bài thi này?", {
+                      title: "Xóa bài thi",
+                      confirmLabel: "Xóa bài",
+                      intent: "danger",
+                    })) {
                       api
                         .deleteResult(result.id)
                         .then(() => router.back())
@@ -294,12 +289,13 @@ export default function ResultPage({
                     }
                   }}
                 >
+                  <Icon name="trash" />
                   Xóa bài thi
                 </button>
               </div>
             </DetailsMenu>
-          )}
-        </div>
+          ) : undefined}
+        />
 
         <section className="card result-overview-card">
           <div className="result-overview-main">
@@ -354,7 +350,7 @@ export default function ResultPage({
                 <h2
                   style={{
                     color: "var(--accent-primary)",
-                    fontSize: "var(--font-size-lg)",
+                    fontSize: "var(--font-size-base)",
                   }}
                 >
                   {block.title}
@@ -427,41 +423,14 @@ export default function ResultPage({
                               color: sub.is_correct
                                 ? "var(--accent-success)"
                                 : "var(--accent-danger)",
-                              fontSize: "var(--font-size-md)",
+                              fontSize: "var(--font-size-sm)",
                             }}
                           >
-                            {sub.is_correct ? (
-                              <svg
-                                width="var(--icon-size-control)"
-                                height="var(--icon-size-control)"
-                                viewBox="0 0 24 24"
-                                fill="none"
-                                aria-label="Đúng"
-                              >
-                                <path
-                                  d="M5 12.5l4.2 4.2L19 7"
-                                  stroke="currentColor"
-                                  strokeWidth="var(--icon-stroke-status)"
-                                  strokeLinecap="round"
-                                  strokeLinejoin="round"
-                                />
-                              </svg>
-                            ) : (
-                              <svg
-                                width="var(--icon-size-control)"
-                                height="var(--icon-size-control)"
-                                viewBox="0 0 24 24"
-                                fill="none"
-                                aria-label="Sai"
-                              >
-                                <path
-                                  d="M7 7l10 10M17 7L7 17"
-                                  stroke="currentColor"
-                                  strokeWidth="var(--icon-stroke-status)"
-                                  strokeLinecap="round"
-                                />
-                              </svg>
-                            )}
+                            <Icon
+                              name={sub.is_correct ? "check" : "x"}
+                              size="var(--icon-size-control)"
+                              aria-label={sub.is_correct ? "Đúng" : "Sai"}
+                            />
                           </div>
                           <div style={{ flex: 1, minWidth: 0 }}>
                             <div
@@ -479,7 +448,7 @@ export default function ResultPage({
                                 style={{
                                   fontWeight: 600,
                                   color: "var(--text-secondary)",
-                                  fontSize: "var(--font-size-base)",
+                                  fontSize: "var(--font-size-md)",
                                 }}
                               >
                                 Điểm: {Number(sub.earned_point).toFixed(2)}
@@ -761,7 +730,7 @@ export default function ResultPage({
                                   <strong
                                     style={{
                                       color: "var(--text-secondary)",
-                                      fontSize: "var(--font-size-base)",
+                                      fontSize: "var(--font-size-md)",
                                     }}
                                   >
                                     Bài làm của bạn:
@@ -955,11 +924,11 @@ export default function ResultPage({
             justifyContent: "center",
           }}
         >
-          <Link href="/" className="btn btn-secondary">
+          <Link href="/" className="ui-button ui-button--secondary">
             {" "}
             Về trang chủ
           </Link>
-          <Link href="/contests" className="btn btn-primary">
+          <Link href="/contests" className="ui-button ui-button--primary">
             {" "}
             Xem đề thi khác
           </Link>

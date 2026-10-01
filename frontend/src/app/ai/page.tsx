@@ -3,8 +3,11 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Sidebar from "@/components/Sidebar";
+import PageHeader from "@/components/PageHeader";
 import { useAuth } from "@/lib/auth-context";
 import { toast } from "@/lib/toastStore";
+import Combobox from "@/components/Combobox";
+import { Icon } from "@/components/icons";
 
 export default function AISettingsPage() {
   const router = useRouter();
@@ -102,14 +105,10 @@ export default function AISettingsPage() {
     <div className="page-wrapper">
       <Sidebar />
       <main className="main-content">
-        <div className="page-header">
-          <div>
-            <h1 className="page-title">Cài đặt AI</h1>
-            <p className="page-sub">
-              Cấu hình kết nối AI cho tài khoản của bạn
-            </p>
-          </div>
-        </div>
+        <PageHeader
+          title="Cài đặt AI"
+          description="Cấu hình kết nối AI cho tài khoản của bạn"
+        />
 
         <div className="card" style={{ maxWidth: "800px", margin: "0 auto" }}>
           <div
@@ -181,19 +180,12 @@ export default function AISettingsPage() {
                 >
                   <label style={{ fontWeight: "600" }}>Gemini API Keys</label>
                   <button
+                    className="ui-button ui-button--primary ui-button--small"
+                    type="button"
                     onClick={() => setGeminiApiKeys([...geminiApiKeys, ""])}
-                    style={{
-                      background: "var(--accent-primary)",
-                      color: "white",
-                      border: "none",
-                      borderRadius: "4px",
-                      padding: "0.25rem 0.5rem",
-                      cursor: "pointer",
-                      fontSize: "0.8rem",
-                      fontWeight: "bold",
-                    }}
                   >
-                    + Thêm Key
+                    <Icon name="plus" />
+                    <span>Thêm Key</span>
                   </button>
                 </div>
 
@@ -229,10 +221,13 @@ export default function AISettingsPage() {
                             setGeminiApiKeys(newKeys);
                           }}
                           placeholder="Nhập API Key (VD: AIzaSy...)"
-                          className="input"
+                          className="ui-input-native"
                           style={{ flex: 1, fontFamily: "monospace" }}
                         />
                         <button
+                          className="ui-button ui-button--danger ui-button--icon"
+                          type="button"
+                          aria-label="Xóa API key"
                           onClick={() => {
                             if (geminiApiKeys.length > 1) {
                               setGeminiApiKeys(
@@ -242,17 +237,8 @@ export default function AISettingsPage() {
                               setGeminiApiKeys([""]);
                             }
                           }}
-                          style={{
-                            background: "var(--tone-danger-bg)",
-                            color: "var(--accent-danger)",
-                            border: "none",
-                            borderRadius: "4px",
-                            padding: "0 0.75rem",
-                            cursor: "pointer",
-                            fontWeight: "bold",
-                          }}
                         >
-                          ✕
+                          <Icon name="x" />
                         </button>
                       </div>
                     ))}
@@ -260,52 +246,28 @@ export default function AISettingsPage() {
                   <div
                     style={{ position: "relative", flex: 1, minWidth: "160px" }}
                   >
-                    <select
+                    <Combobox
                       value={geminiModel}
-                      onChange={(e) => setGeminiModel(e.target.value)}
-                      className="input"
-                      style={{
-                        width: "100%",
-                        cursor: "pointer",
-                        appearance: "none",
-                        paddingRight: "2rem",
-                        fontFamily: "inherit",
-                        fontWeight: 500,
-                      }}
-                    >
-                      <option value="gemini-3.5-flash">Gemini 3.5 Flash</option>
-                      <option value="gemini-3.5-live-translate-preview">
-                        Gemini 3.5 Live Translate
-                      </option>
-                      <option value="gemini-3.1-flash-lite">
-                        Gemini 3.1 Flash Lite
-                      </option>
-                      <option value="gemini-3-flash-preview">
-                        Gemini 3 Flash
-                      </option>
-                    </select>
-                    <svg
-                      style={{
-                        position: "absolute",
-                        right: "0.75rem",
-                        top: "50%",
-                        transform: "translateY(-50%)",
-                        width: "16px",
-                        height: "16px",
-                        pointerEvents: "none",
-                        color: "var(--text-muted)",
-                      }}
-                      fill="none"
-                      viewBox="0 0 24 24"
-                      stroke="currentColor"
-                    >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth={2}
-                        d="M19 9l-7 7-7-7"
-                      />
-                    </svg>
+                      onChange={(value) => setGeminiModel(String(value))}
+                      options={[
+                        {
+                          value: "gemini-3.5-flash",
+                          label: "Gemini 3.5 Flash",
+                        },
+                        {
+                          value: "gemini-3.5-live-translate-preview",
+                          label: "Gemini 3.5 Live Translate",
+                        },
+                        {
+                          value: "gemini-3.1-flash-lite",
+                          label: "Gemini 3.1 Flash Lite",
+                        },
+                        {
+                          value: "gemini-3-flash-preview",
+                          label: "Gemini 3 Flash",
+                        },
+                      ]}
+                    />
                   </div>
                 </div>
               </div>
@@ -338,7 +300,7 @@ export default function AISettingsPage() {
                     value={localBaseUrl}
                     onChange={(e) => setLocalBaseUrl(e.target.value)}
                     placeholder="VD: http://localhost:11434/v1 (Ollama) hoặc http://localhost:1234/v1 (LM Studio)"
-                    className="input"
+                    className="ui-input-native"
                     style={{ width: "100%", fontFamily: "monospace" }}
                   />
                 </div>
@@ -358,7 +320,7 @@ export default function AISettingsPage() {
                       value={localModel}
                       onChange={(e) => setLocalModel(e.target.value)}
                       placeholder="VD: qwen2-vl-7b-instruct"
-                      className="input"
+                      className="ui-input-native"
                       style={{ width: "100%", fontFamily: "monospace" }}
                     />
                   </div>
@@ -377,7 +339,7 @@ export default function AISettingsPage() {
                       value={localApiKey}
                       onChange={(e) => setLocalApiKey(e.target.value)}
                       placeholder="Thường là lm-studio hoặc ollama"
-                      className="input"
+                      className="ui-input-native"
                       style={{ width: "100%", fontFamily: "monospace" }}
                     />
                   </div>
@@ -388,22 +350,16 @@ export default function AISettingsPage() {
             <div style={{ display: "flex", gap: "1rem", marginTop: "1rem" }}>
               <button
                 onClick={handleSave}
-                className="btn btn-primary"
+                className="ui-button ui-button--primary"
                 style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}
               >
                 {isSaved ? "Đã lưu" : "Lưu cài đặt"}
               </button>
               <button
                 onClick={handleClear}
-                className="btn"
-                style={{
-                  display: "flex",
-                  alignItems: "center",
-                  gap: "0.5rem",
-                  backgroundColor: "var(--tone-danger-bg)",
-                  color: "var(--accent-danger)",
-                }}
+                className="ui-button ui-button--danger-tonal"
               >
+                <Icon name="trash" />
                 Xóa cấu hình
               </button>
             </div>

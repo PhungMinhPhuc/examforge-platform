@@ -4,19 +4,33 @@ import React, { useEffect, useRef, useState, useCallback } from "react";
 import { createPortal } from "react-dom";
 import MathLiveEditor from "./MathLiveEditor";
 import ImageEditorModal, { ImageEditResult } from "./ImageEditorModal";
+import { Icon } from "@/components/icons";
+import NumberInput from "@/components/NumberInput";
+import { Spinner } from "@/components/Loading";
 import { queueTypeset } from "@/lib/mathjax";
 import api from "@/lib/api";
 import { toast } from "@/lib/toastStore";
 import {
   TreeDoc,
   BlockNode,
-  InlineNode,
-  Mark,
   emptyDoc,
   resolveImgSrc,
   wrapInlineMath,
   wrapDisplayMath,
 } from "@/lib/docTree";
+import {
+  findImageInfo,
+  imageCardHtml,
+  normalizeTextColor,
+  reconcileDoc,
+  renderDocForEdit,
+  textColorOfNode,
+} from "./rich-latex-editor/model/treeDomCodec";
+export {
+  normalizeEditableBlocks,
+  reconcileDoc,
+  renderDocForEdit,
+} from "./rich-latex-editor/model/treeDomCodec";
 
 export type EditorImage = {
   id?: number | string;
@@ -31,14 +45,6 @@ export type EditorImage = {
 
 interface Props {
   content: TreeDoc | null | undefined;
-  // `newImage` chỉ có khi vừa chèn ảnh MỚI (nút/dán) — cha PHẢI gộp nó vào
-  // qData.images trong CÙNG một lần cập nhật với content. Từng tách thành 2
-  // callback riêng (onChange + onImageInserted) gọi liền nhau trong cùng một
-  // thao tác — cả 2 đều tự spread {...qData, ...} trên CÙNG một qData cũ (React
-  // chưa kịp re-render giữa 2 lần gọi), lần gọi sau đè mất lần gọi trước, ảnh
-  // vừa chèn "biến mất" khỏi qData.images dù vẫn thấy trên màn hình (chỉ là
-  // DOM thao tác tay, không phải state thật) — click +/- sau đó không tìm
-  // thấy ảnh trong `images` prop nữa nên im re không phản ứng gì.
   onChange: (val: TreeDoc, newImage?: EditorImage) => void;
   placeholder?: string;
   imageEditable?: boolean;
@@ -53,224 +59,18 @@ interface Props {
   questionId?: number;
   importJobId?: string;
   allowPendingImage?: boolean;
-  // Cụm "Bố cục" (trôi phải/ở giữa) — chỉ hiện ở ô Nội dung đề bài chính,
-  // không hiện ở từng phương án/lời giải (đúng phạm vi đã duyệt).
+  // Cụm "Bố cục" (trôi phải/ở giữa) — chỉ hiện ở ô Nội dung đề bài chính, không hiện ở từng phương án/lời giải
   showLayoutControl?: boolean;
   layoutType?: string;
 }
 
 function escapeHtml(s: string): string {
-  return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
-}
-
-function findImageInfo(
-  figureId: string,
-  images: EditorImage[],
-): EditorImage | undefined {
-  return images.find((i) => String(i.id) === figureId);
-}
-
-function normalizedFigureId(raw: string): number | string {
-  const value = raw.trim();
-  return /^\d+$/.test(value) ? Number(value) : value;
-}
-
-// ---------- dựng cây -> DOM soạn thảo (atom công thức/ảnh, còn lại gõ trực tiếp) ----------
-
-function renderInlineForEdit(
-  nodes: InlineNode[],
-  images: EditorImage[],
-  imageEditable: boolean,
-): string {
-  return (nodes || [])
-    .map((n) => {
-      if (n.type === "text") {
-        let html = escapeHtml(n.text) || "​";
-        (n.marks || []).forEach((m) => {
-          const tag =
-            m === "bold"
-              ? "b"
-              : m === "italic"
-                ? "i"
-                : m === "underline"
-                  ? "u"
-                  : "mark";
-          html = `<${tag}>${html}</${tag}>`;
-        });
-        if (/^#[0-9a-f]{6}$/i.test(n.color || ""))
-          html = `<span style="color:${n.color}">${html}</span>`;
-        return html;
-      }
-      if (n.type === "math") {
-        return `<span class="rle-math" contenteditable="false" data-tex="${escapeHtml(n.tex)}">${wrapInlineMath(escapeHtml(n.tex))}</span>​`;
-      }
-      if (n.type === "hard_break") return "<br>";
-      if (n.type === "image_inline") {
-        return imageInlineCardHtml(String(n.figure_id), images, imageEditable);
-      }
-      return "";
-    })
-    .join("");
-}
-
-function imageCardHtml(
-  figureId: string,
-  images: EditorImage[],
-  imageEditable: boolean,
-  side: "right" | "center" = "center",
-): string {
-  const imgInfo = findImageInfo(figureId, images);
-  const isTikz = imgInfo?.img_type === "tikz";
-  const isStaged = !!imgInfo?.url?.includes("/upload/job/");
-  const widthFrac = imgInfo?.width;
-  const pctValue = widthFrac == null ? "" : String(Math.round(widthFrac * 100));
-  const imgSrc = imgInfo
-    ? resolveImgSrc(imgInfo.url || imgInfo.storage_path)
-    : "";
-  const missing = !!imgInfo && imgInfo.asset_exists === false;
-  return `<div class="rle-image side-${side}" contenteditable="false" data-figure-id="${escapeHtml(figureId)}"${widthFrac ? ` style="--rle-image-width:${Math.min(widthFrac * 100, 100)}%"` : ""}>
-    <div class="rle-image-head">
-      ${
-        imageEditable && imgInfo
-          ? `
-      <div class="rle-image-zoom">
-        <button type="button" class="btn btn-secondary btn-sm rle-iz-btn" data-imgcmd="dec" title="Thu nhỏ">−</button>
-        <input type="number" class="rle-iz-input" value="${pctValue}" placeholder="Tự động" min="1" max="100" data-imgcmd="pct" title="Cỡ ảnh theo chiều ngang vùng soạn thảo (%)">
-        <span class="rle-iz-sign">%</span>
-        <button type="button" class="btn btn-secondary btn-sm rle-iz-btn" data-imgcmd="inc" title="Phóng to">+</button>
-      </div>`
-          : "<span></span>"
-      }
-      <div class="rle-image-actions">
-        ${imageEditable && !isTikz && !isStaged ? `<button type="button" class="btn btn-secondary btn-sm" data-imgcmd="edit" title="Cắt / đổi độ phân giải">✂</button>` : ""}
-        <button type="button" class="btn btn-danger btn-sm" data-imgcmd="del" title="Xoá ảnh">✕</button>
-      </div>
-    </div>
-    ${missing ? `<div class="alert alert-danger">Ảnh không tồn tại (${escapeHtml(figureId)})</div>` : `<img src="${imgSrc}" alt="Hình vẽ" class="rle-image-img" style="height:auto;">`}
-  </div>`;
-}
-
-function imageInlineCardHtml(
-  figureId: string,
-  images: EditorImage[],
-  imageEditable: boolean,
-): string {
-  const imgInfo = findImageInfo(figureId, images);
-  const widthFrac = imgInfo?.width;
-  const pctValue = widthFrac == null ? "" : String(Math.round(widthFrac * 100));
-  const imgSrc = imgInfo
-    ? resolveImgSrc(imgInfo.url || imgInfo.storage_path)
-    : "";
-  const missing = !!imgInfo && imgInfo.asset_exists === false;
-  return `<span class="rle-imginline rle-image" contenteditable="false" data-figure-id="${escapeHtml(figureId)}">
-    ${
-      imageEditable && imgInfo
-        ? `<span class="rle-image-zoom">
-      <button type="button" class="btn btn-secondary btn-sm rle-iz-btn" data-imgcmd="dec" title="Thu nhỏ">−</button>
-      <input type="number" class="rle-iz-input" value="${pctValue}" placeholder="Tự động" min="1" max="100" data-imgcmd="pct" title="Cỡ ảnh theo chiều ngang vùng soạn thảo (%)">
-      <span class="rle-iz-sign">%</span>
-      <button type="button" class="btn btn-secondary btn-sm rle-iz-btn" data-imgcmd="inc" title="Phóng to">+</button>
-      <button type="button" class="btn btn-danger btn-sm rle-iz-btn" data-imgcmd="del" title="Xoá ảnh">✕</button>
-    </span>`
-        : ""
-    }
-    ${missing ? `<span class="text-danger">Ảnh không tồn tại</span>` : imgInfo ? `<img src="${imgSrc}" alt="Hình vẽ" class="rle-image-img" style="${widthFrac ? `width:${Math.min(widthFrac * 100, 100)}%;` : "width:auto;"}height:auto;">` : "🖼"}
-  </span>​`;
-}
-
-function renderBlockForEdit(
-  node: BlockNode,
-  images: EditorImage[],
-  imageEditable: boolean,
-  side: "right" | "center",
-): string {
-  if (node.type === "paragraph")
-    return `<p class="rle-p" style="text-align:${node.align || "justify"}">${renderInlineForEdit(node.content, images, imageEditable)}</p>`;
-  if (node.type === "math_block") {
-    return `<div class="rle-mathblock" contenteditable="false" data-tex="${escapeHtml(node.tex)}">${wrapDisplayMath(escapeHtml(node.tex))}</div>`;
-  }
-  if (node.type === "image")
-    return imageCardHtml(String(node.figure_id), images, imageEditable, side);
-  if (node.type === "list") {
-    const tag = node.ordered ? "ol" : "ul";
-    const items = node.items
-      .map(
-        (item) =>
-          `<li>${item.map((b) => (b.type === "paragraph" ? renderInlineForEdit(b.content, images, imageEditable) : "")).join("")}</li>`,
-      )
-      .join("");
-    return `<${tag} class="rle-list">${items}</${tag}>`;
-  }
-  if (node.type === "table") {
-    const columnCount = node.widths?.length || Math.max(
-      1,
-      ...node.rows.map((row) =>
-        row.reduce((total, cell) => total + (cell.colspan || 1), 0),
-      ),
-    );
-    const widths =
-      node.widths?.length === columnCount
-        ? node.widths
-        : Array.from({ length: columnCount }, () => 1 / columnCount);
-    const columns = `<colgroup>${widths
-      .map((width) => `<col style="width:${width * 100}%">`)
-      .join("")}</colgroup>`;
-    const rows = node.rows
-      .map(
-        (row, rowIndex) =>
-          `<tr${node.row_heights?.[rowIndex] ? ` data-height="${node.row_heights[rowIndex]}" style="height:${node.row_heights[rowIndex]}px"` : ""}>${row.map((c) => `<td${c.colspan && c.colspan > 1 ? ` colspan="${c.colspan}"` : ""}${c.rowspan && c.rowspan > 1 ? ` rowspan="${c.rowspan}"` : ""}>${renderInlineForEdit(c.content, images, imageEditable)}</td>`).join("")}</tr>`,
-      )
-      .join("");
-    return `<table class="rle-table">${columns}<tbody>${rows}</tbody></table>`;
-  }
-  if (node.type === "columns") {
-    const widths = node.columns
-      .map((column) => `${column.width * 100}%`)
-      .join(" ");
-    const columns = node.columns
-      .map((column, index) => {
-        const body = column.content
-          .map((block) =>
-            renderBlockForEdit(block, images, imageEditable, "center"),
-          )
-          .join("");
-        return `<div class="rle-column" data-width="${column.width}" data-align="${column.align || "left"}" data-valign="${column.valign || "top"}" style="text-align:${column.align || "left"}"><div class="rle-column-head" contenteditable="false">Cột ${index + 1}: <input class="rle-column-width" type="number" min="5" max="95" value="${Math.round(column.width * 100)}">%</div>${body}</div>`;
-      })
-      .join("");
-    return `<div class="rle-columns" data-gap="${node.gap || 0}" style="display:grid;grid-template-columns:${widths}">${columns}</div>`;
-  }
-  if (node.type === "code_block") {
-    return `<pre class="rle-code" data-lang="${escapeHtml(node.lang || "")}">${escapeHtml(node.text)}</pre>`;
-  }
-  return "";
-}
-
-function renderDocForEdit(
-  doc: TreeDoc,
-  images: EditorImage[],
-  imageEditable: boolean,
-): string {
-  const content = doc.content?.length ? doc.content : emptyDoc().content;
-  const side: "right" | "center" = doc.side === "right" ? "right" : "center";
-  if (side === "right") {
-    const imageBlocks = content.filter((block) => block.type === "image");
-    if (imageBlocks.length) {
-      const floatedImages = imageBlocks
-        .map((block) => renderBlockForEdit(block, images, imageEditable, side))
-        .join("");
-      const anchoredContent = content
-        .map((block) =>
-          block.type === "image"
-            ? `<span class="rle-image-anchor" contenteditable="false" data-figure-id="${escapeHtml(String(block.figure_id))}" hidden></span>`
-            : renderBlockForEdit(block, images, imageEditable, side),
-        )
-        .join("");
-      return floatedImages + anchoredContent;
-    }
-  }
-  return content
-    .map((b) => renderBlockForEdit(b, images, imageEditable, side))
-    .join("");
+  return s
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
 }
 
 function blockHasImage(block: BlockNode): boolean {
@@ -284,7 +84,11 @@ function blockHasImage(block: BlockNode): boolean {
   if (block.type === "table")
     return block.rows.some((row) =>
       row.some((cell) =>
-        cell.content.some((node) => node.type === "image_inline"),
+        cell.content.some(
+          (node) =>
+            node.type === "image_inline" ||
+            (node.type === "table" && blockHasImage(node)),
+        ),
       ),
     );
   return false;
@@ -310,113 +114,6 @@ function isDocEmpty(doc: TreeDoc | null | undefined): boolean {
 
 // ---------- DOM soạn thảo -> cây (reconcile, chỉ chạy lúc blur/debounce, không phải mỗi phím gõ) ----------
 
-function marksOfNode(node: Node, root: HTMLElement): Mark[] {
-  const marks: Mark[] = [];
-  let el: HTMLElement | null = node.parentElement;
-  while (el && el !== root) {
-    const tag = el.tagName;
-    const style = el.getAttribute("style") || "";
-    if (
-      tag === "B" ||
-      tag === "STRONG" ||
-      /font-weight\s*:\s*(bold|[6-9]00)/i.test(style)
-    )
-      marks.push("bold");
-    if (tag === "I" || tag === "EM" || /font-style\s*:\s*italic/i.test(style))
-      marks.push("italic");
-    if (tag === "U" || /text-decoration[^;"']*underline/i.test(style))
-      marks.push("underline");
-    if (
-      tag === "MARK" ||
-      (/background(-color)?\s*:/i.test(style) &&
-        !/transparent|rgba?\(0,\s*0,\s*0,\s*0\)/i.test(style))
-    )
-      marks.push("highlight");
-    el = el.parentElement;
-  }
-  return [...new Set(marks)];
-}
-
-function normalizeTextColor(value: string): string | undefined {
-  const color = value.trim().toLowerCase();
-  const longHex = /^#([0-9a-f]{6})$/.exec(color);
-  if (longHex) return `#${longHex[1]}`;
-  const shortHex = /^#([0-9a-f]{3})$/.exec(color);
-  if (shortHex)
-    return `#${shortHex[1].split("").map((digit) => digit + digit).join("")}`;
-  const rgb = /^rgba?\(\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)(?:\s*,\s*([\d.]+))?\s*\)$/.exec(color);
-  if (!rgb || (rgb[4] != null && Number(rgb[4]) === 0)) return undefined;
-  const channel = (part: string) =>
-    Math.max(0, Math.min(255, Number(part))).toString(16).padStart(2, "0");
-  return `#${channel(rgb[1])}${channel(rgb[2])}${channel(rgb[3])}`;
-}
-
-function textColorOfNode(node: Node, root: HTMLElement): string | undefined {
-  let el: HTMLElement | null =
-    node.nodeType === Node.ELEMENT_NODE
-      ? (node as HTMLElement)
-      : node.parentElement;
-  while (el && el !== root) {
-    const color = normalizeTextColor(el.style.color || "");
-    if (color) return color;
-    el = el.parentElement;
-  }
-  return undefined;
-}
-
-function reconcileInline(container: HTMLElement): InlineNode[] {
-  const out: InlineNode[] = [];
-  function walk(node: ChildNode) {
-    if (node.nodeType === Node.TEXT_NODE) {
-      const text = (node.textContent || "").replace(/​/g, "");
-      if (text.length) {
-        const marks = marksOfNode(node, container);
-        const color = textColorOfNode(node, container);
-        out.push({
-          type: "text",
-          text,
-          ...(marks.length ? { marks } : {}),
-          ...(color ? { color } : {}),
-        });
-      }
-      return;
-    }
-    if (node.nodeType !== Node.ELEMENT_NODE) return;
-    const el = node as HTMLElement;
-    if (el.classList.contains("rle-math")) {
-      out.push({ type: "math", tex: el.dataset.tex || "" });
-      return;
-    }
-    if (el.classList.contains("rle-imginline")) {
-      out.push({
-        type: "image_inline",
-        figure_id: normalizedFigureId(el.dataset.figureId || ""),
-      });
-      return;
-    }
-    if (el.tagName === "BR") {
-      out.push({ type: "hard_break" });
-      return;
-    }
-    el.childNodes.forEach(walk);
-  }
-  container.childNodes.forEach(walk);
-  const merged: InlineNode[] = [];
-  out.forEach((n) => {
-    const prev = merged[merged.length - 1];
-    if (
-      prev &&
-      prev.type === "text" &&
-      n.type === "text" &&
-      JSON.stringify(prev.marks || []) === JSON.stringify(n.marks || []) &&
-      prev.color === n.color
-    ) {
-      prev.text += n.text;
-    } else merged.push(n);
-  });
-  return merged.length ? merged : [{ type: "text", text: "" }];
-}
-
 // Ô % của cụm zoom được chèn qua innerHTML (không do React dựng) — cả
 // onChange lẫn onInput của React đều im lặng bỏ qua nó (cơ chế theo dõi giá
 // trị của React chỉ gắn được cho input chính React render ra). Gắn thẳng
@@ -438,263 +135,6 @@ function wireImageZoomInputs(
       input.addEventListener("blur", () => onCommit(input));
     });
 }
-
-function reconcileBlocks(surface: HTMLElement): BlockNode[] {
-  const blocks: BlockNode[] = [];
-  const anchoredImageIds = new Set(
-    Array.from(
-      surface.querySelectorAll<HTMLElement>(":scope > .rle-image-anchor"),
-    ).map((anchor) => anchor.dataset.figureId || ""),
-  );
-  surface.querySelectorAll(":scope > *").forEach((elRaw) => {
-    const el = elRaw as HTMLElement;
-    if (el.classList.contains("rle-p")) {
-      const align = (el.style.textAlign || getComputedStyle(el).textAlign) as
-        | "left"
-        | "center"
-        | "right"
-        | "justify"
-        | "";
-      blocks.push({
-        type: "paragraph",
-        content: reconcileInline(el),
-        ...(align && align !== "left" ? { align } : {}),
-      });
-    } else if (el.classList.contains("rle-mathblock")) {
-      blocks.push({ type: "math_block", tex: el.dataset.tex || "" });
-    } else if (el.classList.contains("rle-image-anchor")) {
-      blocks.push({
-        type: "image",
-        figure_id: normalizedFigureId(el.dataset.figureId || ""),
-      });
-    } else if (
-      el.classList.contains("rle-image") &&
-      !anchoredImageIds.has(el.dataset.figureId || "")
-    ) {
-      blocks.push({
-        type: "image",
-        figure_id: normalizedFigureId(el.dataset.figureId || ""),
-      });
-    } else if (el.tagName === "OL" || el.tagName === "UL") {
-      const items = Array.from(el.children).map((li) => [
-        {
-          type: "paragraph" as const,
-          content: reconcileInline(li as HTMLElement),
-          ...((li as HTMLElement).style.textAlign &&
-          (li as HTMLElement).style.textAlign !== "left"
-            ? {
-                align: (li as HTMLElement).style.textAlign as
-                  | "center"
-                  | "right"
-                  | "justify",
-              }
-            : {}),
-        },
-      ]);
-      blocks.push({ type: "list", ordered: el.tagName === "OL", items });
-    } else if (el.tagName === "TABLE") {
-      const table = el as HTMLTableElement;
-      const rows = Array.from(table.querySelectorAll(":scope > tbody > tr")).map((tr) =>
-        Array.from(tr.children).map((td) => {
-          const cell = td as HTMLTableCellElement;
-          return {
-            content: reconcileInline(cell),
-            ...(cell.colSpan > 1 ? { colspan: cell.colSpan } : {}),
-            ...(cell.rowSpan > 1 ? { rowspan: cell.rowSpan } : {}),
-          };
-        }),
-      );
-      const rawWidths = Array.from(table.querySelectorAll(":scope > colgroup > col")).map(
-        (column) => Number.parseFloat((column as HTMLTableColElement).style.width) / 100,
-      );
-      const totalWidth = rawWidths.reduce((total, width) => total + width, 0);
-      const rowHeights = Array.from(table.rows).map((row) => Number(row.dataset.height || 0));
-      blocks.push({
-        type: "table",
-        rows,
-        ...(rawWidths.length && totalWidth > 0
-          ? { widths: rawWidths.map((width) => width / totalWidth) }
-          : {}),
-        ...(rowHeights.some(Boolean)
-          ? { row_heights: rowHeights.map((height) => height || 32) }
-          : {}),
-      });
-    } else if (el.classList.contains("rle-columns")) {
-      const columns = Array.from(
-        el.querySelectorAll<HTMLElement>(":scope > .rle-column"),
-      ).map((column) => ({
-        width:
-          Number(
-            column.querySelector<HTMLInputElement>(
-              ":scope > .rle-column-head .rle-column-width",
-            )?.value || Number(column.dataset.width || 1) * 100,
-          ) / 100,
-        align: (column.dataset.align || "left") as "left" | "center" | "right",
-        valign: (column.dataset.valign || "top") as "top" | "center" | "bottom",
-        content: reconcileBlocks(column),
-      }));
-      blocks.push({
-        type: "columns",
-        columns,
-        gap: Number(el.dataset.gap || 0),
-      });
-    } else if (el.tagName === "PRE") {
-      blocks.push({
-        type: "code_block",
-        text: el.textContent || "",
-        lang: el.dataset.lang || "",
-      });
-    }
-  });
-  return blocks;
-}
-
-/**
- * contenteditable không đảm bảo dùng cùng một tag giữa các trình duyệt:
- * Enter/paste có thể sinh DIV, SPAN, BR hoặc text node trực tiếp ở cấp surface.
- * Chuẩn hóa chúng về paragraph trước khi đọc TreeDoc để nội dung không bị bỏ qua.
- */
-function normalizeEditableBlocks(surface: HTMLElement) {
-  const isKnownTopLevel = (element: HTMLElement) =>
-    element.matches(
-      "p.rle-p, .rle-mathblock, .rle-image, .rle-image-anchor, .rle-columns, ol, ul, table, pre",
-    );
-
-  Array.from(surface.childNodes).forEach((node) => {
-    if (node.nodeType === Node.TEXT_NODE) {
-      if (!(node.textContent || "").replace(/\u200b/g, "").length) {
-        node.remove();
-        return;
-      }
-      const paragraph = document.createElement("p");
-      paragraph.className = "rle-p";
-      paragraph.style.textAlign = "justify";
-      node.replaceWith(paragraph);
-      paragraph.append(node);
-      return;
-    }
-    if (node.nodeType !== Node.ELEMENT_NODE) return;
-    const element = node as HTMLElement;
-    if (isKnownTopLevel(element)) return;
-
-    const paragraph = document.createElement("p");
-    paragraph.className = "rle-p";
-    paragraph.style.textAlign = element.style.textAlign || "justify";
-    if (element.tagName === "BR") {
-      element.replaceWith(paragraph);
-      paragraph.append(element);
-    }
-    else {
-      while (element.firstChild) paragraph.append(element.firstChild);
-      element.replaceWith(paragraph);
-    }
-  });
-}
-
-function reconcileDoc(surface: HTMLElement, side: "right" | "center"): TreeDoc {
-  normalizeEditableBlocks(surface);
-  const blocks = reconcileBlocks(surface);
-  const doc: TreeDoc = {
-    type: "doc",
-    content: blocks.length ? blocks : emptyDoc().content,
-  };
-  // schema.py từ chối side:"center" ghi tường minh (đó là mặc định) — chỉ
-  // gắn `side` khi thật sự trôi phải.
-  if (side === "right") doc.side = "right";
-  return doc;
-}
-
-const IconFloatRight = () => (
-  <svg
-    viewBox="0 0 16 16"
-    width="15"
-    height="15"
-    fill="none"
-    stroke="currentColor"
-    strokeWidth="1.3"
-  >
-    <rect x="9" y="2" width="5" height="5" rx="0.5" />
-    <line x1="2" y1="3" x2="7" y2="3" />
-    <line x1="2" y1="5.5" x2="7" y2="5.5" />
-    <line x1="2" y1="9" x2="14" y2="9" />
-    <line x1="2" y1="11.5" x2="14" y2="11.5" />
-    <line x1="2" y1="14" x2="10" y2="14" />
-  </svg>
-);
-const IconCentered = () => (
-  <svg
-    viewBox="0 0 16 16"
-    width="15"
-    height="15"
-    fill="none"
-    stroke="currentColor"
-    strokeWidth="1.3"
-  >
-    <line x1="2" y1="2.5" x2="14" y2="2.5" />
-    <line x1="2" y1="5" x2="14" y2="5" />
-    <rect x="5.5" y="7" width="5" height="4" rx="0.5" />
-    <line x1="2" y1="12.5" x2="14" y2="12.5" />
-    <line x1="2" y1="15" x2="14" y2="15" />
-  </svg>
-);
-
-type ToolbarIconName =
-  | "image"
-  | "ordered-list"
-  | "bullet-list"
-  | "table"
-  | "code"
-  | "row-add"
-  | "row-delete"
-  | "column-add"
-  | "column-delete"
-  | "merge-right"
-  | "split-horizontal"
-  | "merge-down"
-  | "split-vertical"
-  | "align-left"
-  | "align-center"
-  | "align-right"
-  | "align-justify";
-
-const ToolbarIcon = ({ name }: { name: ToolbarIconName }) => {
-  const common = {
-    fill: "none",
-    stroke: "currentColor",
-    strokeWidth: 1.25,
-    strokeLinecap: "square" as const,
-    strokeLinejoin: "miter" as const,
-  };
-  let content: React.ReactNode;
-  if (name === "image")
-    content = <><rect x="3" y="4" width="18" height="16" rx="1.5"/><circle cx="8.5" cy="9" r="1.5"/><path d="m4 18 5-5 3 3 2-2 6 6"/></>;
-  else if (name === "ordered-list")
-    content = <><path d="M9 6h12M9 12h12M9 18h12"/><text x="3.9" y="8.1" textAnchor="middle" fill="currentColor" stroke="none" fontSize="6.5" fontFamily="Arial, sans-serif">1</text><text x="3.9" y="14.1" textAnchor="middle" fill="currentColor" stroke="none" fontSize="6.5" fontFamily="Arial, sans-serif">2</text><text x="3.9" y="20.1" textAnchor="middle" fill="currentColor" stroke="none" fontSize="6.5" fontFamily="Arial, sans-serif">3</text></>;
-  else if (name === "bullet-list")
-    content = <><circle cx="4" cy="6" r="1" fill="currentColor"/><circle cx="4" cy="12" r="1" fill="currentColor"/><circle cx="4" cy="18" r="1" fill="currentColor"/><path d="M9 6h12M9 12h12M9 18h12"/></>;
-  else if (name === "table")
-    content = <><rect x="3" y="3" width="18" height="18"/><path d="M3 9h18M3 15h18M9 3v18M15 3v18"/><path d="M3 3h18v6H3z" fill="var(--accent-primary-soft)" stroke="var(--accent-primary)"/></>;
-  else if (name === "code")
-    content = <><path d="m9 7-5 5 5 5M15 7l5 5-5 5M13 4l-2 16"/></>;
-  else if (name === "row-add" || name === "row-delete")
-    content = <><rect x="3" y="4" width="15" height="16"/><path d="M3 9.3h15M3 14.7h15"/><rect x="3" y="9.3" width="15" height="5.4" fill="var(--accent-primary-soft)" stroke="var(--accent-primary)"/>{name === "row-add" ? <><path d="M21 4v7M18.5 8.5 21 11l2.5-2.5" stroke="var(--accent-primary)"/></> : <><path d="m18.5 7 5 5m0-5-5 5" stroke="#d13438" strokeWidth="1.7"/></>}</>;
-  else if (name === "column-add" || name === "column-delete")
-    content = <><rect x="4" y="3" width="16" height="15"/><path d="M9.3 3v15M14.7 3v15"/><rect x="9.3" y="3" width="5.4" height="15" fill="var(--accent-primary-soft)" stroke="var(--accent-primary)"/>{name === "column-add" ? <><path d="M13 21h7M17.5 18.5 20 21l-2.5 2.5" stroke="var(--accent-primary)"/></> : <><path d="m14.5 18.5 5 5m0-5-5 5" stroke="#d13438" strokeWidth="1.7"/></>}</>;
-  else if (name === "merge-right")
-    content = <><rect x="3" y="4" width="18" height="16"/><path d="M12 4v16M7 12h10m-3-3 3 3-3 3"/></>;
-  else if (name === "split-horizontal")
-    content = <><rect x="3" y="4" width="18" height="16"/><path d="M12 4v16M9 12H5m0 0 2-2m-2 2 2 2M15 12h4m0 0-2-2m2 2-2 2"/></>;
-  else if (name === "merge-down")
-    content = <><rect x="4" y="3" width="16" height="18"/><path d="M4 12h16M12 7v10m-3-3 3 3 3-3"/></>;
-  else if (name === "split-vertical")
-    content = <><rect x="4" y="3" width="16" height="18"/><path d="M4 12h16M12 9V5m0 0-2 2m2-2 2 2M12 15v4m0 0-2-2m2 2 2-2"/></>;
-  else {
-    const widths = name === "align-left" ? [16,10,16,12] : name === "align-center" ? [16,10,16,12] : name === "align-right" ? [16,10,16,12] : [16,16,16,16];
-    const starts = name === "align-center" ? widths.map((width) => 12 - width / 2) : name === "align-right" ? widths.map((width) => 20 - width) : widths.map(() => 4);
-    content = <>{widths.map((width, index) => <path key={index} strokeWidth="1.45" d={`M${starts[index]} ${5.5 + index * 4.3}h${width}`}/>)}</>;
-  }
-  return <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true" {...common}>{content}</svg>;
-};
 
 type MathEditState =
   | { mode: "new"; isBlock: boolean; savedRange: Range | null }
@@ -836,9 +276,7 @@ export default function RichLatexEditor({
     // Placeholder phải phản hồi ngay khi gõ/xóa. Việc báo nội dung lên component
     // cha vẫn debounce bên dưới, nhưng không để trạng thái hiển thị chờ 400 ms.
     if (surfaceRef.current) {
-      setIsEmpty(
-        isDocEmpty(reconcileDoc(surfaceRef.current, sideRef.current)),
-      );
+      setIsEmpty(isDocEmpty(reconcileDoc(surfaceRef.current, sideRef.current)));
     }
     if (debounceRef.current) clearTimeout(debounceRef.current);
     debounceRef.current = setTimeout(() => {
@@ -868,7 +306,9 @@ export default function RichLatexEditor({
       selection?.anchorNode?.nodeType === Node.ELEMENT_NODE
         ? (selection.anchorNode as HTMLElement)
         : selection?.anchorNode?.parentElement;
-    const codeBlock = anchorElement?.closest("pre.rle-code") as HTMLElement | null;
+    const codeBlock = anchorElement?.closest(
+      "pre.rle-code",
+    ) as HTMLElement | null;
     const listItem = anchorElement?.closest("li") as HTMLLIElement | null;
     const isVisuallyEmpty = (element: HTMLElement) =>
       !(element.textContent || "").replace(/\u200b/g, "").trim();
@@ -880,7 +320,9 @@ export default function RichLatexEditor({
       isVisuallyEmpty(listItem)
     ) {
       e.preventDefault();
-      const list = listItem.parentElement as HTMLOListElement | HTMLUListElement;
+      const list = listItem.parentElement as
+        | HTMLOListElement
+        | HTMLUListElement;
       const paragraph = document.createElement("p");
       paragraph.className = "rle-p";
       paragraph.append(document.createElement("br"));
@@ -958,12 +400,7 @@ export default function RichLatexEditor({
       commit();
       return;
     }
-    if (
-      codeBlock &&
-      e.key === "Enter" &&
-      !e.shiftKey &&
-      !e.altKey
-    ) {
+    if (codeBlock && e.key === "Enter" && !e.shiftKey && !e.altKey) {
       e.preventDefault();
       leaveCodeBlock();
       return;
@@ -1039,7 +476,10 @@ export default function RichLatexEditor({
 
   const refreshToolbarState = () => {
     const selection = window.getSelection();
-    if (!selection?.anchorNode || !surfaceRef.current?.contains(selection.anchorNode))
+    if (
+      !selection?.anchorNode ||
+      !surfaceRef.current?.contains(selection.anchorNode)
+    )
       return;
     const state = (command: string) => {
       try {
@@ -1054,7 +494,9 @@ export default function RichLatexEditor({
         document.queryCommandValue("hiliteColor") ||
           document.queryCommandValue("backColor") ||
           "",
-      ).replace(/\s+/g, "").toLowerCase();
+      )
+        .replace(/\s+/g, "")
+        .toLowerCase();
       // Chrome trả về màu nền mặc định (thường rgb(255,255,255)) ngay cả khi
       // caret ở paragraph trống. Chỉ màu vàng chuẩn của editor mới là highlight.
       highlight =
@@ -1069,10 +511,8 @@ export default function RichLatexEditor({
         ? (selection.anchorNode as HTMLElement)
         : selection.anchorNode.parentElement;
     const activeBlock = anchorElement?.closest("p, li") as HTMLElement | null;
-    const activeTextColor = textColorOfNode(
-      selection.anchorNode,
-      surfaceRef.current,
-    ) || null;
+    const activeTextColor =
+      textColorOfNode(selection.anchorNode, surfaceRef.current) || null;
     setTextColor(activeTextColor || "#000000");
     const computedAlignment = activeBlock
       ? getComputedStyle(activeBlock).textAlign
@@ -1116,9 +556,10 @@ export default function RichLatexEditor({
     const selection = window.getSelection();
     if (!surface || !selection?.rangeCount) return;
     const range = selection.getRangeAt(0);
-    const anchor = range.startContainer.nodeType === Node.ELEMENT_NODE
-      ? (range.startContainer as HTMLElement)
-      : range.startContainer.parentElement;
+    const anchor =
+      range.startContainer.nodeType === Node.ELEMENT_NODE
+        ? (range.startContainer as HTMLElement)
+        : range.startContainer.parentElement;
     const blocks = Array.from(
       surface.querySelectorAll<HTMLElement>("p.rle-p, li"),
     ).filter((block) =>
@@ -1165,7 +606,8 @@ export default function RichLatexEditor({
         // `hiliteColor: transparent` vẫn để lại thẻ <mark>; reconcile sẽ đọc
         // thẻ đó thành highlight lần nữa. Bỏ chính wrapper/style nền đang giao
         // với vùng chọn để định dạng thực sự được tắt.
-        surface.querySelectorAll<HTMLElement>("mark, [style*='background']")
+        surface
+          .querySelectorAll<HTMLElement>("mark, [style*='background']")
           .forEach((element) => {
             if (!range.intersectsNode(element)) return;
             if (element.tagName === "MARK") {
@@ -1174,7 +616,8 @@ export default function RichLatexEditor({
             } else {
               element.style.removeProperty("background");
               element.style.removeProperty("background-color");
-              if (!element.getAttribute("style")) element.removeAttribute("style");
+              if (!element.getAttribute("style"))
+                element.removeAttribute("style");
               removed = true;
             }
           });
@@ -1194,7 +637,8 @@ export default function RichLatexEditor({
   const rememberTextColorRange = () => {
     const selection = window.getSelection();
     textColorRangeRef.current =
-      selection?.rangeCount && surfaceRef.current?.contains(selection.anchorNode)
+      selection?.rangeCount &&
+      surfaceRef.current?.contains(selection.anchorNode)
         ? selection.getRangeAt(0).cloneRange()
         : null;
   };
@@ -1296,7 +740,8 @@ export default function RichLatexEditor({
     }
     const rows = Array.from(
       { length: rowCount },
-      () => `<tr>${Array.from({ length: colCount }, () => "<td>​</td>").join("")}</tr>`,
+      () =>
+        `<tr>${Array.from({ length: colCount }, () => "<td>​</td>").join("")}</tr>`,
     ).join("");
     const columns = `<colgroup>${Array.from(
       { length: colCount },
@@ -1313,14 +758,23 @@ export default function RichLatexEditor({
       `<table class="rle-table">${columns}<tbody>${rows}</tbody></table><p class="rle-p">​</p>`,
     );
     const insertedTable = Array.from(
-      surfaceRef.current?.querySelectorAll<HTMLElement>("table.rle-table") || [],
+      surfaceRef.current?.querySelectorAll<HTMLElement>("table.rle-table") ||
+        [],
     ).find((table) => !existingTables.has(table));
     if (insertedTable) focusParagraphAfter(insertedTable);
     setTableDialog(null);
     commit();
   };
 
-  const editTable = (command: "add-row" | "delete-row" | "add-column" | "delete-column" | "merge-right" | "split-horizontal" | "merge-down" | "split-vertical") => {
+  const editTable = (
+    command:
+      | "add-row"
+      | "delete-row"
+      | "add-column"
+      | "delete-column"
+      | "merge"
+      | "split",
+  ) => {
     const cell = activeTableCellRef.current;
     const row = cell?.parentElement as HTMLTableRowElement | null;
     const table = cell?.closest("table") as HTMLTableElement | null;
@@ -1377,11 +831,15 @@ export default function RichLatexEditor({
           if (originRow.rowIndex < rowIndex) {
             affectedCell.rowSpan -= 1;
           } else if (affectedCell.rowSpan > 1) {
-            const logicalCol = grid[rowIndex].findIndex((slot) => slot === affectedCell);
+            const logicalCol = grid[rowIndex].findIndex(
+              (slot) => slot === affectedCell,
+            );
             const nextRow = table.rows[rowIndex + 1];
             affectedCell.rowSpan -= 1;
-            const before = Array.from(nextRow.cells).find((candidate) =>
-              grid[rowIndex + 1].findIndex((slot) => slot === candidate) > logicalCol,
+            const before = Array.from(nextRow.cells).find(
+              (candidate) =>
+                grid[rowIndex + 1].findIndex((slot) => slot === candidate) >
+                logicalCol,
             );
             nextRow.insertBefore(affectedCell, before || null);
           }
@@ -1404,9 +862,11 @@ export default function RichLatexEditor({
           colgroup!.append(column);
         });
       }
-      const existingColumns = Array.from(colgroup.children) as HTMLTableColElement[];
+      const existingColumns = Array.from(
+        colgroup.children,
+      ) as HTMLTableColElement[];
       existingColumns.forEach((column) => {
-        column.style.width = `${(Number.parseFloat(column.style.width) || 100 / existingColumns.length) * existingColumns.length / (existingColumns.length + 1)}%`;
+        column.style.width = `${((Number.parseFloat(column.style.width) || 100 / existingColumns.length) * existingColumns.length) / (existingColumns.length + 1)}%`;
       });
       const newColumn = document.createElement("col");
       newColumn.style.width = `${100 / (existingColumns.length + 1)}%`;
@@ -1414,8 +874,9 @@ export default function RichLatexEditor({
       Array.from(table.rows).forEach((currentRow, r) => {
         const newCell = document.createElement("td");
         newCell.textContent = "​";
-        const before = Array.from(currentRow.cells).find((candidate) =>
-          grid[r].findIndex((slot) => slot === candidate) >= insertAt,
+        const before = Array.from(currentRow.cells).find(
+          (candidate) =>
+            grid[r].findIndex((slot) => slot === candidate) >= insertAt,
         );
         currentRow.insertBefore(newCell, before || null);
       });
@@ -1428,15 +889,21 @@ export default function RichLatexEditor({
         selectTableCell(null);
       } else {
         const columns = Array.from(
-          table.querySelectorAll<HTMLTableColElement>(":scope > colgroup > col"),
+          table.querySelectorAll<HTMLTableColElement>(
+            ":scope > colgroup > col",
+          ),
         );
-        const removedWidth = Number.parseFloat(columns[logicalCol]?.style.width || "0");
+        const removedWidth = Number.parseFloat(
+          columns[logicalCol]?.style.width || "0",
+        );
         columns[logicalCol]?.remove();
-        const remainingColumns = columns.filter((_, index) => index !== logicalCol);
+        const remainingColumns = columns.filter(
+          (_, index) => index !== logicalCol,
+        );
         const remainingTotal = 100 - removedWidth;
         if (remainingTotal > 0) {
           remainingColumns.forEach((column) => {
-            column.style.width = `${(Number.parseFloat(column.style.width) || 0) * 100 / remainingTotal}%`;
+            column.style.width = `${((Number.parseFloat(column.style.width) || 0) * 100) / remainingTotal}%`;
           });
         }
         const affected = new Set<HTMLTableCellElement>();
@@ -1447,67 +914,65 @@ export default function RichLatexEditor({
           if (affectedCell.colSpan > 1) affectedCell.colSpan -= 1;
           else affectedCell.remove();
         });
-        const currentRow = table.rows[Math.min(rowIndex, table.rows.length - 1)];
+        const currentRow =
+          table.rows[Math.min(rowIndex, table.rows.length - 1)];
         selectTableCell(currentRow.cells[0] || null);
       }
-    } else if (command === "merge-right") {
+    } else if (command === "merge") {
       const next = cell.nextElementSibling as HTMLTableCellElement | null;
-      if (!next) {
-        toast.error("Ô hiện tại không có ô bên phải để gộp.");
-        return;
+      if (next) {
+        cell.colSpan += next.colSpan;
+        if ((next.textContent || "").replace(/​/g, "").trim()) {
+          cell.append(document.createTextNode(" "));
+          while (next.firstChild) cell.append(next.firstChild);
+        }
+        next.remove();
+      } else {
+        const grid = buildGrid();
+        const logicalCol = grid[rowIndex].findIndex((slot) => slot === cell);
+        const targetRow = rowIndex + cell.rowSpan;
+        const below = grid[targetRow]?.[logicalCol];
+        if (
+          !below ||
+          below.parentElement !== table.rows[targetRow] ||
+          below.colSpan !== cell.colSpan
+        ) {
+          toast.error("Ô hiện tại không có ô liền kề để gộp.");
+          return;
+        }
+        cell.rowSpan += below.rowSpan;
+        if ((below.textContent || "").replace(/​/g, "").trim()) {
+          cell.append(document.createElement("br"));
+          while (below.firstChild) cell.append(below.firstChild);
+        }
+        below.remove();
       }
-      cell.colSpan += next.colSpan;
-      if ((next.textContent || "").replace(/​/g, "").trim()) {
-        cell.append(document.createTextNode(" "));
-        while (next.firstChild) cell.append(next.firstChild);
-      }
-      next.remove();
-    } else if (command === "split-horizontal") {
-      if (cell.colSpan <= 1) {
-        toast.error("Ô hiện tại chưa được gộp theo chiều ngang.");
-        return;
-      }
-      cell.colSpan -= 1;
-      const newCell = document.createElement("td");
-      newCell.textContent = "​";
-      cell.after(newCell);
-    } else if (command === "merge-down") {
-      const grid = buildGrid();
-      const logicalCol = grid[rowIndex].findIndex((slot) => slot === cell);
-      const targetRow = rowIndex + cell.rowSpan;
-      const below = grid[targetRow]?.[logicalCol];
-      if (
-        !below ||
-        below.parentElement !== table.rows[targetRow] ||
-        below.colSpan !== cell.colSpan
-      ) {
-        toast.error("Không có ô tương thích ngay bên dưới để gộp.");
-        return;
-      }
-      cell.rowSpan += below.rowSpan;
-      if ((below.textContent || "").replace(/​/g, "").trim()) {
-        cell.append(document.createElement("br"));
-        while (below.firstChild) cell.append(below.firstChild);
-      }
-      below.remove();
-    } else if (command === "split-vertical") {
-      if (cell.rowSpan <= 1) {
-        toast.error("Ô hiện tại chưa được gộp theo chiều dọc.");
-        return;
-      }
-      const grid = buildGrid();
-      const logicalCol = grid[rowIndex].findIndex((slot) => slot === cell);
-      const span = cell.rowSpan;
-      cell.rowSpan = 1;
-      for (let r = rowIndex + 1; r < rowIndex + span; r++) {
-        const targetRow = table.rows[r];
+    } else if (command === "split") {
+      if (cell.colSpan > 1) {
+        cell.colSpan -= 1;
         const newCell = document.createElement("td");
         newCell.textContent = "​";
-        const before = Array.from(targetRow.cells).find((candidate) => {
-          const candidateCol = grid[r].findIndex((slot) => slot === candidate);
-          return candidateCol > logicalCol;
-        });
-        targetRow.insertBefore(newCell, before || null);
+        cell.after(newCell);
+      } else if (cell.rowSpan > 1) {
+        const grid = buildGrid();
+        const logicalCol = grid[rowIndex].findIndex((slot) => slot === cell);
+        const span = cell.rowSpan;
+        cell.rowSpan = 1;
+        for (let r = rowIndex + 1; r < rowIndex + span; r++) {
+          const targetRow = table.rows[r];
+          const newCell = document.createElement("td");
+          newCell.textContent = "​";
+          const before = Array.from(targetRow.cells).find((candidate) => {
+            const candidateCol = grid[r].findIndex(
+              (slot) => slot === candidate,
+            );
+            return candidateCol > logicalCol;
+          });
+          targetRow.insertBefore(newCell, before || null);
+        }
+      } else {
+        toast.error("Ô hiện tại chưa được gộp để tách.");
+        return;
       }
     }
     commit();
@@ -1532,7 +997,8 @@ export default function RichLatexEditor({
     const code = document.createElement("pre");
     code.className = "rle-code";
     code.dataset.lang = "";
-    code.textContent = "// nhập mã";
+    code.textContent =
+      "// nhập mã, bấm shift + enter để xuống dòng trong khối mã";
     const paragraphAfter = document.createElement("p");
     paragraphAfter.className = "rle-p";
     paragraphAfter.textContent = "​";
@@ -1545,10 +1011,15 @@ export default function RichLatexEditor({
       tailRange.selectNodeContents(paragraph);
       tailRange.setStart(range.startContainer, range.startOffset);
       const tail = tailRange.extractContents();
-      if ((tail.textContent || "").replace(/\u200b/g, "").length || tail.childNodes.length) {
+      if (
+        (tail.textContent || "").replace(/\u200b/g, "").length ||
+        tail.childNodes.length
+      ) {
         paragraphAfter.replaceChildren(tail);
       }
-      const paragraphIsEmpty = !(paragraph.textContent || "").replace(/\u200b/g, "").trim();
+      const paragraphIsEmpty = !(paragraph.textContent || "")
+        .replace(/\u200b/g, "")
+        .trim();
       if (paragraphIsEmpty) paragraph.replaceWith(code, paragraphAfter);
       else paragraph.after(code, paragraphAfter);
     } else {
@@ -1582,7 +1053,9 @@ export default function RichLatexEditor({
           100,
           Math.max(
             1,
-            Number(el.querySelector<HTMLInputElement>(".rle-iz-input")?.value) || 100,
+            Number(
+              el.querySelector<HTMLInputElement>(".rle-iz-input")?.value,
+            ) || 100,
           ),
         );
         el.style.setProperty("--rle-image-width", `${pct}%`);
@@ -1640,14 +1113,20 @@ export default function RichLatexEditor({
           (slot) => slot === tableCell,
         );
         const columns = Array.from(
-          table.querySelectorAll<HTMLTableColElement>(":scope > colgroup > col"),
+          table.querySelectorAll<HTMLTableColElement>(
+            ":scope > colgroup > col",
+          ),
         );
         const boundaryColumn = logicalStart + tableCell.colSpan - 1;
         if (nearRight && boundaryColumn < columns.length - 1) {
           e.preventDefault();
           const tableWidth = table.getBoundingClientRect().width;
-          const leftStart = Number.parseFloat(columns[boundaryColumn].style.width);
-          const rightStart = Number.parseFloat(columns[boundaryColumn + 1].style.width);
+          const leftStart = Number.parseFloat(
+            columns[boundaryColumn].style.width,
+          );
+          const rightStart = Number.parseFloat(
+            columns[boundaryColumn + 1].style.width,
+          );
           const pairTotal = leftStart + rightStart;
           const minPercent = Math.min(20, (48 / tableWidth) * 100);
           const startX = e.clientX;
@@ -1675,9 +1154,13 @@ export default function RichLatexEditor({
         }
         if (nearBottom) {
           e.preventDefault();
-          const resizedRow = table.rows[
-            Math.min(originRow.rowIndex + tableCell.rowSpan - 1, table.rows.length - 1)
-          ];
+          const resizedRow =
+            table.rows[
+              Math.min(
+                originRow.rowIndex + tableCell.rowSpan - 1,
+                table.rows.length - 1,
+              )
+            ];
           const startY = e.clientY;
           const startHeight = resizedRow.getBoundingClientRect().height;
           const onMove = (event: MouseEvent) => {
@@ -1753,7 +1236,11 @@ export default function RichLatexEditor({
       }
       const surface = surfaceRef.current;
       const range = selection?.rangeCount ? selection.getRangeAt(0) : null;
-      if (!surface || !range || !surface.contains(range.commonAncestorContainer))
+      if (
+        !surface ||
+        !range ||
+        !surface.contains(range.commonAncestorContainer)
+      )
         return;
       range.deleteContents();
       range.collapse(true);
@@ -1766,22 +1253,28 @@ export default function RichLatexEditor({
         const paragraphAfter = document.createElement("p");
         paragraphAfter.className = "rle-p";
         paragraphAfter.append(document.createElement("br"));
-        const anchor = range.startContainer.nodeType === Node.ELEMENT_NODE
-          ? (range.startContainer as HTMLElement)
-          : range.startContainer.parentElement;
-        const paragraph = anchor?.closest("p.rle-p") as HTMLParagraphElement | null;
+        const anchor =
+          range.startContainer.nodeType === Node.ELEMENT_NODE
+            ? (range.startContainer as HTMLElement)
+            : range.startContainer.parentElement;
+        const paragraph = anchor?.closest(
+          "p.rle-p",
+        ) as HTMLParagraphElement | null;
 
         if (paragraph && surface.contains(paragraph)) {
           const tailRange = document.createRange();
           tailRange.selectNodeContents(paragraph);
           tailRange.setStart(range.startContainer, range.startOffset);
           const tail = tailRange.extractContents();
-          const hasTail = !!(tail.textContent || "").replace(/\u200b/g, "").trim() ||
+          const hasTail =
+            !!(tail.textContent || "").replace(/\u200b/g, "").trim() ||
             !!tail.querySelector?.(".rle-math, img, br");
           if (hasTail) paragraphAfter.replaceChildren(tail);
-          const paragraphIsEmpty = !(paragraph.textContent || "")
-            .replace(/\u200b/g, "").trim() && !paragraph.querySelector(".rle-math");
-          if (paragraphIsEmpty) paragraph.replaceWith(mathBlock, paragraphAfter);
+          const paragraphIsEmpty =
+            !(paragraph.textContent || "").replace(/\u200b/g, "").trim() &&
+            !paragraph.querySelector(".rle-math");
+          if (paragraphIsEmpty)
+            paragraph.replaceWith(mathBlock, paragraphAfter);
           else paragraph.after(mathBlock, paragraphAfter);
         } else {
           range.insertNode(paragraphAfter);
@@ -1858,8 +1351,11 @@ export default function RichLatexEditor({
         // width chưa từng lưu (NULL) -> ảnh đang hiện đúng cỡ GỐC, không phải
         // 45% mặc định của ô nhập — lấy đúng cỡ đang thấy làm mốc %, không
         // thì bấm +/− lần đầu sẽ nhảy cỡ đột ngột (từ gốc sang 45%).
-        const availableWidth = surfaceRef.current?.clientWidth || card.clientWidth || 1;
-        pct = Math.round((imgEl.getBoundingClientRect().width / availableWidth) * 100);
+        const availableWidth =
+          surfaceRef.current?.clientWidth || card.clientWidth || 1;
+        pct = Math.round(
+          (imgEl.getBoundingClientRect().width / availableWidth) * 100,
+        );
       } else {
         pct = parseInt(input?.value || "", 10) || 45;
       }
@@ -1904,9 +1400,14 @@ export default function RichLatexEditor({
     notifyParent = true,
   ) => {
     const update = () => {
-      const availableWidth = surfaceRef.current?.clientWidth || card.clientWidth || 1;
-      const naturalWidth = imgEl.naturalWidth || imgEl.getBoundingClientRect().width;
-      const pct = Math.min(100, Math.max(1, Math.round((naturalWidth / availableWidth) * 100)));
+      const availableWidth =
+        surfaceRef.current?.clientWidth || card.clientWidth || 1;
+      const naturalWidth =
+        imgEl.naturalWidth || imgEl.getBoundingClientRect().width;
+      const pct = Math.min(
+        100,
+        Math.max(1, Math.round((naturalWidth / availableWidth) * 100)),
+      );
       imgInfo.width = pct / 100;
       card.style.setProperty("--rle-image-width", pct + "%");
       imgEl.style.height = "auto";
@@ -1973,15 +1474,22 @@ export default function RichLatexEditor({
 
   // ---------- chèn ảnh MỚI: nút "Chèn ảnh" hoặc dán Ctrl+V ----------
   const canInsertImage =
-    imageEditable && (!!questionId || !!importJobId || allowPendingImage) && !hasImage && !uploadingImg;
+    imageEditable &&
+    (!!questionId || !!importJobId || allowPendingImage) &&
+    !hasImage &&
+    !uploadingImg;
 
   const doInsertImageFile = async (file: File | Blob) => {
-    if ((!questionId && !importJobId && !allowPendingImage) || hasImage || uploadingImg) return;
+    if (
+      (!questionId && !importJobId && !allowPendingImage) ||
+      hasImage ||
+      uploadingImg
+    )
+      return;
     setUploadingImg(true);
     try {
-      const localUrl = !questionId && !importJobId
-        ? URL.createObjectURL(file)
-        : "";
+      const localUrl =
+        !questionId && !importJobId ? URL.createObjectURL(file) : "";
       const img: EditorImage = questionId
         ? await api.uploadQuestionImage(questionId, file)
         : importJobId
@@ -2006,7 +1514,8 @@ export default function RichLatexEditor({
         sideRef.current,
       );
       const cardEl = wrap.firstElementChild as HTMLElement;
-      const insertedImg = cardEl.querySelector<HTMLImageElement>(".rle-image-img");
+      const insertedImg =
+        cardEl.querySelector<HTMLImageElement>(".rle-image-img");
       // Trôi phải: đứng ĐẦU để bao được chữ. Ở giữa: đứng CUỐI (hình minh
       // hoạ sau phần mô tả) — khớp đúng quy ước ở renderDocForEdit()/chooseSide().
       if (sideRef.current === "right")
@@ -2054,21 +1563,6 @@ export default function RichLatexEditor({
     }
   };
 
-  const iconBtn: React.CSSProperties = {
-    width: 30,
-    height: 28,
-    padding: 0,
-    border: "none",
-    borderRadius: "4px",
-    background: "transparent",
-    cursor: "pointer",
-    fontSize: "0.85rem",
-    color: "var(--text-primary)",
-    lineHeight: 1,
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "center",
-  };
   const sep: React.CSSProperties = {
     width: 1,
     height: 18,
@@ -2097,64 +1591,275 @@ export default function RichLatexEditor({
           borderBottom: "1.5px solid var(--border-strong)",
         }}
       >
-        <button type="button" title="Đậm" aria-pressed={toolbarState.bold} style={{ ...iconBtn, fontWeight: 700 }} onMouseDown={(e) => { e.preventDefault(); applyMark("bold"); }}>B</button>
-        <button type="button" title="Nghiêng" aria-pressed={toolbarState.italic} style={{ ...iconBtn, fontStyle: "italic" }} onMouseDown={(e) => { e.preventDefault(); applyMark("italic"); }}>I</button>
-        <button type="button" title="Gạch chân" aria-pressed={toolbarState.underline} style={{ ...iconBtn, textDecoration: "underline" }} onMouseDown={(e) => { e.preventDefault(); applyMark("underline"); }}>U</button>
-        <button type="button" title="Tô nền (bấm lần nữa để xóa)" aria-pressed={toolbarState.highlight} style={iconBtn} onMouseDown={(e) => { e.preventDefault(); toggleHighlight(); }}>
-          <span style={{ background: "#fff3a3", borderRadius: 2, padding: "0 3px", fontSize: "0.85em" }}>A</span>
+        <button
+          type="button"
+          title="Đậm"
+          aria-pressed={toolbarState.bold}
+          className="ui-button ui-button--transparent ui-button--icon ui-button--small"
+          onMouseDown={(e) => {
+            e.preventDefault();
+            applyMark("bold");
+          }}
+        >
+          B
+        </button>
+        <button
+          type="button"
+          title="Nghiêng"
+          aria-pressed={toolbarState.italic}
+          className="ui-button ui-button--transparent ui-button--icon ui-button--small"
+          onMouseDown={(e) => {
+            e.preventDefault();
+            applyMark("italic");
+          }}
+        >
+          I
+        </button>
+        <button
+          type="button"
+          title="Gạch chân"
+          aria-pressed={toolbarState.underline}
+          className="ui-button ui-button--transparent ui-button--icon ui-button--small"
+          onMouseDown={(e) => {
+            e.preventDefault();
+            applyMark("underline");
+          }}
+        >
+          U
+        </button>
+        <button
+          type="button"
+          title="Tô nền (bấm lần nữa để xóa)"
+          aria-pressed={toolbarState.highlight}
+          className="ui-button ui-button--transparent ui-button--icon ui-button--small"
+          onMouseDown={(e) => {
+            e.preventDefault();
+            toggleHighlight();
+          }}
+        >
+          <span
+            style={{
+              background: "#fff3a3",
+              borderRadius: 2,
+              padding: "0 3px",
+              fontSize: "0.85em",
+            }}
+          >
+            A
+          </span>
         </button>
         <button
           type="button"
           title="Màu chữ"
           aria-pressed={!!toolbarState.textColor}
-          style={iconBtn}
-          onMouseDown={(e) => { e.preventDefault(); rememberTextColorRange(); }}
+          className="ui-button ui-button--transparent ui-button--icon ui-button--small"
+          onMouseDown={(e) => {
+            e.preventDefault();
+            rememberTextColorRange();
+          }}
           onClick={() => textColorInputRef.current?.click()}
         >
-          <span style={{ position: "relative", display: "inline-flex", justifyContent: "center", width: 17, height: 19, fontWeight: 600 }}>
+          <span
+            style={{
+              position: "relative",
+              display: "inline-flex",
+              justifyContent: "center",
+              width: 17,
+              height: 19,
+              fontWeight: 600,
+            }}
+          >
             A
-            <span aria-hidden style={{ position: "absolute", left: 1, right: 1, bottom: 0, height: 3, background: textColor }} />
+            <span
+              aria-hidden
+              style={{
+                position: "absolute",
+                left: 1,
+                right: 1,
+                bottom: 0,
+                height: 3,
+                background: textColor,
+              }}
+            />
           </span>
         </button>
 
         <div style={sep} />
-        <button type="button" title="Chèn công thức" style={iconBtn} onMouseDown={(e) => e.preventDefault()} onClick={insertMath}>∑</button>
+        <button
+          type="button"
+          title="Chèn công thức"
+          className="ui-button ui-button--transparent ui-button--icon ui-button--small"
+          onMouseDown={(e) => e.preventDefault()}
+          onClick={insertMath}
+        >
+          ∑
+        </button>
         <button
           type="button"
           title={
-            !imageEditable ? "" : hasImage ? "Mỗi câu chỉ chèn được một ảnh" : (!questionId && !importJobId && !allowPendingImage) ? "Chỉ chèn ảnh trong phần nội dung đề bài" : "Chèn ảnh từ máy tính (hoặc dán Ctrl+V)"
+            !imageEditable
+              ? ""
+              : hasImage
+                ? "Mỗi câu chỉ chèn được một ảnh"
+                : !questionId && !importJobId && !allowPendingImage
+                  ? "Chỉ chèn ảnh trong phần nội dung đề bài"
+                  : "Chèn ảnh từ máy tính (hoặc dán Ctrl+V)"
           }
-          style={{ ...iconBtn, opacity: canInsertImage ? 1 : 0.4, cursor: canInsertImage ? "pointer" : "not-allowed" }}
+          className="ui-button ui-button--transparent ui-button--icon ui-button--small"
           disabled={!canInsertImage}
           onMouseDown={(e) => e.preventDefault()}
           onClick={() => fileInputRef.current?.click()}
         >
-          <ToolbarIcon name="image" />
+          <Icon name="image" />
         </button>
 
         <div style={sep} />
-        <button type="button" title="Danh sách số thứ tự" aria-pressed={toolbarState.ordered} style={iconBtn} onMouseDown={(e) => e.preventDefault()} onClick={() => insertList(true)}><ToolbarIcon name="ordered-list" /></button>
-        <button type="button" title="Danh sách gạch đầu dòng" aria-pressed={toolbarState.bullet} style={iconBtn} onMouseDown={(e) => e.preventDefault()} onClick={() => insertList(false)}><ToolbarIcon name="bullet-list" /></button>
+        <button
+          type="button"
+          title="Danh sách số thứ tự"
+          aria-pressed={toolbarState.ordered}
+          className="ui-button ui-button--transparent ui-button--icon ui-button--small"
+          onMouseDown={(e) => e.preventDefault()}
+          onClick={() => insertList(true)}
+        >
+          <Icon name="list-ordered" />
+        </button>
+        <button
+          type="button"
+          title="Danh sách gạch đầu dòng"
+          aria-pressed={toolbarState.bullet}
+          className="ui-button ui-button--transparent ui-button--icon ui-button--small"
+          onMouseDown={(e) => e.preventDefault()}
+          onClick={() => insertList(false)}
+        >
+          <Icon name="list-bullet" />
+        </button>
         <div style={sep} />
-        <button type="button" title="Căn trái" aria-pressed={toolbarState.alignment === "left"} style={iconBtn} onMouseDown={(e) => { e.preventDefault(); applyAlignment("left"); }}><ToolbarIcon name="align-left" /></button>
-        <button type="button" title="Căn giữa" aria-pressed={toolbarState.alignment === "center"} style={iconBtn} onMouseDown={(e) => { e.preventDefault(); applyAlignment("center"); }}><ToolbarIcon name="align-center" /></button>
-        <button type="button" title="Căn phải" aria-pressed={toolbarState.alignment === "right"} style={iconBtn} onMouseDown={(e) => { e.preventDefault(); applyAlignment("right"); }}><ToolbarIcon name="align-right" /></button>
-        <button type="button" title="Căn đều hai bên" aria-pressed={toolbarState.alignment === "justify"} style={iconBtn} onMouseDown={(e) => { e.preventDefault(); applyAlignment("justify"); }}><ToolbarIcon name="align-justify" /></button>
+        <button
+          type="button"
+          title="Căn trái"
+          aria-pressed={toolbarState.alignment === "left"}
+          className="ui-button ui-button--transparent ui-button--icon ui-button--small"
+          onMouseDown={(e) => {
+            e.preventDefault();
+            applyAlignment("left");
+          }}
+        >
+          <Icon name="align-left" />
+        </button>
+        <button
+          type="button"
+          title="Căn giữa"
+          aria-pressed={toolbarState.alignment === "center"}
+          className="ui-button ui-button--transparent ui-button--icon ui-button--small"
+          onMouseDown={(e) => {
+            e.preventDefault();
+            applyAlignment("center");
+          }}
+        >
+          <Icon name="align-center" />
+        </button>
+        <button
+          type="button"
+          title="Căn phải"
+          aria-pressed={toolbarState.alignment === "right"}
+          className="ui-button ui-button--transparent ui-button--icon ui-button--small"
+          onMouseDown={(e) => {
+            e.preventDefault();
+            applyAlignment("right");
+          }}
+        >
+          <Icon name="align-right" />
+        </button>
+        <button
+          type="button"
+          title="Căn đều hai bên"
+          aria-pressed={toolbarState.alignment === "justify"}
+          className="ui-button ui-button--transparent ui-button--icon ui-button--small"
+          onMouseDown={(e) => {
+            e.preventDefault();
+            applyAlignment("justify");
+          }}
+        >
+          <Icon name="align-justify" />
+        </button>
         <div style={sep} />
-        <button type="button" title="Chèn bảng" style={iconBtn} onMouseDown={(e) => e.preventDefault()} onClick={insertTable}><ToolbarIcon name="table" /></button>
+        <button
+          type="button"
+          title="Chèn bảng"
+          className="ui-button ui-button--transparent ui-button--icon ui-button--small"
+          onMouseDown={(e) => e.preventDefault()}
+          onClick={insertTable}
+        >
+          <Icon name="table" />
+        </button>
         {hasActiveTableCell && (
           <>
-            <button type="button" title="Thêm hàng bên dưới" style={iconBtn} onMouseDown={(e) => e.preventDefault()} onClick={() => editTable("add-row")}><ToolbarIcon name="row-add" /></button>
-            <button type="button" title="Xóa hàng hiện tại" style={iconBtn} onMouseDown={(e) => e.preventDefault()} onClick={() => editTable("delete-row")}><ToolbarIcon name="row-delete" /></button>
-            <button type="button" title="Thêm cột bên phải" style={iconBtn} onMouseDown={(e) => e.preventDefault()} onClick={() => editTable("add-column")}><ToolbarIcon name="column-add" /></button>
-            <button type="button" title="Xóa cột hiện tại" style={iconBtn} onMouseDown={(e) => e.preventDefault()} onClick={() => editTable("delete-column")}><ToolbarIcon name="column-delete" /></button>
-            <button type="button" title="Gộp với ô bên phải" style={iconBtn} onMouseDown={(e) => e.preventDefault()} onClick={() => editTable("merge-right")}><ToolbarIcon name="merge-right" /></button>
-            <button type="button" title="Tách ô theo chiều ngang" style={iconBtn} onMouseDown={(e) => e.preventDefault()} onClick={() => editTable("split-horizontal")}><ToolbarIcon name="split-horizontal" /></button>
-            <button type="button" title="Gộp với ô bên dưới" style={iconBtn} onMouseDown={(e) => e.preventDefault()} onClick={() => editTable("merge-down")}><ToolbarIcon name="merge-down" /></button>
-            <button type="button" title="Tách ô theo chiều dọc" style={iconBtn} onMouseDown={(e) => e.preventDefault()} onClick={() => editTable("split-vertical")}><ToolbarIcon name="split-vertical" /></button>
+            <button
+              type="button"
+              title="Thêm hàng bên dưới"
+              className="ui-button ui-button--transparent ui-button--icon ui-button--small"
+              onMouseDown={(e) => e.preventDefault()}
+              onClick={() => editTable("add-row")}
+            >
+              <Icon name="insert-row-below" />
+            </button>
+            <button
+              type="button"
+              title="Xóa hàng hiện tại"
+              className="ui-button ui-button--transparent ui-button--icon ui-button--small"
+              onMouseDown={(e) => e.preventDefault()}
+              onClick={() => editTable("delete-row")}
+            >
+              <Icon name="delete-rows" />
+            </button>
+            <button
+              type="button"
+              title="Thêm cột bên phải"
+              className="ui-button ui-button--transparent ui-button--icon ui-button--small"
+              onMouseDown={(e) => e.preventDefault()}
+              onClick={() => editTable("add-column")}
+            >
+              <Icon name="insert-col-right" />
+            </button>
+            <button
+              type="button"
+              title="Xóa cột hiện tại"
+              className="ui-button ui-button--transparent ui-button--icon ui-button--small"
+              onMouseDown={(e) => e.preventDefault()}
+              onClick={() => editTable("delete-column")}
+            >
+              <Icon name="delete-columns" />
+            </button>
+            <button
+              type="button"
+              title="Gộp ô (ưu tiên ô bên phải, sau đó ô bên dưới)"
+              className="ui-button ui-button--transparent ui-button--icon ui-button--small"
+              onMouseDown={(e) => e.preventDefault()}
+              onClick={() => editTable("merge")}
+            >
+              <Icon name="merge" />
+            </button>
+            <button
+              type="button"
+              title="Tách ô đã gộp"
+              className="ui-button ui-button--transparent ui-button--icon ui-button--small"
+              onMouseDown={(e) => e.preventDefault()}
+              onClick={() => editTable("split")}
+            >
+              <Icon name="split" />
+            </button>
           </>
         )}
-        <button type="button" title="Khối mã" style={iconBtn} onMouseDown={(e) => e.preventDefault()} onClick={insertCodeBlock}><ToolbarIcon name="code" /></button>
+        <button
+          type="button"
+          title="Khối mã"
+          className="ui-button ui-button--transparent ui-button--icon ui-button--small"
+          onMouseDown={(e) => e.preventDefault()}
+          onClick={insertCodeBlock}
+        >
+          <Icon name="code" />
+        </button>
 
         {showLayoutControl && (
           <>
@@ -2162,27 +1867,46 @@ export default function RichLatexEditor({
             <button
               type="button"
               title="Trôi phải (chữ chạy quanh ảnh)"
-              style={{ ...iconBtn, color: side === "right" ? "var(--accent-primary)" : iconBtn.color, background: side === "right" ? "var(--accent-primary-soft)" : "transparent" }}
+              className={`ui-button ui-button--transparent ui-button--icon ui-button--small ${side === "right" ? "ui-button--selected" : ""}`}
               onMouseDown={(e) => e.preventDefault()}
               onClick={() => chooseSide("right")}
             >
-              <IconFloatRight />
+              <Icon name="float-right" />
             </button>
             <button
               type="button"
               title="Ở giữa"
-              style={{ ...iconBtn, color: side === "center" ? "var(--accent-primary)" : iconBtn.color, background: side === "center" ? "var(--accent-primary-soft)" : "transparent" }}
+              className={`ui-button ui-button--transparent ui-button--icon ui-button--small ${side === "center" ? "ui-button--selected" : ""}`}
               onMouseDown={(e) => e.preventDefault()}
               onClick={() => chooseSide("center")}
             >
-              <IconCentered />
+              <Icon name="image-centered" />
             </button>
           </>
         )}
       </div>
 
-      <input ref={fileInputRef} type="file" accept="image/png,image/jpeg,image/gif,image/webp" style={{ display: "none" }} onChange={handleFilePicked} />
-      <input ref={textColorInputRef} type="color" value={textColor} aria-label="Chọn màu chữ" style={{ position: "absolute", width: 1, height: 1, opacity: 0, pointerEvents: "none" }} onChange={(event) => applyTextColor(event.target.value)} />
+      <input
+        ref={fileInputRef}
+        type="file"
+        accept="image/png,image/jpeg,image/gif,image/webp"
+        style={{ display: "none" }}
+        onChange={handleFilePicked}
+      />
+      <input
+        ref={textColorInputRef}
+        type="color"
+        value={textColor}
+        aria-label="Chọn màu chữ"
+        style={{
+          position: "absolute",
+          width: 1,
+          height: 1,
+          opacity: 0,
+          pointerEvents: "none",
+        }}
+        onChange={(event) => applyTextColor(event.target.value)}
+      />
 
       <div style={{ position: "relative", background: "var(--bg-surface)" }}>
         <div
@@ -2237,28 +1961,29 @@ export default function RichLatexEditor({
         )}
       </div>
       {uploadingImg && (
-        <div style={{ fontSize: "0.78rem", color: "var(--text-muted)", marginTop: 4 }}>Đang tải ảnh lên...</div>
+        <div
+          style={{
+            fontSize: "0.78rem",
+            color: "var(--text-muted)",
+            marginTop: 4,
+          }}
+        >
+          <Spinner size="small" label="Đang tải ảnh lên …" />
+        </div>
       )}
 
       {tableDialog &&
         portalTarget &&
         createPortal(
           <div
+            className="ui-modal-backdrop ui-modal-backdrop--editor"
             role="presentation"
             onMouseDown={(event) => {
               if (event.target === event.currentTarget) setTableDialog(null);
             }}
-            style={{
-              position: "fixed",
-              inset: 0,
-              zIndex: 9999,
-              display: "grid",
-              placeItems: "center",
-              padding: "1rem",
-              background: "var(--overlay)",
-            }}
           >
             <form
+              className="ui-modal ui-modal--small"
               role="dialog"
               aria-modal="true"
               aria-labelledby="rle-table-dialog-title"
@@ -2266,75 +1991,75 @@ export default function RichLatexEditor({
                 event.preventDefault();
                 confirmInsertTable();
               }}
-              style={{
-                width: "min(360px, 100%)",
-                padding: "1.25rem",
-                border: "1px solid var(--border)",
-                borderRadius: "var(--radius-md)",
-                background: "var(--bg-surface)",
-                boxShadow: "var(--shadow-lg)",
-              }}
             >
-              <h3 id="rle-table-dialog-title" style={{ margin: "0 0 1rem" }}>
-                Chèn bảng
-              </h3>
-              <div
-                style={{
-                  display: "grid",
-                  gridTemplateColumns: "1fr 1fr",
-                  gap: "0.75rem",
-                }}
-              >
-                <label className="form-group" style={{ margin: 0 }}>
-                  <span className="form-label">Số hàng</span>
-                  <input
-                    autoFocus
-                    className="input"
-                    type="number"
-                    min={1}
-                    max={30}
-                    value={tableDialog.rows}
-                    onChange={(event) =>
-                      setTableDialog({ ...tableDialog, rows: event.target.value })
-                    }
-                  />
-                </label>
-                <label className="form-group" style={{ margin: 0 }}>
-                  <span className="form-label">Số cột</span>
-                  <input
-                    className="input"
-                    type="number"
-                    min={1}
-                    max={20}
-                    value={tableDialog.columns}
-                    onChange={(event) =>
-                      setTableDialog({
-                        ...tableDialog,
-                        columns: event.target.value,
-                      })
-                    }
-                  />
-                </label>
+              <header className="ui-modal__header">
+                <div className="ui-modal__heading">
+                  <h3 className="ui-modal__title" id="rle-table-dialog-title">
+                    Chèn bảng
+                  </h3>
+                </div>
+                <button
+                  className="ui-modal__close"
+                  type="button"
+                  aria-label="Đóng"
+                  onClick={() => setTableDialog(null)}
+                >
+                  <Icon name="close" />
+                </button>
+              </header>
+              <div className="ui-modal__body">
+                <div
+                  style={{
+                    display: "grid",
+                    gridTemplateColumns: "1fr 1fr",
+                    gap: "0.75rem",
+                  }}
+                >
+                  <label className="form-group" style={{ margin: 0 }}>
+                    <span className="form-label">Số hàng</span>
+                  <NumberInput
+                      autoFocus
+                      className="ui-input-native"
+                      min={1}
+                      max={30}
+                    value={Number(tableDialog.rows)}
+                    onChange={(value) =>
+                        setTableDialog({
+                          ...tableDialog,
+                        rows: String(value),
+                        })
+                      }
+                    />
+                  </label>
+                  <label className="form-group" style={{ margin: 0 }}>
+                    <span className="form-label">Số cột</span>
+                  <NumberInput
+                      className="ui-input-native"
+                      min={1}
+                      max={20}
+                    value={Number(tableDialog.columns)}
+                    onChange={(value) =>
+                        setTableDialog({
+                          ...tableDialog,
+                        columns: String(value),
+                        })
+                      }
+                    />
+                  </label>
+                </div>
               </div>
-              <div
-                style={{
-                  display: "flex",
-                  justifyContent: "flex-end",
-                  gap: "0.6rem",
-                  marginTop: "1.25rem",
-                }}
-              >
+              <footer className="ui-modal__footer">
                 <button
                   type="button"
-                  className="btn btn-secondary"
+                  className="ui-button ui-button--secondary"
                   onClick={() => setTableDialog(null)}
                 >
                   Hủy
                 </button>
-                <button type="submit" className="btn btn-primary">
+                <button type="submit" className="ui-button ui-button--primary">
                   Chèn bảng
                 </button>
-              </div>
+              </footer>
             </form>
           </div>,
           portalTarget,
@@ -2343,78 +2068,91 @@ export default function RichLatexEditor({
       {editingMath &&
         portalTarget &&
         createPortal(
-          <div
-            style={{
-              position: "fixed",
-              top: "2rem",
-              left: "50%",
-              transform: "translateX(-50%)",
-              width: "92%",
-              maxWidth: 820,
-              maxHeight: "calc(100vh - 4rem)",
-              overflowY: "auto",
-              zIndex: 9998,
-              background: "var(--bg-surface)",
-              borderRadius: "var(--radius-lg)",
-              padding: "1.5rem",
-              boxShadow:
-                "0 0 0 100vmax rgba(0,0,0,0.55), 0 12px 32px rgba(0,0,0,0.3)",
-            }}
-          >
-            <h3 style={{ marginBottom: "1rem" }}>
-              {editingMath.mode === "new" ? "Thêm công thức" : "Sửa công thức"}
-            </h3>
-            {editingMath.mode === "new" && (
-              <div style={{ display: "flex", gap: 6, marginBottom: "0.85rem" }}>
-                <button
-                  type="button"
-                  className={`btn btn-sm ${!editingMath.isBlock ? "btn-primary" : "btn-secondary"}`}
-                  onClick={() =>
-                    setEditingMath({ ...editingMath, isBlock: false })
-                  }
-                >
-                  Trong dòng
-                </button>
-                <button
-                  type="button"
-                  className={`btn btn-sm ${editingMath.isBlock ? "btn-primary" : "btn-secondary"}`}
-                  onClick={() =>
-                    setEditingMath({ ...editingMath, isBlock: true })
-                  }
-                >
-                  Khối riêng
-                </button>
-              </div>
-            )}
-            <MathLiveEditor
-              value={tempMathVal}
-              onChange={setTempMathVal}
-              autoFocus
-            />
-            <div
-              style={{
-                marginTop: "0.75rem",
-                display: "flex",
-                justifyContent: "space-between",
-                alignItems: "center",
-              }}
+          <div className="ui-modal-backdrop ui-modal-backdrop--editor ui-modal-backdrop--math">
+            <section
+              className="ui-modal ui-modal--medium"
+              role="dialog"
+              aria-modal="true"
+              aria-labelledby="legacy-math-editor-title"
             >
-              {editingMath.mode === "edit" ? (
-                <button className="btn btn-danger btn-sm" onClick={deleteMath}>
-                  Xóa công thức
+              <header className="ui-modal__header">
+                <div className="ui-modal__heading">
+                  <h3 className="ui-modal__title" id="legacy-math-editor-title">
+                    {editingMath.mode === "new"
+                      ? "Thêm công thức"
+                      : "Sửa công thức"}
+                  </h3>
+                </div>
+                <button
+                  className="ui-modal__close"
+                  type="button"
+                  aria-label="Đóng"
+                  onClick={closeMathEditor}
+                >
+                  <Icon name="close" />
                 </button>
-              ) : (
-                <span />
-              )}
-              <div style={{ display: "flex", gap: "0.75rem" }}>
-                <button className="btn btn-secondary" onClick={closeMathEditor}>
-                  Hủy
-                </button>
-                <button className="btn btn-primary" onClick={saveMath}>
-                  Xác nhận
-                </button>
+              </header>
+              <div className="ui-modal__body">
+                {editingMath.mode === "new" && (
+                  <div
+                    style={{ display: "flex", gap: 6, marginBottom: "0.85rem" }}
+                  >
+                    <button
+                      type="button"
+                      className={`ui-button ui-button--small ${!editingMath.isBlock ? "ui-button--primary" : "ui-button--secondary"}`}
+                      onClick={() =>
+                        setEditingMath({ ...editingMath, isBlock: false })
+                      }
+                    >
+                      Trong dòng
+                    </button>
+                    <button
+                      type="button"
+                      className={`ui-button ui-button--small ${editingMath.isBlock ? "ui-button--primary" : "ui-button--secondary"}`}
+                      onClick={() =>
+                        setEditingMath({ ...editingMath, isBlock: true })
+                      }
+                    >
+                      Khối riêng
+                    </button>
+                  </div>
+                )}
+                <MathLiveEditor
+                  value={tempMathVal}
+                  onChange={setTempMathVal}
+                  autoFocus
+                />
               </div>
-            </div>
+              <footer
+                className="ui-modal__footer"
+                style={{ justifyContent: "space-between" }}
+              >
+                {editingMath.mode === "edit" ? (
+                  <button
+                    className="ui-button ui-button--danger ui-button--small"
+                    onClick={deleteMath}
+                  >
+                    Xóa công thức
+                  </button>
+                ) : (
+                  <span />
+                )}
+                <div style={{ display: "flex", gap: "0.75rem" }}>
+                  <button
+                    className="ui-button ui-button--secondary"
+                    onClick={closeMathEditor}
+                  >
+                    Hủy
+                  </button>
+                  <button
+                    className="ui-button ui-button--primary"
+                    onClick={saveMath}
+                  >
+                    Xác nhận
+                  </button>
+                </div>
+              </footer>
+            </section>
           </div>,
           portalTarget,
         )}

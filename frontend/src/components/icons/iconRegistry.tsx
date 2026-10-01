@@ -9,8 +9,12 @@ export const strokeIconPaths = {
   "align-justify": '<path d="M4 6h16M4 12h16M4 18h16"/>',
   "align-left": '<path d="M4 6h16M4 12h10M4 18h13"/>',
   "align-right": '<path d="M4 6h16M10 12h10M7 18h13"/>',
+  analytics:
+    '<rect x="3" y="3" width="18" height="18" rx="3"/><path d="M5 14h3l3-5 4 6 4-5"/>',
   bank: '<path d="M3 21h18"/><path d="M4 10h16"/><path d="M12 3 3 9h18L12 3Z"/><path d="M5 10v11M9 10v11M15 10v11M19 10v11"/>',
   bell: '<path d="M6 10a6 6 0 0 1 12 0c0 4 1.5 5.5 2 6H4c.5-.5 2-2 2-6Z"/><path d="M10 20a2 2 0 0 0 4 0"/>',
+  billing:
+    '<rect x="3" y="4" width="18" height="16" rx="4"/><path d="M3 9h18"/><path d="M15 16h3"/>',
   bookmark:
     '<path d="M6 4.75A1.75 1.75 0 0 1 7.75 3h8.5A1.75 1.75 0 0 1 18 4.75V21l-6-3.6L6 21V4.75Z"/>',
   calendar:
@@ -26,27 +30,35 @@ export const strokeIconPaths = {
   clipboard:
     '<path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><rect x="8" y="2" width="8" height="4" rx="1"/>',
   close: '<path d="M6 6l12 12M18 6 6 18"/>',
-  code: '<path d="m9 8-4 4 4 4M15 8l4 4-4 4M13 5l-2 14"/>',
+  code: '<path d="m8.5 7-5 5 5 5M15.5 7l5 5-5 5M14 4l-4 16"/>',
   copy: '<rect x="8" y="3" width="13" height="16" rx="3"/><path d="M5 8v11a3 3 0 0 0 3 3h8"/>',
   create:
     '<rect x="3" y="3" width="18" height="18" rx="2"/><path d="M12 8v8M8 12h8"/>',
   crop: '<path d="M6 2v14a2 2 0 0 0 2 2h14"/><path d="M18 22V8a2 2 0 0 0-2-2H2"/>',
   dashboard:
     '<rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M9 21V9"/>',
+  "data-controls":
+    '<ellipse cx="8.5" cy="5" rx="5.5" ry="2"/><path d="M3 5v11c0 1.1 2.1 2 5 2"/><path d="M3 10c0 1.1 2.1 2 5 2"/><circle cx="17" cy="17" r="3"/><path d="M17 12.5v1.5M17 20v1.5M12.5 17H14M20 17h1.5M13.8 13.8l1.1 1.1M19.1 19.1l1.1 1.1M20.2 13.8l-1.1 1.1M14.9 19.1l-1.1 1.1"/>',
+  download: '<path d="M12 3v12"/><path d="m7 10 5 5 5-5"/><path d="M4 21h16"/>',
   edit: '<path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5Z"/>',
   "empty-state":
     '<path d="M3 8a2 2 0 0 1 2-2h5l2 2h7a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8Z"/><path d="M9 15h6"/>',
   "exam-paper":
     '<path d="M12 22h6a2 2 0 0 0 2-2V7l-5-5H6a2 2 0 0 0-2 2v10"/><path d="M14 2v4a2 2 0 0 0 2 2h4"/><path d="M10.4 12.6a2 2 0 1 1 2.83 2.83L8 20l-4 1 1-4Z"/>',
+  export:
+    '<path d="M14 3H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h9"/><path d="M8 12h14"/><path d="m18 8 4 4-4 4"/>',
   eye: '<path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/>',
   "eye-off":
     '<path d="M3 3l18 18"/><path d="M10.6 5.1A10 10 0 0 1 22 12s-1.2 2.4-3.4 4.3M6.2 6.2C4 8 2 12 2 12s3.5 7 10 7c1.4 0 2.7-.3 3.8-.8"/>',
   "file-plus":
     '<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/><path d="M12 12v6M9 15h6"/>',
+  "fit-page":
+    '<path d="M8 3H5a2 2 0 0 0-2 2v3M16 3h3a2 2 0 0 1 2 2v3M8 21H5a2 2 0 0 1-2-2v-3M16 21h3a2 2 0 0 0 2-2v-3"/><rect x="8" y="6" width="8" height="12" rx="1"/>',
   "float-right":
     '<path d="M3 5h18M3 9h8M3 13h8M3 17h18M3 21h14"/><rect x="14" y="8" width="7" height="6" rx="1"/>',
   "hard-drive":
     '<rect x="2" y="7" width="20" height="10" rx="2"/><circle cx="6.5" cy="12" r="1" fill="currentColor" stroke="none"/><path d="M10 12h8"/>',
+  grid: '<rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/>',
   history:
     '<circle cx="12" cy="13" r="8"/><path d="M12 9v4l3 2"/><path d="M9 3h6"/>',
   home: '<path d="M3 9 12 2l9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><path d="M9 22v-10h6v10"/>',
@@ -61,6 +73,8 @@ export const strokeIconPaths = {
   info: '<circle cx="12" cy="12" r="9"/><path d="M12 8h.01M11 12h1v5h1"/>',
   library:
     '<path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2Z"/><path d="M8 7h8M8 11h6"/>',
+  "link-off":
+    '<path d="m3 3 18 18"/><path d="M8.5 8.5 6 11a4 4 0 0 0 5.7 5.6l2.1-2.1M15.5 15.5 18 13a4 4 0 0 0-5.7-5.6l-2.1 2.1"/>',
   "list-bullet":
     '<path d="M9 6h12M9 12h12M9 18h12"/><circle cx="4.5" cy="6" r="1.4" fill="currentColor" stroke="none"/><circle cx="4.5" cy="12" r="1.4" fill="currentColor" stroke="none"/><circle cx="4.5" cy="18" r="1.4" fill="currentColor" stroke="none"/>',
   "list-ordered":
@@ -73,6 +87,7 @@ export const strokeIconPaths = {
   mail: '<path d="M4 5h16v14H4z"/><path d="m4 6 8 7 8-7"/>',
   merge:
     '<rect x="3" y="4" width="18" height="16" rx="1"/><rect x="3" y="9" width="18" height="6" fill="var(--accent-primary)" fill-opacity=".2" stroke="none"/><path d="M12 4v5M12 15v5M3 9h18M3 15h18"/>',
+  minus: '<path d="M5 12h14"/>',
   moon: '<path d="M20 14.5A8.5 8.5 0 1 1 9.5 4a7 7 0 0 0 10.5 10.5Z"/>',
   "more-horizontal":
     '<circle cx="5" cy="12" r="1.6" fill="currentColor" stroke="none"/><circle cx="12" cy="12" r="1.6" fill="currentColor" stroke="none"/><circle cx="19" cy="12" r="1.6" fill="currentColor" stroke="none"/>',
@@ -81,6 +96,8 @@ export const strokeIconPaths = {
   "paper-clip":
     '<path d="M15.2 7 8.6 13.6a2 2 0 1 0 2.8 2.8l6.4-6.6a4 4 0 0 0-5.6-5.6l-6.5 6.6a6 6 0 1 0 8.5 8.5L20.5 13"/>',
   plus: '<path d="M12 5v14M5 12h14"/>',
+  printer:
+    '<path d="M7 8V3h10v5"/><rect x="5" y="14" width="14" height="7" rx="1"/><path d="M5 17H3V10a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v7h-2"/><path d="M17 11h.01"/>',
   profile:
     '<path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/>',
   redo: '<path d="M15 14l5-5-5-5"/><path d="M4 20v-7a4 4 0 0 1 4-4h12"/>',
@@ -91,6 +108,8 @@ export const strokeIconPaths = {
   save: '<path d="M5 3h11.2L21 7.8V19a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2Z"/><path d="M8 3v4a1 1 0 0 0 1 1h6a1 1 0 0 0 1-1V3"/><path d="M7 21v-6.5A1.5 1.5 0 0 1 8.5 13h7a1.5 1.5 0 0 1 1.5 1.5V21"/>',
   search: '<circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/>',
   send: '<path d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"/>',
+  share:
+    '<path d="M11 5H5a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-6"/><path d="m16 3 5 5-5 5V9c-5 0-8 2-10 6 1-7 5-10 10-10V3Z"/>',
   shield: '<path d="M12 3l8 3v6c0 4.5-3.4 7.9-8 9-4.6-1.1-8-4.5-8-9V6l8-3Z"/>',
   "shield-check":
     '<path d="M12 3l8 3v6c0 4.5-3.4 7.9-8 9-4.6-1.1-8-4.5-8-9V6l8-3Z"/><path d="m9 12 2 2 4-4"/>',
@@ -103,11 +122,13 @@ export const strokeIconPaths = {
     '<path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><rect x="8" y="2" width="8" height="4" rx="1"/><circle cx="8.5" cy="10" r="1.1"/><path d="M12 10h6"/><circle cx="8.5" cy="14" r="1.1" fill="currentColor" stroke="none"/><path d="M12 14h6"/><circle cx="8.5" cy="18" r="1.1"/><path d="M12 18h6"/>',
   sun: '<circle cx="12" cy="12" r="4"/><path d="M12 2v2.2M12 19.8V22M4.9 4.9l1.5 1.5M17.6 17.6l1.5 1.5M2 12h2.2M19.8 12H22M4.9 19.1l1.5-1.5M17.6 6.4l1.5-1.5"/>',
   "text-color":
-    '<path d="M9 15h6M6 19l5-13h2l5 13"/><path d="M4 21h16" stroke-width="var(--icon-stroke-marker)"/>',
+    '<path d="M9 14h6M6 18l5-13h2l5 13"/><path d="M4 21h16" stroke-width="var(--icon-stroke-marker)"/>',
   trash:
     '<path d="M4 7h16M9 7V4h6v3M6 7l1 13a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2l1-13"/><path d="M10 11v6M14 11v6"/>',
   undo: '<path d="M9 14 4 9l5-5"/><path d="M20 20v-7a4 4 0 0 0-4-4H4"/>',
   upload: '<path d="M12 3v12"/><path d="m7 8 5-5 5 5"/><path d="M4 21h16"/>',
+  usage:
+    '<rect x="3" y="4" width="18" height="6" rx="3"/><rect x="3" y="14" width="14" height="6" rx="3"/>',
   "user-plus":
     '<path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M19 8v6M22 11h-6"/>',
   users:

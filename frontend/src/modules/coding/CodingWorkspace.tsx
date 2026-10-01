@@ -4,6 +4,7 @@ import { useState } from "react";
 import CodingQuestionNode from "@/components/CodingQuestionNode";
 import type { CodingQuestion } from "./types";
 import { toast } from "@/lib/toastStore";
+import MessageBar from "@/components/MessageBar";
 
 export default function CodingWorkspace({
   question,
@@ -19,6 +20,7 @@ export default function CodingWorkspace({
 }) {
   const [answer, setAnswer] = useState("");
   const [submitting, setSubmitting] = useState(false);
+  const [validationError, setValidationError] = useState("");
   const used = question.submission_count || 0;
   const limit = question.coding_details.max_submissions || 10;
 
@@ -30,9 +32,10 @@ export default function CodingWorkspace({
       /* handled below */
     }
     if (!parsed.code?.trim() || !parsed.lang) {
-      toast.warning("Hãy nhập code và chọn ngôn ngữ trước khi nộp.");
+      setValidationError("Hãy nhập code và chọn ngôn ngữ trước khi nộp.");
       return;
     }
+    setValidationError("");
     setSubmitting(true);
     try {
       const result = await onSubmit(parsed.code, parsed.lang);
@@ -49,8 +52,16 @@ export default function CodingWorkspace({
       <CodingQuestionNode
         node={{ ...question, qNum: questionNumber }}
         ans={answer}
-        onCodeChange={(code, lang) => setAnswer(JSON.stringify({ code, lang }))}
+        onCodeChange={(code, lang) => {
+          setAnswer(JSON.stringify({ code, lang }));
+          setValidationError("");
+        }}
       />
+      {validationError && (
+        <MessageBar className="ui-message-bar--section" intent="warning" onDismiss={() => setValidationError("")}>
+          {validationError}
+        </MessageBar>
+      )}
       <div
         style={{
           display: "flex",
@@ -65,7 +76,7 @@ export default function CodingWorkspace({
           Đã dùng {used}/{limit} lượt
         </span>
         <button
-          className="btn btn-primary"
+          className="ui-button ui-button--primary"
           disabled={submitting || used >= limit}
           onClick={submit}
         >

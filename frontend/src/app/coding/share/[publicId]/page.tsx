@@ -4,6 +4,7 @@ import { use, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/lib/auth-context";
 import api from "@/lib/api";
+import MessageBar from "@/components/MessageBar";
 
 export default function SharedCodingPage({
   params,
@@ -30,7 +31,9 @@ export default function SharedCodingPage({
       <div
         style={{ minHeight: "100vh", display: "grid", placeItems: "center" }}
       >
-        <div className="alert alert-error">{error}</div>
+        <MessageBar className="ui-message-bar--compact" intent="error" onDismiss={() => router.push("/coding")}>
+          {error}
+        </MessageBar>
       </div>
     );
   if (isLoading || !assignment)
@@ -38,7 +41,7 @@ export default function SharedCodingPage({
       <div
         style={{ minHeight: "100vh", display: "grid", placeItems: "center" }}
       >
-        <span className="spinner" />
+        <span className="ui-spinner" />
       </div>
     );
   if (!assignment.allow_link_access)
@@ -46,7 +49,9 @@ export default function SharedCodingPage({
       <div
         style={{ minHeight: "100vh", display: "grid", placeItems: "center" }}
       >
-        <div className="alert alert-error">Liên kết đã bị tắt</div>
+        <MessageBar className="ui-message-bar--compact" intent="error" onDismiss={() => router.push("/coding")}>
+          Liên kết đã bị tắt
+        </MessageBar>
       </div>
     );
   return (
@@ -57,7 +62,7 @@ export default function SharedCodingPage({
           Bài lập trình yêu cầu đăng nhập để kiểm soát số lượt nộp.
         </p>
         <a
-          className="btn btn-primary"
+          className="ui-button ui-button--primary"
           href={`/?returnTo=${encodeURIComponent(`/coding/share/${publicId}`)}`}
         >
           Đăng nhập để tiếp tục

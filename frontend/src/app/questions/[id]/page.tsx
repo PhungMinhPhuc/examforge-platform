@@ -5,12 +5,15 @@ import { useRouter } from "next/navigation";
 import { useAuth } from "@/lib/auth-context";
 import Sidebar from "@/components/Sidebar";
 import LatexRenderer from "@/components/LatexRenderer";
-import RichLatexEditor from "@/components/RichLatexEditor";
+import RichLatexEditor from "@/components/rich-latex-editor";
 import Combobox from "@/components/Combobox";
 import api from "@/lib/api";
 import { QuestionEditor, QuestionDetail } from "@/components/QuestionEditor";
 import Link from "next/link";
+import PageHeader from "@/components/PageHeader";
 import { toast } from "@/lib/toastStore";
+import MessageBar from "@/components/MessageBar";
+import { confirmDialog } from "@/lib/confirmDialog";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
 
@@ -26,7 +29,6 @@ export default function QuestionDetailPage({
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
-  const [successMsg, setSuccessMsg] = useState("");
   const [metadata, setMetadata] = useState<{
     chapters: string[];
     lessons: string[];
@@ -58,18 +60,18 @@ export default function QuestionDetailPage({
   // (Ảnh được lưu ngay khi xác nhận trong hộp chỉnh ảnh, nên không bị ảnh hưởng.)
   const handleDiscard = async () => {
     if (!question) return;
-    if (!confirm("Hủy bỏ các thay đổi chưa lưu và tải lại câu hỏi?")) return;
+    if (!(await confirmDialog("Hủy bỏ các thay đổi chưa lưu và tải lại câu hỏi?", {
+      title: "Hủy thay đổi",
+      confirmLabel: "Hủy thay đổi",
+      intent: "danger",
+    }))) return;
     setError("");
-    setSuccessMsg("");
     try {
       const fresh = await api.getQuestion(question.id!);
       setQuestion(fresh);
-      setSuccessMsg("Đã hủy các thay đổi chưa lưu.");
-      setTimeout(() => setSuccessMsg(""), 2000);
       toast.success("Đã hủy các thay đổi chưa lưu.");
     } catch (err: any) {
       setError(err.message || "Không thể tải lại câu hỏi");
-      toast.error(err.message || "Không thể tải lại câu hỏi");
     }
   };
 
@@ -77,7 +79,6 @@ export default function QuestionDetailPage({
     if (!question) return;
     setSaving(true);
     setError("");
-    setSuccessMsg("");
     try {
       // Lưu câu chính
       await api.updateQuestion(question.id!, {
@@ -115,12 +116,9 @@ export default function QuestionDetailPage({
         }
       }
 
-      setSuccessMsg("Đã lưu tất cả thay đổi thành công!");
-      setTimeout(() => setSuccessMsg(""), 3000);
       toast.success("Đã lưu tất cả thay đổi thành công!");
     } catch (err: any) {
       setError(err.message || "Lỗi khi lưu câu hỏi");
-      toast.error(err.message || "Lỗi khi lưu câu hỏi");
     } finally {
       setSaving(false);
     }
@@ -136,7 +134,7 @@ export default function QuestionDetailPage({
           height: "100vh",
         }}
       >
-        <span className="spinner" />
+        <span className="ui-spinner" />
       </div>
     );
 
@@ -145,13 +143,12 @@ export default function QuestionDetailPage({
       <div className="page-wrapper">
         {user && <Sidebar />}
         <main className="main-content">
-          <div className="alert alert-error">
-            {" "}
+          <MessageBar className="ui-message-bar--section" intent="error" onDismiss={() => router.push("/questions")}>
             {error || "Không tìm thấy câu hỏi"}
-          </div>
+          </MessageBar>
           <Link
             href="/questions"
-            className="btn btn-secondary"
+            className="ui-button ui-button--secondary"
             style={{ marginTop: "1rem" }}
           >
             Quay lại
@@ -164,66 +161,32 @@ export default function QuestionDetailPage({
     <div className="page-wrapper">
       {user && <Sidebar />}
       <main className="main-content">
-        <div
-          className="page-header"
-          style={{
-            display: "flex",
-            justifyContent: "space-between",
-            alignItems: "center",
-            position: "sticky",
-            top: 0,
-            background: "var(--bg-default)",
-            zIndex: 10,
-            padding: "1rem 0",
-            borderBottom: "1px solid var(--border)",
-          }}
-        >
-          <div>
-            <h1 className="page-title" style={{ margin: 0 }}>
-              Chi tiết & Chỉnh sửa Câu hỏi #{question?.id}
-            </h1>
-          </div>
-          <div style={{ display: "flex", gap: "0.75rem" }}>
-            <Link href="/questions" className="btn btn-secondary">
-              Quay lại
-            </Link>
+        <PageHeader
+          sticky
+          breadcrumbs={[{ label: "Ngân hàng câu hỏi", href: "/questions" }, { label: `Câu hỏi #${question?.id || "..."}` }]}
+          title={`Chi tiết và chỉnh sửa câu hỏi #${question?.id || "..."}`}
+          actions={<>
             <button
-              className="btn btn-secondary"
+              className="ui-button ui-button--secondary"
               onClick={handleDiscard}
               disabled={saving}
             >
               Hủy bỏ thay đổi
             </button>
             <button
-              className="btn btn-primary"
+              className="ui-button ui-button--primary"
               onClick={handleSaveAll}
               disabled={saving}
             >
               {saving ? "Đang lưu..." : " Lưu tất cả thay đổi"}
             </button>
-          </div>
-        </div>
+          </>}
+        />
 
         {error && (
-          <div className="alert alert-error" style={{ marginBottom: "1rem" }}>
-            {" "}
+          <MessageBar className="ui-message-bar--section" intent="error" onDismiss={() => setError("")}>
             {error}
-          </div>
-        )}
-        {successMsg && (
-          <div
-            className="alert alert-success"
-            style={{
-              marginBottom: "1rem",
-              background: "var(--answer-correct-bg)",
-              color: "var(--accent-success)",
-              padding: "1rem",
-              borderRadius: "var(--radius-md)",
-            }}
-          >
-            {" "}
-            {successMsg}
-          </div>
+          </MessageBar>
         )}
 
         {question && (

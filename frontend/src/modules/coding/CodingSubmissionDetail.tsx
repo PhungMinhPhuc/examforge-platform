@@ -5,6 +5,8 @@ import Editor from "@monaco-editor/react";
 import api from "@/lib/api";
 import { STATUS_BADGE } from "@/components/CodingQuestionNode";
 import type { CodingSubmission, CodingTestcaseResult } from "./types";
+import { Icon } from "@/components/icons";
+import MessageBar from "@/components/MessageBar";
 
 // Khối code nền tối kèm nút sao chép, dùng cho input/output và mã nguồn
 function CodeBox({ text, hidden }: { text?: string | null; hidden?: boolean }) {
@@ -15,7 +17,8 @@ function CodeBox({ text, hidden }: { text?: string | null; hidden?: boolean }) {
       <button
         type="button"
         className="code-copy"
-        title="Sao chép"
+        title={copied ? "Đã sao chép" : "Sao chép"}
+        aria-label={copied ? "Đã sao chép" : "Sao chép"}
         disabled={hidden}
         onClick={() => {
           navigator.clipboard.writeText(value);
@@ -23,7 +26,7 @@ function CodeBox({ text, hidden }: { text?: string | null; hidden?: boolean }) {
           setTimeout(() => setCopied(false), 1500);
         }}
       >
-        {copied ? "✓" : "⧉"}
+        <Icon name={copied ? "check" : "copy"} />
       </button>
       <pre className={hidden ? "is-hidden" : undefined}>{value}</pre>
     </div>
@@ -48,43 +51,18 @@ function TestcaseModal({
 
   return (
     <div
-      style={{
-        position: "fixed",
-        inset: 0,
-        zIndex: 1400,
-        background: "var(--overlay)",
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
-        padding: "2.5vh",
-      }}
+      className="ui-modal-backdrop ui-modal-backdrop--nested"
       onMouseDown={(e) => {
         if (e.target === e.currentTarget) onClose();
       }}
     >
-      <div
-        className="card"
-        style={{
-          width: "min(760px, 95vw)",
-          maxHeight: "90vh",
-          overflowY: "auto",
-          padding: 0,
-        }}
-      >
-        <div
-          style={{
-            padding: "1.25rem 1.5rem",
-            borderBottom: "1px solid var(--border)",
-            display: "flex",
-            justifyContent: "space-between",
-            alignItems: "flex-start",
-          }}
-        >
-          <div>
-            <h3 style={{ margin: 0, fontSize: "1.1rem" }}>
+      <section className="ui-modal ui-modal--medium" role="dialog" aria-modal="true" aria-labelledby="testcase-modal-title">
+        <header className="ui-modal__header">
+          <div className="ui-modal__heading">
+            <h3 className="ui-modal__title" id="testcase-modal-title">
               Test case {item.order_index + 1}
             </h3>
-            <p className="page-sub" style={{ margin: ".25rem 0 0" }}>
+            <p className="ui-modal__description">
               {item.is_public ? "Public" : "Hidden"} · {item.point_weight} điểm ·{" "}
               {item.status}
               {item.runtime_ms != null ? ` · ${item.runtime_ms} ms` : ""}
@@ -93,11 +71,11 @@ function TestcaseModal({
                 : ""}
             </p>
           </div>
-          <button className="btn btn-ghost btn-sm" onClick={onClose}>
-            ✕
+          <button className="ui-modal__close" type="button" aria-label="Đóng" onClick={onClose}>
+            <Icon name="close" />
           </button>
-        </div>
-        <div style={{ padding: "1.25rem 1.5rem" }}>
+        </header>
+        <div className="ui-modal__body">
           <div className="code-label">Input</div>
           <CodeBox text={item.input_data} hidden={item.hidden} />
           <div className="io-pair" style={{ marginTop: "1rem" }}>
@@ -117,7 +95,7 @@ function TestcaseModal({
             </div>
           )}
         </div>
-      </div>
+      </section>
     </div>
   );
 }
@@ -149,47 +127,20 @@ export default function CodingSubmissionDetail({
 
   return (
     <div
-      style={{
-        position: "fixed",
-        inset: 0,
-        zIndex: 1300,
-        background: "var(--overlay)",
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
-        padding: "2.5vh",
-      }}
+      className="ui-modal-backdrop"
       onMouseDown={(e) => {
         if (e.target === e.currentTarget && !openCase) onClose();
       }}
     >
-      <div
-        className="card modal-wide-responsive"
-        style={{
-          width: "min(1000px, 95vw)",
-          maxHeight: "92vh",
-          display: "flex",
-          flexDirection: "column",
-          padding: 0,
-          overflow: "hidden",
-        }}
-      >
-        <div
-          style={{
-            padding: "1.25rem 1.5rem",
-            borderBottom: "1px solid var(--border)",
-            display: "flex",
-            justifyContent: "space-between",
-            alignItems: "flex-start",
-          }}
-        >
-          <div>
-            <h3 style={{ margin: 0, fontSize: "1.1rem" }}>
+      <section className="ui-modal ui-modal--large" role="dialog" aria-modal="true" aria-labelledby="submission-detail-title">
+        <header className="ui-modal__header">
+          <div className="ui-modal__heading">
+            <h3 className="ui-modal__title" id="submission-detail-title">
               Lượt {submission?.attempt_number} · {submission?.language} ·{" "}
               {Number(submission?.score || 0).toFixed(2)}/
               {Number(submission?.max_score || 0).toFixed(2)} điểm
             </h3>
-            <p className="page-sub" style={{ margin: ".25rem 0 0" }}>
+            <p className="ui-modal__description">
               {submission?.student_name ? `${submission.student_name} · ` : ""}
               {submission
                 ? new Date(submission.submitted_at).toLocaleString("vi-VN")
@@ -197,16 +148,16 @@ export default function CodingSubmissionDetail({
               · {submission?.status}
             </p>
           </div>
-          <button className="btn btn-ghost btn-sm" onClick={onClose}>
-            Đóng
+          <button className="ui-modal__close" type="button" aria-label="Đóng" onClick={onClose}>
+            <Icon name="close" />
           </button>
-        </div>
+        </header>
 
-        <div style={{ padding: "1.25rem 1.5rem", overflowY: "auto", flex: 1 }}>
+        <div className="ui-modal__body">
           {error ? (
-            <div className="alert alert-error">{error}</div>
+            <MessageBar intent="error" onDismiss={onClose}>{error}</MessageBar>
           ) : !submission ? (
-            <div className="skeleton" style={{ height: 120 }} />
+            <div className="ui-skeleton" style={{ height: 120 }} />
           ) : (
             <>
               {submission.compiler_output && (
@@ -216,7 +167,7 @@ export default function CodingSubmissionDetail({
                 </div>
               )}
 
-              <h4 style={{ fontSize: "var(--font-size-md)", margin: "0 0 .6rem" }}>
+              <h4 style={{ fontSize: "var(--font-size-sm)", margin: "0 0 .6rem" }}>
                 Test case ({testcases.length})
               </h4>
               <div className="rows-scroll" style={{ overflowX: "auto" }}>
@@ -270,7 +221,7 @@ export default function CodingSubmissionDetail({
                         </td>
                         <td>
                           <button
-                            className="btn btn-secondary btn-sm"
+                            className="ui-button ui-button--secondary ui-button--small"
                             onClick={() => setOpenCase(tc)}
                           >
                             Chi tiết
@@ -309,7 +260,7 @@ export default function CodingSubmissionDetail({
             </>
           )}
         </div>
-      </div>
+      </section>
 
       {openCase && (
         <TestcaseModal item={openCase} onClose={() => setOpenCase(null)} />

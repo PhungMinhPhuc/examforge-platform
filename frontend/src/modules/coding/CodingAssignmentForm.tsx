@@ -4,6 +4,11 @@ import { useEffect, useState } from "react";
 import LatexRenderer from "@/components/LatexRenderer";
 import api from "@/lib/api";
 import { toast } from "@/lib/toastStore";
+import Combobox from "@/components/Combobox";
+import DateTimePicker from "@/components/DateTimePicker";
+import Checkbox from "@/components/Checkbox";
+import MessageBar from "@/components/MessageBar";
+import { Icon } from "@/components/icons";
 
 type BankQuestion = {
   id: number;
@@ -44,7 +49,6 @@ export default function CodingAssignmentForm({
     if (!title.trim() || selected.length === 0) {
       const msg = "Nhập tên và chọn ít nhất một câu lập trình.";
       setError(msg);
-      toast.error(msg);
       return;
     }
     setSaving(true);
@@ -67,7 +71,6 @@ export default function CodingAssignmentForm({
       toast.success("Đã tạo bài tập");
     } catch (e) {
       setError(e instanceof Error ? e.message : "Không thể tạo bài tập");
-      toast.error(e instanceof Error ? e.message : "Không thể tạo bài tập");
       setSaving(false);
     }
   };
@@ -87,19 +90,19 @@ export default function CodingAssignmentForm({
             Có thể đặt thời gian làm bài hoặc để không giới hạn
           </p>
         </div>
-        <button className="btn btn-ghost btn-sm" onClick={onCancel}>
+        <button className="ui-button ui-button--ghost ui-button--small" onClick={onCancel}>
           Đóng
         </button>
       </div>
       <div style={{ display: "grid", gap: "1rem" }}>
         <input
-          className="input"
+          className="ui-input-native"
           placeholder="Tên bài tập"
           value={title}
           onChange={(e) => setTitle(e.target.value)}
         />
         <textarea
-          className="textarea"
+          className="ui-textarea"
           placeholder="Mô tả (không bắt buộc)"
           value={description}
           onChange={(e) => setDescription(e.target.value)}
@@ -107,11 +110,15 @@ export default function CodingAssignmentForm({
         <label style={{ fontSize: ".85rem" }}>
           Thời gian làm bài (phút, để trống nếu không giới hạn)
           <input
-            className="input"
-            type="number"
+            className="ui-input-native"
+            type="text"
+            inputMode="numeric"
+            pattern="[0-9]*"
             min="1"
             value={timeLimit}
-            onChange={(e) => setTimeLimit(e.target.value)}
+            onChange={(e) => {
+              if (/^\d*$/.test(e.target.value)) setTimeLimit(e.target.value);
+            }}
           />
         </label>
         <div
@@ -121,31 +128,21 @@ export default function CodingAssignmentForm({
             gap: "1rem",
           }}
         >
-          <select
-            className="select"
+          <Combobox
             value={classId}
-            onChange={(e) => setClassId(e.target.value)}
-          >
-            <option value="">Không giới hạn lớp</option>
-            {classes.map((c) => (
-              <option key={c.id} value={c.id}>
-                {c.class_name}
-              </option>
-            ))}
-          </select>
+            onChange={(value) => setClassId(String(value))}
+            options={[
+              { value: "", label: "Không giới hạn lớp" },
+              ...classes.map((c) => ({ value: c.id, label: c.class_name })),
+            ]}
+          />
           <label style={{ fontSize: ".85rem" }}>
             Hạn nộp (không bắt buộc)
-            <input
-              className="input"
-              type="datetime-local"
-              value={dueAt}
-              onChange={(e) => setDueAt(e.target.value)}
-            />
+            <DateTimePicker value={dueAt} onChange={setDueAt} />
           </label>
         </div>
         <label>
-          <input
-            type="checkbox"
+          <Checkbox
             checked={published}
             onChange={(e) => setPublished(e.target.checked)}
           />{" "}
@@ -171,8 +168,7 @@ export default function CodingAssignmentForm({
                 cursor: "pointer",
               }}
             >
-              <input
-                type="checkbox"
+              <Checkbox
                 checked={selected.includes(q.id)}
                 onChange={() =>
                   setSelected((s) =>
@@ -199,9 +195,14 @@ export default function CodingAssignmentForm({
             </label>
           ))}
         </div>
-        {error && <div className="alert alert-error">{error}</div>}
+        {error && (
+          <MessageBar className="ui-message-bar--section" intent="error" onDismiss={() => setError("")}>
+            {error}
+          </MessageBar>
+        )}
         <div style={{ display: "flex", justifyContent: "flex-end" }}>
-          <button className="btn btn-primary" disabled={saving} onClick={save}>
+          <button className="ui-button ui-button--primary" disabled={saving} onClick={save}>
+            {!saving && <Icon name="plus" />}
             {saving ? "Đang tạo..." : "Tạo bài tập"}
           </button>
         </div>

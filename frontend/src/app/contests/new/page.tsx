@@ -4,11 +4,18 @@ import { useEffect, useState, useCallback } from "react";
 import { useAuth } from "@/lib/auth-context";
 import { useRouter } from "next/navigation";
 import Sidebar from "@/components/Sidebar";
+import PageHeader from "@/components/PageHeader";
 import LatexRenderer from "@/components/LatexRenderer";
 import Combobox from "@/components/Combobox";
 import NumberInput from "@/components/NumberInput";
 import api from "@/lib/api";
 import { toast } from "@/lib/toastStore";
+import DateTimePicker from "@/components/DateTimePicker";
+import { Icon } from "@/components/icons";
+import Checkbox from "@/components/Checkbox";
+import MessageBar from "@/components/MessageBar";
+import Pagination from "@/components/Pagination";
+import QuestionFilters from "@/components/QuestionFilters";
 
 type Question = {
   id: number;
@@ -72,7 +79,6 @@ export default function NewContestPage() {
   const [selectedQuestions, setSelectedQuestions] = useState<Question[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
-  const [success, setSuccess] = useState("");
 
   // Tạo đề ngẫu nhiên theo số câu
   const [randomCount, setRandomCount] = useState(10);
@@ -226,7 +232,6 @@ export default function NewContestPage() {
     if (selectedQuestions.length === 0) {
       const msg = "Vui lòng chọn ít nhất 1 câu hỏi";
       setError(msg);
-      toast.error(msg);
       return;
     }
     setLoading(true);
@@ -272,12 +277,10 @@ export default function NewContestPage() {
         due_at: dueAt ? new Date(dueAt).toISOString() : null,
         allow_late_submission: allowLateSubmission,
       });
-      setSuccess(` Tạo đề thi thành công! ID: ${res.id}`);
       toast.success("Tạo đề thi thành công!");
       setTimeout(() => router.push("/contests"), 1500);
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : "Lỗi tạo đề thi");
-      toast.error(err instanceof Error ? err.message : "Lỗi tạo đề thi");
     } finally {
       setLoading(false);
     }
@@ -287,13 +290,11 @@ export default function NewContestPage() {
     if (!title.trim()) {
       const msg = "Vui lòng nhập tên đề thi trước khi tạo ngẫu nhiên";
       setError(msg);
-      toast.error(msg);
       return;
     }
     if (randomCount < 1) {
       const msg = "Số câu ngẫu nhiên phải lớn hơn 0";
       setError(msg);
-      toast.error(msg);
       return;
     }
     setRandomLoading(true);
@@ -313,12 +314,10 @@ export default function NewContestPage() {
         allow_late_submission: allowLateSubmission,
         question_type: randomType || undefined,
       });
-      setSuccess(`Đã tạo đề ngẫu nhiên (${res.count} câu)! ID: ${res.id}`);
       toast.success(`Đã tạo đề ngẫu nhiên (${res.count} câu)!`);
       setTimeout(() => router.push("/contests"), 1500);
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : "Lỗi tạo đề ngẫu nhiên");
-      toast.error(err instanceof Error ? err.message : "Lỗi tạo đề ngẫu nhiên");
     } finally {
       setRandomLoading(false);
     }
@@ -526,7 +525,7 @@ export default function NewContestPage() {
             fontWeight: 700,
           }}
         >
-          {selected ? "✓" : ""}
+          {selected ? <Icon name="check" size="var(--icon-size-compact)" /> : null}
         </div>
         <div style={{ flex: 1, minWidth: 0 }}>
           <div
@@ -559,7 +558,7 @@ export default function NewContestPage() {
             )}
             <span
               style={{
-                fontSize: "var(--font-size-xs)",
+                fontSize: "var(--font-size-2xs)",
                 color: "var(--text-muted)",
               }}
             >
@@ -568,7 +567,7 @@ export default function NewContestPage() {
             {q.subject && (
               <span
                 style={{
-                  fontSize: "var(--font-size-xs)",
+                  fontSize: "var(--font-size-2xs)",
                   color: "var(--text-muted)",
                 }}
               >
@@ -579,7 +578,7 @@ export default function NewContestPage() {
             {q.chapter && (
               <span
                 style={{
-                  fontSize: "var(--font-size-xs)",
+                  fontSize: "var(--font-size-2xs)",
                   color: "var(--text-muted)",
                 }}
                 title={q.chapter}
@@ -654,69 +653,21 @@ export default function NewContestPage() {
     );
   };
 
-  const renderPagination = () => {
-    if (totalPages <= 1) return null;
-    return (
-      <div className="pagination" style={{ justifyContent: "center" }}>
-        <button
-          className="page-btn"
-          onClick={() => setPage(1)}
-          disabled={page === 1}
-        >
-          «
-        </button>
-        <button
-          className="page-btn"
-          onClick={() => setPage((p) => Math.max(1, p - 1))}
-          disabled={page === 1}
-        >
-          ‹
-        </button>
-        {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
-          const p = Math.max(1, Math.min(page - 2, totalPages - 4)) + i;
-          return (
-            <button
-              key={p}
-              className={`page-btn ${page === p ? "active" : ""}`}
-              onClick={() => setPage(p)}
-            >
-              {p}
-            </button>
-          );
-        })}
-        <button
-          className="page-btn"
-          onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
-          disabled={page === totalPages}
-        >
-          ›
-        </button>
-        <button
-          className="page-btn"
-          onClick={() => setPage(totalPages)}
-          disabled={page === totalPages}
-        >
-          »
-        </button>
-      </div>
-    );
-  };
-
   return (
     <div className="page-wrapper">
       <Sidebar />
       <main className="main-content">
-        <div className="page-header">
-          <div>
-            <h1 className="page-title">Tạo đề thi mới</h1>
-            <p className="page-sub">
-              Chọn câu hỏi từ ngân hàng và cấu hình đề thi
-            </p>
-          </div>
-        </div>
+        <PageHeader
+          breadcrumbs={[{ label: "Đề thi", href: "/contests" }, { label: "Tạo mới" }]}
+          title="Tạo đề thi mới"
+          description="Chọn câu hỏi từ ngân hàng và cấu hình đề thi"
+        />
 
-        {error && <div className="alert alert-error"> {error}</div>}
-        {success && <div className="alert alert-success">{success}</div>}
+        {error && (
+          <MessageBar className="ui-message-bar--section" intent="error" onDismiss={() => setError("")}>
+            {error}
+          </MessageBar>
+        )}
 
         <div
           style={{
@@ -733,7 +684,7 @@ export default function NewContestPage() {
               <div className="form-group">
                 <label className="form-label">Tên đề thi</label>
                 <input
-                  className="input"
+                  className="ui-input-native"
                   placeholder="VD: Kiểm tra 15 phút - Chương I"
                   value={title}
                   onChange={(e) => setTitle(e.target.value)}
@@ -743,7 +694,7 @@ export default function NewContestPage() {
               <div className="form-group">
                 <label className="form-label">Thời gian (phút)</label>
                 <NumberInput
-                  className="input"
+                  className="ui-input-native"
                   min={1}
                   max={300}
                   value={timeLimit}
@@ -761,31 +712,18 @@ export default function NewContestPage() {
               >
                 <label className="form-label">
                   Thời điểm mở
-                  <input
-                    className="input"
-                    type="datetime-local"
-                    style={{ width: "100%" }}
-                    value={availableFrom}
-                    onChange={(e) => setAvailableFrom(e.target.value)}
-                  />
+                  <DateTimePicker value={availableFrom} onChange={setAvailableFrom} />
                 </label>
                 <label className="form-label">
                   Hạn nộp
-                  <input
-                    className="input"
-                    type="datetime-local"
-                    style={{ width: "100%" }}
-                    value={dueAt}
-                    onChange={(e) => setDueAt(e.target.value)}
-                  />
+                  <DateTimePicker value={dueAt} onChange={setDueAt} />
                 </label>
               </div>
               <label
                 className="form-group"
                 style={{ display: "flex", alignItems: "center", gap: ".6rem" }}
               >
-                <input
-                  type="checkbox"
+                <Checkbox
                   checked={allowLateSubmission}
                   onChange={(e) => setAllowLateSubmission(e.target.checked)}
                 />
@@ -794,7 +732,6 @@ export default function NewContestPage() {
               <div className="form-group">
                 <label className="form-label">Giao cho lớp (tùy chọn)</label>
                 <Combobox
-                  className="select"
                   value={String(classId)}
                   onChange={(val) => setClassId(val ? +val : "")}
                   options={[
@@ -833,10 +770,9 @@ export default function NewContestPage() {
                     </span>
                     <NumberInput
                       step="0.01"
-                      className="input"
+                      className="ui-input-native"
                       value={scores.mc}
                       onChange={(v) => setScores({ ...scores, mc: v })}
-                      style={{ padding: "0.4rem", fontSize: "0.9rem" }}
                     />
                   </div>
                   <div
@@ -851,10 +787,9 @@ export default function NewContestPage() {
                     </span>
                     <NumberInput
                       step="0.01"
-                      className="input"
+                      className="ui-input-native"
                       value={scores.tf}
                       onChange={(v) => setScores({ ...scores, tf: v })}
-                      style={{ padding: "0.4rem", fontSize: "0.9rem" }}
                     />
                   </div>
                   <div
@@ -869,10 +804,9 @@ export default function NewContestPage() {
                     </span>
                     <NumberInput
                       step="0.01"
-                      className="input"
+                      className="ui-input-native"
                       value={scores.sa}
                       onChange={(v) => setScores({ ...scores, sa: v })}
-                      style={{ padding: "0.4rem", fontSize: "0.9rem" }}
                     />
                   </div>
                   <div
@@ -887,16 +821,15 @@ export default function NewContestPage() {
                     </span>
                     <NumberInput
                       step="0.01"
-                      className="input"
+                      className="ui-input-native"
                       value={scores.oe}
                       onChange={(v) => setScores({ ...scores, oe: v })}
-                      style={{ padding: "0.4rem", fontSize: "0.9rem" }}
                     />
                   </div>
                 </div>
                 <div
                   style={{
-                    fontSize: "var(--font-size-xs)",
+                    fontSize: "var(--font-size-2xs)",
                     color: "var(--text-muted)",
                     marginTop: "0.5rem",
                   }}
@@ -907,7 +840,6 @@ export default function NewContestPage() {
               <div className="form-group">
                 <label className="form-label">Trạng thái</label>
                 <Combobox
-                  className="select"
                   value={status}
                   onChange={(val) => setStatus(val)}
                   options={[
@@ -947,12 +879,12 @@ export default function NewContestPage() {
 
               <button
                 type="submit"
-                className="btn btn-primary btn-block btn-lg"
+                className="ui-button ui-button--primary ui-button--block ui-button--large"
                 disabled={loading || selectedQuestions.length === 0}
               >
                 {loading ? (
                   <>
-                    <span className="spinner" /> Đang tạo...
+                    <span className="ui-spinner" /> Đang tạo...
                   </>
                 ) : (
                   " Tạo đề thi"
@@ -979,7 +911,6 @@ export default function NewContestPage() {
                   Thêm nhanh ngẫu nhiên:
                 </label>
                 <Combobox
-                  className="select"
                   style={{ width: "150px" }}
                   value={randomType}
                   onChange={(val) => setRandomType(val)}
@@ -1002,7 +933,7 @@ export default function NewContestPage() {
                 }}
               >
                 <NumberInput
-                  className="input"
+                  className="ui-input-native"
                   min={1}
                   max={200}
                   value={randomCount}
@@ -1019,14 +950,14 @@ export default function NewContestPage() {
                 </span>
                 <button
                   type="button"
-                  className="btn btn-secondary"
+                  className="ui-button ui-button--secondary"
                   style={{ flex: 1 }}
                   onClick={handleRandom}
                   disabled={randomLoading}
                 >
                   {randomLoading ? (
                     <>
-                      <span className="spinner" /> Đang tạo...
+                      <span className="ui-spinner" /> Đang tạo...
                     </>
                   ) : (
                     "Tạo đề ngẫu nhiên"
@@ -1051,10 +982,10 @@ export default function NewContestPage() {
               </h3>
               <button
                 type="button"
-                className="btn btn-primary btn-sm"
+                className="ui-button ui-button--primary ui-button--small"
                 onClick={() => setPickerOpen(true)}
               >
-                + Thêm câu hỏi
+                <Icon name="plus" /> Thêm câu hỏi
               </button>
             </div>
             <div
@@ -1083,8 +1014,8 @@ export default function NewContestPage() {
                   color: "var(--text-muted)",
                 }}
               >
-                <div style={{ fontSize: "var(--font-size-xl)" }}>＋</div>
-                <div style={{ fontSize: "var(--font-size-base)" }}>
+                <Icon name="plus" size="var(--icon-size-lg)" />
+                <div style={{ fontSize: "var(--font-size-md)" }}>
                   Chưa chọn câu hỏi nào — bấm để mở ngân hàng câu hỏi
                 </div>
               </div>
@@ -1189,7 +1120,7 @@ export default function NewContestPage() {
                           padding: "0 0.2rem",
                         }}
                       >
-                        ✕
+                        <Icon name="x" />
                       </button>
                     </div>
                   );
@@ -1202,143 +1133,46 @@ export default function NewContestPage() {
         {/* Modal chọn câu (giao diện ngân hàng) */}
         {pickerOpen && (
           <div
-            style={{
-              position: "fixed",
-              inset: 0,
-              zIndex: 1000,
-              background: "rgba(0,0,0,0.5)",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              padding: "2.5vh 2.5vw",
-            }}
+            className="ui-modal-backdrop"
             onMouseDown={(e) => {
               if (e.target === e.currentTarget) setPickerOpen(false);
             }}
           >
             <div
-              className="modal-wide-responsive"
-              style={{
-                width: "95vw",
-                maxWidth: 1400,
-                height: "95vh",
-                maxHeight: "95vh",
-                background: "var(--bg-surface)",
-                borderRadius: "var(--radius-lg)",
-                boxShadow: "var(--shadow-lg)",
-                display: "flex",
-                flexDirection: "column",
-              }}
+              className="ui-modal ui-modal--large"
             >
               {/* Header */}
-              <div
-                style={{
-                  padding: "1rem 1.5rem",
-                  borderBottom: "1px solid var(--border)",
-                  display: "flex",
-                  justifyContent: "space-between",
-                  alignItems: "center",
-                }}
-              >
-                <h3 style={{ margin: 0 }}>
+              <header className="ui-modal__header">
+                <h3 className="ui-modal__title">
                   Chọn câu hỏi{" "}
                   {bankTotal > 0 ? `· ${bankTotal.toLocaleString()} mục` : ""}
                 </h3>
                 <button
+                  className="ui-modal__close"
+                  type="button"
+                  aria-label="Đóng"
                   onClick={() => setPickerOpen(false)}
-                  style={{
-                    background: "none",
-                    border: "none",
-                    cursor: "pointer",
-                    fontSize: 20,
-                    color: "var(--text-secondary)",
-                    lineHeight: 1,
-                    padding: 4,
-                  }}
                 >
-                  ✕
+                  <Icon name="close" />
                 </button>
-              </div>
+              </header>
 
-              <div
-                className="filter-bar"
-                style={{
-                  padding: "1rem 1.5rem",
-                  background: "var(--bg-hover)",
-                  borderBottom: "1px solid var(--border)",
+              <QuestionFilters
+                variant="embedded"
+                search={filters.search}
+                searchPlaceholder="Tìm kiếm..."
+                onChange={setFilter}
+                onReset={() => {
+                  setFilters({ subject: "", grade: "", chapter: "", question_type: "", complexity: "", search: "" });
+                  setPage(1);
                 }}
-              >
-                <input
-                  className="input search-input"
-                  placeholder=" Tìm kiếm..."
-                  value={filters.search}
-                  onChange={(e) => setFilter("search", e.target.value)}
-                />
-                <select
-                  className="select"
-                  value={filters.subject}
-                  onChange={(e) => setFilter("subject", e.target.value)}
-                >
-                  <option value="">Tất cả môn</option>
-                  {subjectList.map((s) => (
-                    <option key={s} value={s}>
-                      {s}
-                    </option>
-                  ))}
-                </select>
-                <select
-                  className="select"
-                  value={filters.grade}
-                  onChange={(e) => setFilter("grade", e.target.value)}
-                >
-                  <option value="">Tất cả khối</option>
-                  {gradeList.map((g) => (
-                    <option key={g} value={g}>
-                      Lớp {g}
-                    </option>
-                  ))}
-                </select>
-                <select
-                  className="select"
-                  value={filters.question_type}
-                  onChange={(e) => setFilter("question_type", e.target.value)}
-                >
-                  <option value="">Tất cả loại</option>
-                  {Object.entries(TYPE_LABELS_FULL).map(([k, v]) => (
-                    <option key={k} value={k}>
-                      {v}
-                    </option>
-                  ))}
-                </select>
-                <select
-                  className="select"
-                  value={filters.complexity}
-                  onChange={(e) => setFilter("complexity", e.target.value)}
-                >
-                  <option value="">Tất cả mức</option>
-                  {Object.entries(COMPLEXITY_LABELS).map(([k, v]) => (
-                    <option key={k} value={k}>
-                      {v}
-                    </option>
-                  ))}
-                </select>
-                <button
-                  className="btn btn-secondary"
-                  onClick={() => {
-                    setFilters({
-                      subject: "",
-                      grade: "",
-                      chapter: "",
-                      question_type: "",
-                      complexity: "",
-                      search: "",
-                    });
-                    setPage(1);
-                  }}
-                >
-                  Xóa lọc
-                </button>
-              </div>
+                selects={[
+                  { key: "subject", value: filters.subject, options: [{ value: "", label: "Tất cả môn" }, ...subjectList.map((s) => ({ value: s, label: s }))] },
+                  { key: "grade", value: filters.grade, options: [{ value: "", label: "Tất cả khối" }, ...gradeList.map((g) => ({ value: g, label: `Lớp ${g}` }))] },
+                  { key: "question_type", value: filters.question_type, options: [{ value: "", label: "Tất cả loại" }, ...Object.entries(TYPE_LABELS_FULL).map(([value, label]) => ({ value, label }))] },
+                  { key: "complexity", value: filters.complexity, options: [{ value: "", label: "Tất cả mức" }, ...Object.entries(COMPLEXITY_LABELS).map(([value, label]) => ({ value, label }))] },
+                ]}
+              />
 
               {/* List */}
               <div
@@ -1357,7 +1191,7 @@ export default function NewContestPage() {
                     .map((_, i) => (
                       <div
                         key={i}
-                        className="skeleton"
+                        className="ui-skeleton"
                         style={{
                           height: "90px",
                           borderRadius: "var(--radius-md)",
@@ -1371,7 +1205,9 @@ export default function NewContestPage() {
                 ) : (
                   bankQuestions.map((q) => renderPickerCard(q))
                 )}
-                {!bankLoading && renderPagination()}
+                {!bankLoading && (
+                  <Pagination page={page} totalPages={totalPages} onPageChange={setPage} />
+                )}
               </div>
 
               {/* Footer */}
@@ -1389,7 +1225,7 @@ export default function NewContestPage() {
                   Đã chọn: {topLevelCount} mục ({summaryText})
                 </div>
                 <button
-                  className="btn btn-primary"
+                  className="ui-button ui-button--primary"
                   onClick={() => setPickerOpen(false)}
                 >
                   Xong

@@ -1,0 +1,18 @@
+.root {
+  --editor-frame-radius: var(--radius-xl);
+  overflow: hidden;
+  border: var(--border-width) solid var(--border-strong);
+  border-radius: var(--editor-frame-radius);
+  background: var(--bg-surface);
+  box-shadow: var(--shadow-sm);
+}
+
+.legacyHost :global(.rle-toolbar) {
+  display: none !important;
+}
+
+.legacyHost > :global(div) {
+  border: 0 !important;
+  border-radius: 0 !important;
+  overflow: visible !important;
+}

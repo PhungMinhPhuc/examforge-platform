@@ -3,6 +3,7 @@
 import { use, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import api from "@/lib/api";
+import MessageBar from "@/components/MessageBar";
 
 export default function SharedExamPage({
   params,
@@ -27,9 +28,11 @@ export default function SharedExamPage({
   return (
     <div style={{ minHeight: "100vh", display: "grid", placeItems: "center" }}>
       {error ? (
-        <div className="alert alert-error">{error}</div>
+        <MessageBar className="ui-message-bar--compact" intent="error" onDismiss={() => router.push("/")}>
+          {error}
+        </MessageBar>
       ) : (
-        <span className="spinner" />
+        <span className="ui-spinner" />
       )}
     </div>
   );

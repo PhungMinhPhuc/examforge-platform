@@ -4,10 +4,17 @@ import { useEffect, useState } from "react";
 import { useAuth } from "@/lib/auth-context";
 import { useRouter } from "next/navigation";
 import Sidebar from "@/components/Sidebar";
+import PageHeader from "@/components/PageHeader";
 import useScrollRestoration from "@/lib/useScrollRestoration";
 import api from "@/lib/api";
 import Link from "next/link";
 import { toast } from "@/lib/toastStore";
+import { Icon } from "@/components/icons";
+import MessageBar from "@/components/MessageBar";
+import { confirmDialog } from "@/lib/confirmDialog";
+import ViewModeToggle from "@/components/ViewModeToggle";
+import { CollectionItem, CollectionView } from "@/components/CollectionView";
+import useViewModePreference from "@/lib/useViewModePreference";
 
 type Class = {
   id: number;
@@ -20,6 +27,7 @@ type Class = {
 };
 
 export default function ClassesPage() {
+  const [viewMode, setViewMode] = useViewModePreference("classes-view", "grid");
   const { user, isLoading } = useAuth();
   const router = useRouter();
   const [classes, setClasses] = useState<Class[]>([]);
@@ -29,8 +37,8 @@ export default function ClassesPage() {
   const [className, setClassName] = useState("");
   const [desc, setDesc] = useState("");
   const [joinCode, setJoinCode] = useState("");
-  const [error, setError] = useState("");
-  const [success, setSuccess] = useState("");
+  const [createError, setCreateError] = useState("");
+  const [joinError, setJoinError] = useState("");
 
   useEffect(() => {
     if (!isLoading && !user) router.replace("/");
@@ -52,55 +60,48 @@ export default function ClassesPage() {
 
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault();
-    setError("");
+    setCreateError("");
     try {
       await api.createClass({ class_name: className, description: desc });
-      setSuccess("Tạo lớp thành công!");
       toast.success("Tạo lớp thành công!");
       setShowCreate(false);
       setClassName("");
       setDesc("");
       fetchClasses();
     } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : "Lỗi");
-      toast.error(err instanceof Error ? err.message : "Lỗi");
+      setCreateError(err instanceof Error ? err.message : "Lỗi");
     }
   };
 
   const handleJoin = async (e: React.FormEvent) => {
     e.preventDefault();
-    setError("");
+    setJoinError("");
     try {
       await api.joinClass(joinCode);
-      setSuccess("Tham gia lớp thành công!");
       toast.success("Tham gia lớp thành công!");
       setShowJoin(false);
       setJoinCode("");
       fetchClasses();
     } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : "Lỗi");
-      toast.error(err instanceof Error ? err.message : "Lỗi");
+      setJoinError(err instanceof Error ? err.message : "Lỗi");
     }
   };
 
   const handleDeleteClass = async (e: React.MouseEvent, cls: Class) => {
     e.preventDefault();
     e.stopPropagation(); // không kích hoạt điều hướng của Link
-    setError("");
-    setSuccess("");
     if (
-      !confirm(
+      !(await confirmDialog(
         `Xóa lớp "${cls.class_name}"?\nHọc sinh sẽ bị gỡ khỏi lớp và các đề thi của lớp sẽ chuyển thành không gán lớp (đề và kết quả vẫn được giữ). Không thể hoàn tác.`,
-      )
+        { title: "Xóa lớp học", confirmLabel: "Xóa lớp", intent: "danger" },
+      ))
     )
       return;
     try {
       await api.deleteClass(cls.id);
-      setSuccess("Đã xóa lớp");
       toast.success("Đã xóa lớp");
       fetchClasses();
     } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : "Lỗi xóa lớp");
       toast.error(err instanceof Error ? err.message : "Lỗi xóa lớp");
     }
   };
@@ -109,49 +110,43 @@ export default function ClassesPage() {
     <div className="page-wrapper">
       <Sidebar />
       <main className="main-content">
-        <div className="page-header">
-          <div>
-            <h1 className="page-title">Lớp học</h1>
-            <p className="page-sub">
-              {user?.role === "teacher"
-                ? "Quản lý các lớp của bạn"
-                : "Các lớp bạn đang tham gia"}
-            </p>
-          </div>
-          {user?.role === "teacher" ? (
+        <PageHeader
+          title="Lớp học"
+          description={user?.role === "teacher" ? "Quản lý các lớp của bạn" : "Các lớp bạn đang tham gia"}
+          actions={<div className="ui-collection-controls">
+            <ViewModeToggle value={viewMode} onChange={setViewMode} ariaLabel="Chế độ hiển thị lớp học" />
+            {user?.role === "teacher" ? (
             <button
-              className="btn btn-primary"
-              onClick={() => setShowCreate(true)}
+              className="ui-button ui-button--primary"
+              onClick={() => {
+                setCreateError("");
+                setShowCreate(true);
+              }}
             >
-              {" "}
+              <Icon name="plus" />
               Tạo lớp mới
             </button>
           ) : (
             <button
-              className="btn btn-primary"
-              onClick={() => setShowJoin(true)}
+              className="ui-button ui-button--primary"
+              onClick={() => {
+                setJoinError("");
+                setShowJoin(true);
+              }}
             >
-              {" "}
+              <Icon name="user-plus" />
               Tham gia lớp
             </button>
-          )}
-        </div>
-
-        {error && <div className="alert alert-error">{error}</div>}
-        {success && <div className="alert alert-success">{success}</div>}
+            )}
+          </div>}
+        />
 
         {loading ? (
-          <div
-            style={{
-              display: "grid",
-              gridTemplateColumns: "repeat(auto-fill, minmax(280px, 1fr))",
-              gap: "1rem",
-            }}
-          >
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(280px, 1fr))", gap: "1rem" }}>
             {[1, 2, 3].map((i) => (
               <div
                 key={i}
-                className="skeleton"
+                className="ui-skeleton"
                 style={{ height: "160px", borderRadius: "var(--radius-lg)" }}
               />
             ))}
@@ -167,218 +162,94 @@ export default function ClassesPage() {
             </p>
           </div>
         ) : (
-          <div
-            style={{
-              display: "grid",
-              gridTemplateColumns: "repeat(auto-fill, minmax(280px, 1fr))",
-              gap: "1rem",
-            }}
-          >
-            {classes.map((cls) => (
-              <Link
-                key={cls.id}
-                href={`/classes/${cls.id}`}
-                style={{ textDecoration: "none" }}
-              >
-                <div
-                  className="card"
-                  style={{ cursor: "pointer", height: "100%" }}
-                >
-                  <div
-                    style={{
-                      display: "flex",
-                      alignItems: "flex-start",
-                      justifyContent: "space-between",
-                      marginBottom: "1rem",
-                    }}
-                  >
-                    <div
-                      style={{
-                        width: 44,
-                        height: 44,
-                        background: "rgba(30,63,170,0.08)",
-                        border: "1px solid rgba(30,63,170,0.15)",
-                        borderRadius: 12,
-                        display: "flex",
-                        alignItems: "center",
-                        justifyContent: "center",
-                        fontSize: "1.4rem",
-                      }}
-                    ></div>
-                    <div
-                      style={{
-                        display: "flex",
-                        alignItems: "center",
-                        gap: "0.5rem",
-                      }}
-                    >
-                      <span
-                        style={{
-                          fontSize: "var(--font-size-2xs)",
-                          color: "var(--text-muted)",
-                          fontFamily: "monospace",
-                          background: "var(--bg-elevated)",
-                          padding: "0.2rem 0.5rem",
-                          borderRadius: 6,
-                        }}
-                      >
-                        ID: {String(cls.public_id).slice(0, 8)}...
-                      </span>
-                      {user?.role === "teacher" && (
-                        <button
-                          className="btn btn-danger btn-sm"
-                          onClick={(e) => handleDeleteClass(e, cls)}
-                        >
-                          Xóa
-                        </button>
-                      )}
-                    </div>
-                  </div>
-                  <h3 style={{ marginBottom: "0.4rem" }}>{cls.class_name}</h3>
-                  {cls.description && (
-                    <p
-                      style={{
-                        color: "var(--text-secondary)",
-                        fontSize: "var(--font-size-base)",
-                        marginBottom: "1rem",
-                      }}
-                    >
-                      {cls.description}
-                    </p>
-                  )}
-                  {cls.teacher_name && (
-                    <p
-                      style={{
-                        color: "var(--text-muted)",
-                        fontSize: "0.8rem",
-                        marginBottom: "0.75rem",
-                      }}
-                    >
-                      {" "}
-                      {cls.teacher_name}
-                    </p>
-                  )}
-                  <div
-                    style={{
-                      display: "flex",
-                      gap: "1rem",
-                      borderTop: "1px solid var(--border)",
-                      paddingTop: "0.75rem",
-                    }}
-                  >
-                    <div style={{ textAlign: "center" }}>
-                      <div style={{ fontWeight: 700 }}>{cls.student_count}</div>
-                      <div
-                        style={{
-                          fontSize: "var(--font-size-2xs)",
-                          color: "var(--text-muted)",
-                        }}
-                      >
-                        Học sinh
-                      </div>
-                    </div>
-                    <div style={{ textAlign: "center" }}>
-                      <div style={{ fontWeight: 700 }}>{cls.contest_count}</div>
-                      <div
-                        style={{
-                          fontSize: "var(--font-size-2xs)",
-                          color: "var(--text-muted)",
-                        }}
-                      >
-                        Đề thi
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </Link>
-            ))}
-          </div>
+          <CollectionView items={classes} mode={viewMode} getKey={(cls) => cls.id} ariaLabel="Danh sách lớp học" renderItem={(cls) => (
+            <CollectionItem
+              href={`/classes/${cls.id}`}
+              leading={<span className="ui-collection-item__placeholder" />}
+              title={<Link href={`/classes/${cls.id}`}>{cls.class_name}</Link>}
+              description={cls.description}
+              metadata={<><span>{cls.student_count} học sinh</span><span>{cls.contest_count} đề thi</span>{cls.teacher_name && <span>{cls.teacher_name}</span>}</>}
+              actions={<><span className="ui-collection-item__code">ID: {String(cls.public_id).slice(0, 8)}…</span><Link className="ui-button ui-button--secondary ui-button--small" href={`/classes/${cls.id}`}>Chi tiết</Link>{user?.role === "teacher" && <button className="ui-button ui-button--danger ui-button--small" onClick={(event) => handleDeleteClass(event, cls)}><Icon name="trash" />Xóa</button>}</>}
+            />
+          )} />
         )}
 
         {/* Create modal */}
         {showCreate && (
-          <div className="modal-backdrop" onClick={() => setShowCreate(false)}>
-            <div className="modal" onClick={(e) => e.stopPropagation()}>
-              <h3 className="modal-title">Tạo lớp học mới</h3>
+          <div className="ui-modal-backdrop" onClick={() => setShowCreate(false)}>
+            <section
+              className="ui-modal ui-modal--small"
+              role="dialog"
+              aria-modal="true"
+              aria-labelledby="create-class-title"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <header className="ui-modal__header">
+                <div className="ui-modal__heading">
+                  <h3 className="ui-modal__title" id="create-class-title">Tạo lớp học mới</h3>
+                </div>
+                <button className="ui-modal__close" type="button" aria-label="Đóng" onClick={() => setShowCreate(false)}>
+                  <Icon name="close" />
+                </button>
+              </header>
               <form onSubmit={handleCreate}>
-                <div className="form-group">
-                  <label className="form-label">Tên lớp</label>
-                  <input
-                    className="input"
-                    placeholder="VD: Lớp 12A1 - Toán"
-                    value={className}
-                    onChange={(e) => setClassName(e.target.value)}
-                    required
-                  />
+                <div className="ui-modal__body">
+                  {createError && (
+                    <MessageBar className="ui-message-bar--section" intent="error" onDismiss={() => setCreateError("")}>
+                      {createError}
+                    </MessageBar>
+                  )}
+                  <div className="form-group">
+                    <label className="form-label">Tên lớp</label>
+                    <input className="ui-input-native" placeholder="VD: Lớp 12A1 - Toán" value={className} onChange={(e) => setClassName(e.target.value)} required />
+                  </div>
+                  <div className="form-group">
+                    <label className="form-label">Mô tả (tùy chọn)</label>
+                    <textarea className="ui-textarea" placeholder="Mô tả lớp học..." value={desc} onChange={(e) => setDesc(e.target.value)} />
+                  </div>
                 </div>
-                <div className="form-group">
-                  <label className="form-label">Mô tả (tùy chọn)</label>
-                  <textarea
-                    className="textarea"
-                    placeholder="Mô tả lớp học..."
-                    value={desc}
-                    onChange={(e) => setDesc(e.target.value)}
-                  />
-                </div>
-                <div
-                  style={{
-                    display: "flex",
-                    gap: "0.75rem",
-                    justifyContent: "flex-end",
-                  }}
-                >
-                  <button
-                    type="button"
-                    className="btn btn-secondary"
-                    onClick={() => setShowCreate(false)}
-                  >
-                    Hủy
-                  </button>
-                  <button type="submit" className="btn btn-primary">
+                <footer className="ui-modal__footer">
+                  <button type="button" className="ui-button ui-button--secondary" onClick={() => setShowCreate(false)}>Hủy</button>
+                  <button type="submit" className="ui-button ui-button--primary">
+                    <Icon name="plus" />
                     Tạo lớp
                   </button>
-                </div>
+                </footer>
               </form>
-            </div>
+            </section>
           </div>
         )}
 
         {/* Join modal */}
         {showJoin && (
-          <div className="modal-backdrop" onClick={() => setShowJoin(false)}>
-            <div className="modal" onClick={(e) => e.stopPropagation()}>
-              <h3 className="modal-title">Tham gia lớp học</h3>
+          <div className="ui-modal-backdrop" onClick={() => setShowJoin(false)}>
+            <section className="ui-modal ui-modal--small" role="dialog" aria-modal="true" aria-labelledby="join-class-title" onClick={(e) => e.stopPropagation()}>
+              <header className="ui-modal__header">
+                <div className="ui-modal__heading">
+                  <h3 className="ui-modal__title" id="join-class-title">Tham gia lớp học</h3>
+                </div>
+                <button className="ui-modal__close" type="button" aria-label="Đóng" onClick={() => setShowJoin(false)}>
+                  <Icon name="close" />
+                </button>
+              </header>
               <form onSubmit={handleJoin}>
-                <div className="form-group">
-                  <label className="form-label">Mã lớp (UUID)</label>
-                  <input
-                    className="input"
-                    placeholder="xxxxxxxx-xxxx-..."
-                    value={joinCode}
-                    onChange={(e) => setJoinCode(e.target.value)}
-                    required
-                  />
+                <div className="ui-modal__body">
+                  {joinError && (
+                    <MessageBar className="ui-message-bar--section" intent="error" onDismiss={() => setJoinError("")}>
+                      {joinError}
+                    </MessageBar>
+                  )}
+                  <div className="form-group">
+                    <label className="form-label">Mã lớp (UUID)</label>
+                    <input className="ui-input-native" placeholder="xxxxxxxx-xxxx-..." value={joinCode} onChange={(e) => setJoinCode(e.target.value)} required />
+                  </div>
                 </div>
-                <div
-                  style={{
-                    display: "flex",
-                    gap: "0.75rem",
-                    justifyContent: "flex-end",
-                  }}
-                >
-                  <button
-                    type="button"
-                    className="btn btn-secondary"
-                    onClick={() => setShowJoin(false)}
-                  >
-                    Hủy
-                  </button>
-                  <button type="submit" className="btn btn-primary">
-                    Tham gia
-                  </button>
-                </div>
+                <footer className="ui-modal__footer">
+                  <button type="button" className="ui-button ui-button--secondary" onClick={() => setShowJoin(false)}>Hủy</button>
+                  <button type="submit" className="ui-button ui-button--primary">Tham gia</button>
+                </footer>
               </form>
-            </div>
+            </section>
           </div>
         )}
       </main>

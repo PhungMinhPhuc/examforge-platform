@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/lib/auth-context";
 import Sidebar from "@/components/Sidebar";
+import PageHeader from "@/components/PageHeader";
 import {
   QuestionEditor,
   QuestionDetail,
@@ -14,6 +15,7 @@ import api from "@/lib/api";
 import Link from "next/link";
 import { emptyDoc } from "@/lib/docTree";
 import { toast } from "@/lib/toastStore";
+import MessageBar from "@/components/MessageBar";
 
 export default function CreateQuestionPage() {
   const { user, isLoading } = useAuth();
@@ -86,7 +88,6 @@ export default function CreateQuestionPage() {
       const msg =
         "Vui lòng điền đầy đủ môn học, lớp, loại câu hỏi và nội dung đề bài.";
       setError(msg);
-      toast.error(msg);
       return;
     }
     if (qData.question_type === "cd") {
@@ -96,13 +97,11 @@ export default function CreateQuestionPage() {
       ) {
         const msg = "Câu lập trình phải có giới hạn lượt nộp lớn hơn 0.";
         setError(msg);
-        toast.error(msg);
         return;
       }
       if (!qData.coding_testcases?.length) {
         const msg = "Câu lập trình phải có ít nhất một testcase.";
         setError(msg);
-        toast.error(msg);
         return;
       }
     }
@@ -170,7 +169,6 @@ export default function CreateQuestionPage() {
       router.push(returnTo === "/coding" ? "/coding" : "/questions");
     } catch (err: any) {
       setError(err.message || "Lỗi khi tạo câu hỏi");
-      toast.error(err.message || "Lỗi khi tạo câu hỏi");
     } finally {
       setSaving(false);
     }
@@ -178,42 +176,36 @@ export default function CreateQuestionPage() {
 
   if (isLoading)
     return (
-      <div className="spinner" style={{ margin: "auto", display: "block" }} />
+      <div className="ui-spinner" style={{ margin: "auto", display: "block" }} />
     );
 
   return (
     <div className="page-wrapper">
       <Sidebar />
       <main className="main-content">
-        <div className="page-header">
-          <div>
-            <h1 className="page-title">Tạo câu hỏi</h1>
-            <p className="page-sub">
-              Nhập câu hỏi Trắc nghiệm, Tự luận hoặc Lập trình
-            </p>
-          </div>
-          <div style={{ display: "flex", gap: "1rem" }}>
-            <Link href="/questions" className="btn btn-secondary">
+        <PageHeader
+          breadcrumbs={[{ label: "Ngân hàng câu hỏi", href: "/questions" }, { label: "Tạo câu hỏi" }]}
+          title="Tạo câu hỏi"
+          description="Nhập câu hỏi Trắc nghiệm, Tự luận hoặc Lập trình"
+          actions={<>
+            <Link href="/questions" className="ui-button ui-button--secondary">
               Hủy
             </Link>
             <button
-              className="btn btn-primary"
+              className="ui-button ui-button--primary"
               onClick={handleSave}
               disabled={saving}
             >
               {saving ? "Đang lưu..." : "Lưu câu hỏi"}
             </button>
-          </div>
-        </div>
+          </>}
+        />
 
         <div>
           {error && (
-            <div
-              className="alert alert-error"
-              style={{ marginBottom: "1.5rem" }}
-            >
+            <MessageBar className="ui-message-bar--section" intent="error" onDismiss={() => setError("")}>
               {error}
-            </div>
+            </MessageBar>
           )}
 
           <div
@@ -236,7 +228,6 @@ export default function CreateQuestionPage() {
             </label>
             <div style={{ flex: 1, maxWidth: "400px" }}>
               <Combobox
-                className="select"
                 value={qData.question_type}
                 options={[
                   { value: "mc", label: "Trắc nghiệm nhiều lựa chọn" },

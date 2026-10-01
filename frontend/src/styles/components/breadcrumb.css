@@ -1,8 +1,31 @@
-/* Breadcrumb component tokens and styles. Not imported by the app yet. */
+/* Shared Breadcrumb component tokens and styles. */
 
 :root {
-  --breadcrumb-padding-inline-md: 6px;
-  --breadcrumb-truncated-width: 180px;
+  --breadcrumb-padding-inline-sm: var(--control-icon-gap);
+  --breadcrumb-padding-inline-md: var(--control-icon-gap);
+  --breadcrumb-padding-inline-lg: var(--space-2);
+  --breadcrumb-font-size-sm: var(--control-font-size-sm);
+  --breadcrumb-font-size-md: var(--control-font-size-md);
+  --breadcrumb-font-size-lg: var(--control-font-size-lg);
+  --breadcrumb-line-height-sm: var(--control-line-height-sm);
+  --breadcrumb-line-height-md: var(--control-line-height-md);
+  --breadcrumb-line-height-lg: var(--control-line-height-lg);
+  --breadcrumb-height-sm: var(--control-height-sm);
+  --breadcrumb-height-md: var(--control-height-md);
+  --breadcrumb-height-lg: var(--control-height-lg);
+  --breadcrumb-icon-size-sm: var(--icon-size-xs);
+  --breadcrumb-icon-size-md: var(--icon-size-sm);
+  --breadcrumb-icon-size-lg: var(--icon-size-md);
+  --breadcrumb-truncated-width: calc(var(--control-min-width-lg) * 2);
+  --breadcrumb-history-button-size: var(--breadcrumb-height-sm);
+  --breadcrumb-history-gap: var(--space-1);
+  --breadcrumb-history-disabled-opacity: 0.38;
+  --breadcrumb-history-pressed-scale: 0.94;
+  --breadcrumb-history-layer: 5;
+  --breadcrumb-history-offset: calc(
+    var(--breadcrumb-history-button-size) * 2 + var(--breadcrumb-history-gap) +
+      var(--space-1)
+  );
 }
 
 .ui-breadcrumb__list {
@@ -24,7 +47,7 @@
 .ui-breadcrumb__button {
   appearance: none;
   min-width: unset;
-  height: var(--control-height-md);
+  height: var(--breadcrumb-height-md);
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -33,8 +56,8 @@
   border-radius: var(--control-radius-sm);
   background: transparent;
   color: var(--text-secondary);
-  font: var(--font-weight-regular) var(--font-size-base) /
-    var(--control-line-height-md) var(--font-family-ui);
+  font: var(--font-weight-regular) var(--breadcrumb-font-size-md) /
+    var(--breadcrumb-line-height-md) var(--font-family-ui);
   white-space: nowrap;
   cursor: pointer;
 }
@@ -57,7 +80,7 @@
 .ui-breadcrumb__button[aria-current="page"] {
   background: transparent;
   color: var(--text-secondary);
-  font-weight: var(--font-weight-semibold);
+  font-weight: var(--font-weight-regular);
   cursor: auto;
 }
 
@@ -68,34 +91,34 @@
 }
 
 .ui-breadcrumb--sm .ui-breadcrumb__button {
-  height: var(--control-height-sm);
-  padding-inline: var(--control-icon-gap);
-  font-size: var(--control-font-size-sm);
-  line-height: var(--control-line-height-sm);
+  height: var(--breadcrumb-height-sm);
+  padding-inline: var(--breadcrumb-padding-inline-sm);
+  font-size: var(--breadcrumb-font-size-sm);
+  line-height: var(--breadcrumb-line-height-sm);
 }
 
 .ui-breadcrumb--lg .ui-breadcrumb__button {
-  height: var(--control-height-lg);
-  padding-inline: var(--space-2);
-  font-size: var(--font-size-lg);
-  line-height: var(--control-line-height-lg);
+  height: var(--breadcrumb-height-lg);
+  padding-inline: var(--breadcrumb-padding-inline-lg);
+  font-size: var(--breadcrumb-font-size-lg);
+  line-height: var(--breadcrumb-line-height-lg);
 }
 
 .ui-breadcrumb__icon {
-  width: var(--control-affix-size-sm);
-  height: var(--control-affix-size-sm);
+  width: var(--breadcrumb-icon-size-md);
+  height: var(--breadcrumb-icon-size-md);
   display: block;
   margin-inline-end: var(--space-1);
 }
 
 .ui-breadcrumb--sm .ui-breadcrumb__icon {
-  width: var(--space-3);
-  height: var(--space-3);
+  width: var(--breadcrumb-icon-size-sm);
+  height: var(--breadcrumb-icon-size-sm);
 }
 
 .ui-breadcrumb--lg .ui-breadcrumb__icon {
-  width: var(--control-affix-size-md);
-  height: var(--control-affix-size-md);
+  width: var(--breadcrumb-icon-size-lg);
+  height: var(--breadcrumb-icon-size-lg);
 }
 
 .ui-breadcrumb__icon svg,
@@ -106,24 +129,24 @@
 }
 
 .ui-breadcrumb__divider {
-  width: var(--control-affix-size-sm);
-  height: var(--control-affix-size-sm);
+  width: var(--breadcrumb-icon-size-md);
+  height: var(--breadcrumb-icon-size-md);
   display: flex;
   color: var(--text-secondary);
 }
 
 .ui-breadcrumb--sm .ui-breadcrumb__divider {
-  width: var(--space-3);
-  height: var(--space-3);
+  width: var(--breadcrumb-icon-size-sm);
+  height: var(--breadcrumb-icon-size-sm);
 }
 
 .ui-breadcrumb--lg .ui-breadcrumb__divider {
-  width: var(--control-affix-size-md);
-  height: var(--control-affix-size-md);
+  width: var(--breadcrumb-icon-size-lg);
+  height: var(--breadcrumb-icon-size-lg);
 }
 
 .ui-breadcrumb__button--truncated {
-  width: var(--breadcrumb-truncated-width);
+  width: auto;
   max-width: var(--breadcrumb-truncated-width);
   min-width: 0;
   justify-content: flex-start;

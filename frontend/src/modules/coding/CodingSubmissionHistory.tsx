@@ -1,9 +1,11 @@
-﻿"use client";
+"use client";
 
 import { Fragment, useEffect, useMemo, useState } from "react";
 import LatexRenderer from "@/components/LatexRenderer";
 import api from "@/lib/api";
 import Editor from "@monaco-editor/react";
+import { Icon } from "@/components/icons";
+import MessageBar from "@/components/MessageBar";
 
 type Attempt = {
   id: number;
@@ -69,77 +71,33 @@ export default function CodingSubmissionHistory({
 
   return (
     <div
-      style={{
-        position: "fixed",
-        inset: 0,
-        zIndex: 1300,
-        background: "rgba(0,0,0,.55)",
-        display: "flex",
-        justifyContent: "center",
-        alignItems: "center",
-        padding: "2.5vh 2.5vw",
-      }}
+      className="ui-modal-backdrop"
       onMouseDown={(e) => {
         if (e.target === e.currentTarget) onClose();
       }}
     >
       <div
-        className="modal-wide-responsive"
-        style={{
-          width: "95vw",
-          maxWidth: 1400,
-          height: "95vh",
-          maxHeight: "95vh",
-          background: "var(--bg-surface)",
-          borderRadius: "var(--radius-lg)",
-          boxShadow: "var(--shadow-lg)",
-          display: "flex",
-          flexDirection: "column",
-          overflow: "hidden",
-        }}
+        className="ui-modal ui-modal--large"
       >
-        <div
-          style={{
-            padding: "1rem 1.5rem",
-            borderBottom: "1px solid var(--border)",
-            display: "flex",
-            justifyContent: "space-between",
-            alignItems: "center",
-          }}
-        >
-          <div>
-            <h3 style={{ margin: 0 }}>Chi tiết lượt nộp</h3>
+        <header className="ui-modal__header">
+          <div className="ui-modal__heading">
+            <h3 className="ui-modal__title">Chi tiết lượt nộp</h3>
             {data && (
-              <div
-                style={{
-                  color: "var(--text-secondary)",
-                  fontSize: ".85rem",
-                  marginTop: ".25rem",
-                }}
-              >
+              <div className="ui-modal__description">
                 {data.student.name} · {data.student.email} ·{" "}
                 {data.submissions.length} lượt
               </div>
             )}
           </div>
-          <button
-            onClick={onClose}
-            style={{
-              background: "none",
-              border: 0,
-              cursor: "pointer",
-              fontSize: 20,
-              color: "var(--text-secondary)",
-            }}
-          >
-            ✕
+          <button className="ui-modal__close" type="button" aria-label="Đóng" onClick={onClose}>
+            <Icon name="close" />
           </button>
-        </div>
+        </header>
         <div style={{ flex: 1, overflowY: "auto", padding: "1rem 1.5rem" }}>
           {error ? (
-            <div className="alert alert-error">{error}</div>
+            <MessageBar intent="error" onDismiss={onClose}>{error}</MessageBar>
           ) : !data ? (
-            <div className="skeleton" style={{ height: 120 }} />
+            <div className="ui-skeleton" style={{ height: 120 }} />
           ) : groups.length === 0 ? (
             <div className="empty-state">
               <p>Học sinh chưa có lượt nộp nào.</p>
@@ -179,7 +137,7 @@ export default function CodingSubmissionHistory({
                     />
                   </div>
                   <button
-                    className="btn btn-ghost btn-sm"
+                    className="ui-button ui-button--ghost ui-button--small"
                     style={{ marginTop: ".35rem", paddingLeft: 0 }}
                     onClick={() =>
                       setExpandedProblem(
@@ -268,7 +226,7 @@ export default function CodingSubmissionHistory({
                             </td>
                             <td>
                               <button
-                                className="btn btn-secondary btn-sm"
+                                className="ui-button ui-button--secondary ui-button--small"
                                 onClick={() =>
                                   setExpanded(
                                     expanded === item.id ? null : item.id,
@@ -522,7 +480,7 @@ export default function CodingSubmissionHistory({
             justifyContent: "flex-end",
           }}
         >
-          <button className="btn btn-secondary" onClick={onClose}>
+          <button className="ui-button ui-button--secondary" onClick={onClose}>
             Đóng
           </button>
         </div>

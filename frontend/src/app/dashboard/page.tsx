@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/lib/auth-context";
 import Sidebar from "@/components/Sidebar";
+import PageHeader from "@/components/PageHeader";
 import api from "@/lib/api";
 import Link from "next/link";
 
@@ -47,7 +48,7 @@ export default function DashboardPage() {
           height: "100vh",
         }}
       >
-        <span className="spinner" />
+        <span className="ui-spinner" />
       </div>
     );
 
@@ -97,16 +98,10 @@ export default function DashboardPage() {
     <div className="page-wrapper">
       <Sidebar />
       <main className="main-content">
-        <div className="page-header">
-          <div>
-            <h1 className="page-title">Xin chào, {user.name}! </h1>
-            <p className="page-sub">
-              {user.role === "teacher"
-                ? "Quản lý ngân hàng câu hỏi và đề thi của bạn"
-                : "Xem đề thi và kết quả học tập"}
-            </p>
-          </div>
-        </div>
+        <PageHeader
+          title={`Xin chào, ${user.name}!`}
+          description={user.role === "teacher" ? "Quản lý ngân hàng câu hỏi và đề thi của bạn" : "Xem đề thi và kết quả học tập"}
+        />
 
         {/* Stats */}
         <div
@@ -213,13 +208,13 @@ export default function DashboardPage() {
                 <p
                   style={{
                     color: "var(--text-secondary)",
-                    fontSize: "var(--font-size-base)",
+                    fontSize: "var(--font-size-md)",
                     marginBottom: "1.25rem",
                   }}
                 >
                   {item.desc}
                 </p>
-                <Link href={item.href} className="btn btn-primary btn-sm">
+                <Link href={item.href} className="ui-button ui-button--primary ui-button--small">
                   {item.label}
                 </Link>
               </div>
@@ -231,7 +226,7 @@ export default function DashboardPage() {
         <div className="card">
           <div className="card-header">
             <h3>Đề thi gần đây</h3>
-            <Link href="/contests" className="btn btn-ghost btn-sm">
+            <Link href="/contests" className="ui-button ui-button--ghost ui-button--small">
               Xem tất cả
             </Link>
           </div>
@@ -244,7 +239,7 @@ export default function DashboardPage() {
               }}
             >
               {[1, 2, 3].map((i) => (
-                <div key={i} className="skeleton" style={{ height: "50px" }} />
+                <div key={i} className="ui-skeleton" style={{ height: "50px" }} />
               ))}
             </div>
           ) : recentContests.length === 0 ? (
@@ -291,7 +286,7 @@ export default function DashboardPage() {
                   </span>
                   <Link
                     href={`/contests/${String(c.id)}`}
-                    className="btn btn-ghost btn-sm"
+                    className="ui-button ui-button--ghost ui-button--small"
                     onClick={(e) => e.stopPropagation()}
                   >
                     Xem

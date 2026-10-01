@@ -4,6 +4,7 @@ import { useState, useRef, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/lib/auth-context";
 import Sidebar from "@/components/Sidebar";
+import PageHeader from "@/components/PageHeader";
 import LatexRenderer from "@/components/LatexRenderer";
 import AdaptiveOptionGrid from "@/components/AdaptiveOptionGrid";
 import TrueFalseOptionList from "@/components/TrueFalseOptionList";
@@ -13,6 +14,9 @@ import { QuestionEditor, QuestionDetail } from "@/components/QuestionEditor";
 import api from "@/lib/api";
 import { mcCorrectLabel } from "@/lib/docTree";
 import { toast } from "@/lib/toastStore";
+import { Icon } from "@/components/icons";
+import MessageBar from "@/components/MessageBar";
+import QuestionCardRail from "@/components/QuestionCardRail";
 
 const TYPE_COLORS: Record<string, string> = {
   mc: "var(--type-mc)",
@@ -158,7 +162,6 @@ export default function UploadPage() {
     setEditModal(null);
   };
 
-  const [success, setSuccess] = useState("");
   const [preview, setPreview] = useState<ParsedItem[]>([]);
   const [uploadJobId, setUploadJobId] = useState<string | null>(null);
   const [subjects, setSubjects] = useState<Record<string, unknown>>({});
@@ -249,11 +252,9 @@ export default function UploadPage() {
         const msg =
           "Không tìm thấy câu hỏi nào trong file (định dạng chưa chuẩn). Vui lòng đảm bảo các câu hỏi bắt đầu bằng chữ 'Câu 1.', 'Câu 2:',...";
         setError(msg);
-        toast.error(msg);
       }
     } catch (e: unknown) {
       setError(e instanceof Error ? e.message : "Lỗi parse file");
-      toast.error(e instanceof Error ? e.message : "Lỗi parse file");
     } finally {
       setLoading(false);
     }
@@ -281,11 +282,9 @@ export default function UploadPage() {
               handleParse(aiFile);
             } else {
               setError("Không tìm thấy câu hỏi từ dữ liệu AI.");
-              toast.error("Không tìm thấy câu hỏi từ dữ liệu AI.");
             }
           } catch (e) {
             setError("Lỗi khi đọc dữ liệu từ AI.");
-            toast.error("Lỗi khi đọc dữ liệu từ AI.");
           }
           localStorage.removeItem("ai_normalized_questions");
         }
@@ -363,14 +362,12 @@ export default function UploadPage() {
         data: preview,
         job_id: uploadJobId,
       });
-      setSuccess(` Đã lưu ${countText} vào CSDL!`);
       toast.success(`Đã lưu ${countText} vào CSDL!`);
       setPreview([]);
       setUploadJobId(null);
       setFile(null);
     } catch (e: unknown) {
       setError(e instanceof Error ? e.message : "Lỗi lưu dữ liệu");
-      toast.error(e instanceof Error ? e.message : "Lỗi lưu dữ liệu");
     } finally {
       setLoading(false);
     }
@@ -409,12 +406,10 @@ export default function UploadPage() {
       setPreview([]);
       setUploadJobId(null);
       setFile(null);
-      setSuccess(`Đã lưu ${res.saved} câu và tạo đề thi! Đang chuyển...`);
       toast.success(`Đã lưu ${res.saved} câu và tạo đề thi!`);
       setTimeout(() => router.push(`/contests/${res.contest_id}`), 1200);
     } catch (e: unknown) {
       setError(e instanceof Error ? e.message : "Lỗi tạo đề thi");
-      toast.error(e instanceof Error ? e.message : "Lỗi tạo đề thi");
     } finally {
       setLoading(false);
     }
@@ -424,17 +419,17 @@ export default function UploadPage() {
     <div className="page-wrapper">
       <Sidebar />
       <main className="main-content">
-        <div className="page-header">
-          <div>
-            <h1 className="page-title">Nhập câu hỏi từ tài liệu</h1>
-            <p className="page-sub">
-              Hỗ trợ: .tex, .txt, .zip, .docx đã được chuẩn hóa
-            </p>
-          </div>
-        </div>
+        <PageHeader
+          breadcrumbs={[{ label: "Ngân hàng câu hỏi", href: "/questions" }, { label: "Nhập từ tài liệu" }]}
+          title="Nhập câu hỏi từ tài liệu"
+          description="Hỗ trợ: .tex, .txt, .zip, .docx đã được chuẩn hóa"
+        />
 
-        {error && <div className="alert alert-error"> {error}</div>}
-        {success && <div className="alert alert-success">{success}</div>}
+        {error && (
+          <MessageBar className="ui-message-bar--section" intent="error" onDismiss={() => setError("")}>
+            {error}
+          </MessageBar>
+        )}
 
         {preview.length === 0 ? (
           <div style={{ maxWidth: 640, margin: "0 auto" }}>
@@ -450,9 +445,8 @@ export default function UploadPage() {
                 onDrop={handleDrop}
                 onClick={() => fileRef.current?.click()}
               >
-                <div className="upload-icon"></div>
                 <div className="upload-text">
-                  Kéo thả hoặc nhấn để chọn tài liệu
+                  <Icon name="upload" /> Kéo thả hoặc nhấn để chọn tài liệu
                 </div>
                 <div className="upload-sub">
                   Hỗ trợ: .tex, .txt, .zip, .docx
@@ -465,7 +459,8 @@ export default function UploadPage() {
                       fontWeight: 600,
                     }}
                   >
-                    ✓ {file.name}
+                    <Icon name="check" size="var(--icon-size-control)" />{" "}
+                    {file.name}
                   </div>
                 )}
               </div>
@@ -480,17 +475,17 @@ export default function UploadPage() {
 
             <button
               id="btn-parse-preview"
-              className="btn btn-primary btn-block btn-lg"
+              className="ui-button ui-button--primary ui-button--block ui-button--large"
               style={{ marginTop: "1rem" }}
               onClick={() => handleParse()}
               disabled={!file || loading}
             >
               {loading ? (
                 <>
-                  <span className="spinner" /> Đang trích xuất...
+                  <span className="ui-spinner" /> Đang trích xuất...
                 </>
               ) : (
-                " Trích xuất và Xem trước"
+                <>Trích xuất và Xem trước</>
               )}
             </button>
             <p
@@ -523,18 +518,18 @@ export default function UploadPage() {
                 <p
                   style={{
                     color: "var(--text-secondary)",
-                    fontSize: "var(--font-size-base)",
+                    fontSize: "var(--font-size-md)",
                   }}
                 >
                   Kiểm tra và chỉnh sửa trước khi lưu vào CSDL
                 </p>
               </div>
               <div style={{ display: "flex", gap: "0.75rem" }}>
-                <button className="btn btn-secondary" onClick={discardPreview}>
+                <button className="ui-button ui-button--secondary" onClick={discardPreview}>
                   Hủy
                 </button>
                 <button
-                  className="btn btn-secondary"
+                  className="ui-button ui-button--secondary"
                   onClick={handleConfirmAsContest}
                   disabled={loading}
                   title="Lưu vào ngân hàng rồi tạo luôn thành 1 đề thi"
@@ -542,13 +537,13 @@ export default function UploadPage() {
                   Lưu & tạo đề thi
                 </button>
                 <button
-                  className="btn btn-primary"
+                  className="ui-button ui-button--primary"
                   onClick={handleConfirm}
                   disabled={loading}
                 >
                   {loading ? (
                     <>
-                      <span className="spinner" /> Đang lưu...
+                      <span className="ui-spinner" /> Đang lưu...
                     </>
                   ) : (
                     ` Lưu `
@@ -569,7 +564,7 @@ export default function UploadPage() {
                   fontSize: "0.9rem",
                 }}
               >
-                Thông tin chung — áp dụng cho tất cả {preview.length} câu
+                Thông tin chung - áp dụng cho tất cả {preview.length} câu
               </div>
               <div
                 style={{
@@ -580,7 +575,6 @@ export default function UploadPage() {
                 }}
               >
                 <Combobox
-                  className="select"
                   style={{ width: "auto" }}
                   value={subject}
                   onChange={(s) => {
@@ -597,7 +591,6 @@ export default function UploadPage() {
                   options={subjectList}
                 />
                 <Combobox
-                  className="select"
                   style={{ width: "auto" }}
                   value={grade}
                   onChange={(g) => {
@@ -613,7 +606,6 @@ export default function UploadPage() {
                   }))}
                 />
                 <Combobox
-                  className="select"
                   style={{ flex: 1, minWidth: "180px" }}
                   value={chapter}
                   onChange={(val) => {
@@ -625,7 +617,6 @@ export default function UploadPage() {
                   placeholder="Chương (áp dụng tất cả)"
                 />
                 <Combobox
-                  className="select"
                   style={{ flex: 1, minWidth: "180px" }}
                   value={lesson}
                   onChange={(val) => {
@@ -636,7 +627,6 @@ export default function UploadPage() {
                   placeholder="Bài (áp dụng tất cả)"
                 />
                 <Combobox
-                  className="select"
                   style={{ width: "auto" }}
                   value={complexity}
                   onChange={(value) => {
@@ -653,7 +643,7 @@ export default function UploadPage() {
               </div>
               <div
                 style={{
-                  fontSize: "var(--font-size-xs)",
+                  fontSize: "var(--font-size-2xs)",
                   color: "var(--text-muted)",
                   marginTop: "0.6rem",
                 }}
@@ -718,6 +708,7 @@ export default function UploadPage() {
                     >
                       {/* ST header: content + buttons column */}
                       <div
+                        className="ui-question-card-layout"
                         style={{
                           display: "flex",
                           alignItems: "flex-start",
@@ -728,6 +719,11 @@ export default function UploadPage() {
                           borderLeft: "4px solid var(--accent-primary)",
                         }}
                       >
+                        <QuestionCardRail
+                          number={displayNum}
+                          onDetail={() => openEdit(originalIdx, false)}
+                          onDelete={() => removeItem(originalIdx)}
+                        />
                         <div style={{ flex: 1, minWidth: 0 }}>
                           {stRange && (
                             <div
@@ -752,7 +748,7 @@ export default function UploadPage() {
                           >
                             <span
                               style={{
-                                fontSize: "var(--font-size-xs)",
+                                fontSize: "var(--font-size-2xs)",
                                 fontWeight: 600,
                                 padding: "0.2rem 0.5rem",
                                 borderRadius: 99,
@@ -764,61 +760,21 @@ export default function UploadPage() {
                             >
                               {TYPE_LABELS[qtype] || qtype}
                             </span>
-                            <div
-                              style={{
-                                position: "relative",
-                                display: "inline-block",
-                              }}
-                            >
-                              <span
-                                className={`badge complexity-${q.complexity}`}
-                                style={{ paddingRight: "1.5rem" }}
-                              >
-                                {COMPLEXITY_LABELS[q.complexity as number]}
-                              </span>
-                              <select
-                                style={{
-                                  position: "absolute",
-                                  top: 0,
-                                  left: 0,
-                                  width: "100%",
-                                  height: "100%",
-                                  opacity: 0,
-                                  cursor: "pointer",
-                                }}
-                                value={Number(q.complexity) || 1}
-                                onChange={(e) =>
-                                  updateItem(
-                                    originalIdx,
-                                    "complexity",
-                                    +e.target.value,
-                                  )
-                                }
-                              >
-                                {Object.entries(COMPLEXITY_LABELS).map(
-                                  ([k, v]) => (
-                                    <option key={k} value={k}>
-                                      {v}
-                                    </option>
-                                  ),
-                                )}
-                              </select>
-                              <span
-                                style={{
-                                  position: "absolute",
-                                  right: "0.4rem",
-                                  top: "50%",
-                                  transform: "translateY(-50%)",
-                                  fontSize: "0.6rem",
-                                  pointerEvents: "none",
-                                  color: "inherit",
-                                }}
-                              >
-                                ▼
-                              </span>
-                            </div>
                             <Combobox
-                              className="select"
+                              style={{ width: "180px" }}
+                              value={Number(q.complexity) || 1}
+                              onChange={(value) =>
+                                updateItem(
+                                  originalIdx,
+                                  "complexity",
+                                  Number(value),
+                                )
+                              }
+                              options={Object.entries(COMPLEXITY_LABELS).map(
+                                ([value, label]) => ({ value, label }),
+                              )}
+                            />
+                            <Combobox
                               style={{ width: "100px" }}
                               value={q.grade || grade}
                               onChange={(val) =>
@@ -831,7 +787,6 @@ export default function UploadPage() {
                               placeholder="Lớp"
                             />
                             <Combobox
-                              className="select"
                               style={{ flex: 1, minWidth: "150px" }}
                               value={q.chapter || ""}
                               onChange={(val) =>
@@ -845,7 +800,6 @@ export default function UploadPage() {
                               placeholder="Chương"
                             />
                             <Combobox
-                              className="select"
                               style={{ flex: 1, minWidth: "150px" }}
                               value={q.lesson || ""}
                               onChange={(val) =>
@@ -869,27 +823,6 @@ export default function UploadPage() {
                             }
                             className="question-content"
                           />
-                        </div>
-                        <div
-                          style={{
-                            display: "flex",
-                            flexDirection: "column",
-                            gap: "0.5rem",
-                            flexShrink: 0,
-                          }}
-                        >
-                          <button
-                            className="btn btn-secondary btn-sm"
-                            onClick={() => openEdit(originalIdx, false)}
-                          >
-                            Chi tiết
-                          </button>
-                          <button
-                            className="btn btn-danger btn-sm"
-                            onClick={() => removeItem(originalIdx)}
-                          >
-                            Xóa
-                          </button>
                         </div>
                       </div>
                       {/* ST children */}
@@ -933,12 +866,24 @@ export default function UploadPage() {
                     }
                   >
                     <div
+                      className="ui-question-card-layout"
                       style={{
                         display: "flex",
                         alignItems: "flex-start",
                         gap: "1rem",
                       }}
                     >
+                      <QuestionCardRail
+                        number={displayNum}
+                        onDetail={() =>
+                          openEdit(
+                            originalIdx,
+                            isChild,
+                            isChild ? Number(displayNum) : undefined,
+                          )
+                        }
+                        onDelete={() => removeItem(originalIdx)}
+                      />
                       <div style={{ flex: 1, minWidth: 0 }}>
                         <div
                           style={{
@@ -948,15 +893,6 @@ export default function UploadPage() {
                             marginBottom: "0.5rem",
                           }}
                         >
-                          <span
-                            style={{
-                              fontWeight: 700,
-                              color: "var(--accent-primary)",
-                              fontSize: "1.1rem",
-                            }}
-                          >
-                            Câu {displayNum}
-                          </span>
                           {!isChild && (
                             <div
                               style={{
@@ -968,7 +904,7 @@ export default function UploadPage() {
                             >
                               <span
                                 style={{
-                                  fontSize: "var(--font-size-xs)",
+                                  fontSize: "var(--font-size-2xs)",
                                   fontWeight: 600,
                                   padding: "0.2rem 0.6rem",
                                   borderRadius: 99,
@@ -981,61 +917,21 @@ export default function UploadPage() {
                               >
                                 {TYPE_LABELS[qtype] || qtype}
                               </span>
-                              <div
-                                style={{
-                                  position: "relative",
-                                  display: "inline-block",
-                                }}
-                              >
-                                <span
-                                  className={`badge complexity-${q.complexity}`}
-                                  style={{ paddingRight: "1.5rem" }}
-                                >
-                                  {COMPLEXITY_LABELS[q.complexity as number]}
-                                </span>
-                                <select
-                                  style={{
-                                    position: "absolute",
-                                    top: 0,
-                                    left: 0,
-                                    width: "100%",
-                                    height: "100%",
-                                    opacity: 0,
-                                    cursor: "pointer",
-                                  }}
-                                  value={Number(q.complexity) || 1}
-                                  onChange={(e) =>
-                                    updateItem(
-                                      originalIdx,
-                                      "complexity",
-                                      +e.target.value,
-                                    )
-                                  }
-                                >
-                                  {Object.entries(COMPLEXITY_LABELS).map(
-                                    ([k, v]) => (
-                                      <option key={k} value={k}>
-                                        {v}
-                                      </option>
-                                    ),
-                                  )}
-                                </select>
-                                <span
-                                  style={{
-                                    position: "absolute",
-                                    right: "0.4rem",
-                                    top: "50%",
-                                    transform: "translateY(-50%)",
-                                    fontSize: "0.6rem",
-                                    pointerEvents: "none",
-                                    color: "inherit",
-                                  }}
-                                >
-                                  ▼
-                                </span>
-                              </div>
                               <Combobox
-                                className="select"
+                                style={{ width: "180px" }}
+                                value={Number(q.complexity) || 1}
+                                onChange={(value) =>
+                                  updateItem(
+                                    originalIdx,
+                                    "complexity",
+                                    Number(value),
+                                  )
+                                }
+                                options={Object.entries(
+                                  COMPLEXITY_LABELS,
+                                ).map(([value, label]) => ({ value, label }))}
+                              />
+                              <Combobox
                                 style={{ width: "100px" }}
                                 value={q.grade || grade}
                                 onChange={(val) =>
@@ -1048,7 +944,6 @@ export default function UploadPage() {
                                 placeholder="Lớp"
                               />
                               <Combobox
-                                className="select"
                                 style={{ flex: 1, minWidth: "150px" }}
                                 value={q.chapter || ""}
                                 onChange={(val) =>
@@ -1062,7 +957,6 @@ export default function UploadPage() {
                                 placeholder="Chương"
                               />
                               <Combobox
-                                className="select"
                                 style={{ flex: 1, minWidth: "150px" }}
                                 value={q.lesson || ""}
                                 onChange={(val) =>
@@ -1296,33 +1190,6 @@ export default function UploadPage() {
                           )}
                       </div>
                       {/* end flex-1 content */}
-                      <div
-                        style={{
-                          display: "flex",
-                          flexDirection: "column",
-                          gap: "0.5rem",
-                          flexShrink: 0,
-                        }}
-                      >
-                        <button
-                          className="btn btn-secondary btn-sm"
-                          onClick={() =>
-                            openEdit(
-                              originalIdx,
-                              isChild,
-                              isChild ? Number(displayNum) : undefined,
-                            )
-                          }
-                        >
-                          Chi tiết
-                        </button>
-                        <button
-                          className="btn btn-danger btn-sm"
-                          onClick={() => removeItem(originalIdx)}
-                        >
-                          Xóa
-                        </button>
-                      </div>
                     </div>
                     {/* end flex row */}
                   </div>
@@ -1350,25 +1217,26 @@ export default function UploadPage() {
                 marginTop: "1.5rem",
               }}
             >
-              <button className="btn btn-secondary" onClick={discardPreview}>
+              <button className="ui-button ui-button--secondary" onClick={discardPreview}>
                 Hủy
               </button>
               <button
-                className="btn btn-secondary btn-lg"
+                className="ui-button ui-button--secondary ui-button--large"
                 onClick={handleConfirmAsContest}
                 disabled={loading}
                 title="Lưu vào ngân hàng rồi tạo luôn thành 1 đề thi"
               >
+                <Icon name="save" />
                 Lưu & tạo đề thi
               </button>
               <button
-                className="btn btn-primary btn-lg"
+                className="ui-button ui-button--primary ui-button--large"
                 onClick={handleConfirm}
                 disabled={loading}
               >
                 {loading ? (
                   <>
-                    <span className="spinner" /> Đang lưu...
+                    <span className="ui-spinner" /> Đang lưu...
                   </>
                 ) : (
                   ` Lưu `
@@ -1380,135 +1248,79 @@ export default function UploadPage() {
         {/* Modal nhập tên đề thi cho "Lưu & tạo đề thi" */}
         {showContestModal && (
           <div
-            style={{
-              position: "fixed",
-              inset: 0,
-              zIndex: 1100,
-              background: "rgba(0,0,0,0.5)",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              padding: "2rem",
-            }}
+            className="ui-modal-backdrop"
             onMouseDown={(e) => {
               if (e.target === e.currentTarget) setShowContestModal(false);
             }}
           >
-            <div
-              style={{
-                width: "100%",
-                maxWidth: 460,
-                background: "var(--bg-surface)",
-                borderRadius: "var(--radius-lg)",
-                boxShadow: "var(--shadow-lg)",
-                padding: "1.5rem",
-              }}
+            <section
+              className="ui-modal ui-modal--small"
+              role="dialog"
+              aria-modal="true"
+              aria-labelledby="create-imported-contest-title"
             >
-              <h3 style={{ margin: "0 0 1rem" }}>
-                Tạo đề thi từ các câu vừa import
-              </h3>
-              <label className="form-label">Tên đề thi</label>
-              <input
-                className="input"
-                value={contestTitle}
-                autoFocus
-                onChange={(e) => setContestTitle(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter") doCreateContest();
-                }}
-                placeholder="Nhập tên đề thi"
-              />
-              <p
-                style={{
-                  fontSize: "0.78rem",
-                  color: "var(--text-muted)",
-                  marginTop: "0.5rem",
-                }}
-              >
-                Các câu sẽ được lưu vào ngân hàng và tạo thành 1 đề thi (mặc
-                định: chưa mở, 45 phút). Có thể chỉnh lại sau ở trang đề thi.
-              </p>
-              <div
-                style={{
-                  display: "flex",
-                  justifyContent: "flex-end",
-                  gap: "0.75rem",
-                  marginTop: "1.25rem",
-                }}
-              >
+              <header className="ui-modal__header">
+                <div className="ui-modal__heading">
+                  <h3 className="ui-modal__title" id="create-imported-contest-title">Tạo đề thi từ các câu vừa import</h3>
+                </div>
+                <button className="ui-modal__close" type="button" aria-label="Đóng" onClick={() => setShowContestModal(false)}>
+                  <Icon name="close" />
+                </button>
+              </header>
+              <div className="ui-modal__body">
+                <label className="form-label">Tên đề thi</label>
+                <input
+                  className="ui-input-native"
+                  value={contestTitle}
+                  autoFocus
+                  onChange={(e) => setContestTitle(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") doCreateContest();
+                  }}
+                  placeholder="Nhập tên đề thi"
+                />
+                <p className="ui-modal__description">
+                  Các câu sẽ được lưu vào ngân hàng và tạo thành 1 đề thi (mặc
+                  định: chưa mở, 45 phút). Có thể chỉnh lại sau ở trang đề thi.
+                </p>
+              </div>
+              <footer className="ui-modal__footer">
                 <button
-                  className="btn btn-secondary"
+                  className="ui-button ui-button--secondary"
                   onClick={() => setShowContestModal(false)}
                 >
                   Hủy
                 </button>
                 <button
-                  className="btn btn-primary"
+                  className="ui-button ui-button--primary"
                   onClick={doCreateContest}
                   disabled={loading}
                 >
+                  <Icon name="plus" />
                   Tạo đề thi
                 </button>
-              </div>
-            </div>
+              </footer>
+            </section>
           </div>
         )}
 
         {/* Edit modal — fixed overlay so page scroll is never affected */}
         {editModal && (
           <div
-            style={{
-              position: "fixed",
-              inset: 0,
-              zIndex: 1000,
-              background: "rgba(0,0,0,0.5)",
-              display: "flex",
-              alignItems: "flex-start",
-              justifyContent: "center",
-              padding: "2rem",
-              overflowY: "auto",
-            }}
+            className="ui-modal-backdrop"
             onMouseDown={(e) => {
               if (e.target === e.currentTarget) setEditModal(null);
             }}
           >
-            <div
-              style={{
-                width: "100%",
-                maxWidth: 900,
-                background: "var(--bg-surface)",
-                borderRadius: "var(--radius-lg)",
-                boxShadow: "var(--shadow-lg)",
-                marginBottom: "2rem",
-              }}
-            >
-              <div
-                style={{
-                  padding: "1rem 1.5rem",
-                  borderBottom: "1px solid var(--border)",
-                  display: "flex",
-                  justifyContent: "space-between",
-                  alignItems: "center",
-                }}
-              >
-                <h3 style={{ margin: 0 }}>Chi tiết câu hỏi</h3>
-                <button
-                  onClick={() => setEditModal(null)}
-                  style={{
-                    background: "none",
-                    border: "none",
-                    cursor: "pointer",
-                    fontSize: 20,
-                    color: "var(--text-secondary)",
-                    lineHeight: 1,
-                    padding: 4,
-                  }}
-                >
-                  ✕
+            <section className="ui-modal ui-modal--large" role="dialog" aria-modal="true" aria-labelledby="upload-question-editor-title">
+              <header className="ui-modal__header">
+                <div className="ui-modal__heading"><h3 className="ui-modal__title" id="upload-question-editor-title">Chi tiết câu hỏi</h3></div>
+                <button className="ui-modal__close" type="button" aria-label="Đóng" onClick={() => setEditModal(null)}>
+                  <Icon name="close" />
                 </button>
-              </div>
+              </header>
 
-              <div style={{ padding: "1.5rem" }}>
+              <div className="ui-modal__body">
                 <QuestionEditor
                   qData={editModal.draft}
                   onChange={(newDraft) =>
@@ -1521,26 +1333,18 @@ export default function UploadPage() {
                 />
               </div>
 
-              <div
-                style={{
-                  padding: "1rem 1.5rem",
-                  borderTop: "1px solid var(--border)",
-                  display: "flex",
-                  justifyContent: "flex-end",
-                  gap: "0.75rem",
-                }}
-              >
+              <footer className="ui-modal__footer">
                 <button
-                  className="btn btn-secondary"
+                  className="ui-button ui-button--secondary"
                   onClick={() => setEditModal(null)}
                 >
                   Hủy bỏ
                 </button>
-                <button className="btn btn-primary" onClick={saveEdit}>
+                <button className="ui-button ui-button--primary" onClick={saveEdit}>
                   Lưu
                 </button>
-              </div>
-            </div>
+              </footer>
+            </section>
           </div>
         )}
       </main>

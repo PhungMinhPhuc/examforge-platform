@@ -4,16 +4,14 @@
  * `ToastViewport.tsx` là nơi DUY NHẤT vẽ ra màn hình, subscribe kho này qua
  * `useSyncExternalStore`.
  *
- * Kiểu Google Material Snackbar — nền tối, chấm màu nhỏ chỉ mức độ, neo góc
- * trái dưới, tối đa 3 cái hiện cùng lúc, dư thì xếp hàng FIFO và tự trồi lên
- * khi có chỗ trống. Xem gốc thiết kế ở temp/error-toast-demo/README.md.
+ * Tối đa 3 cái hiện cùng lúc, dư thì xếp hàng FIFO và tự trồi lên khi có chỗ
+ * trống. Giao diện được render bằng component `Toast` trong ToastViewport.
  */
 
 export type ToastKind = "error" | "success" | "warning" | "info";
 
 export interface ToastOptions {
-  /** ms trước khi tự đóng. Mặc định 4000, giống mọi mức độ (severity đã thể
-   * hiện qua chấm màu, không cần kéo dài thời gian theo mức độ). */
+  /** ms trước khi tự đóng. Mặc định 4000 cho mọi mức độ. */
   duration?: number;
   /** Chữ hành động màu (vd. "Thử lại", "Hoàn tác") — bấm vào tự đóng luôn. */
   actionLabel?: string;
@@ -79,8 +77,7 @@ function dismissAll() {
   emit();
 }
 
-/** API gọi giống `console.*` — cố tình đơn giản để thay thế
- * `alert()`/`console.error`/banner cũ chỉ bằng đổi tên hàm. */
+/** API ngắn gọn dùng chung cho phản hồi tạm thời từ các thao tác. */
 export const toast = {
   error: (message: string, opts?: ToastOptions) => push("error", message, opts),
   success: (message: string, opts?: ToastOptions) => push("success", message, opts),

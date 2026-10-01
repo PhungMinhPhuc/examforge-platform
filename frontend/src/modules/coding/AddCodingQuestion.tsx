@@ -5,6 +5,10 @@ import Link from "next/link";
 import LatexRenderer from "@/components/LatexRenderer";
 import api from "@/lib/api";
 import { toast } from "@/lib/toastStore";
+import { Icon } from "@/components/icons";
+import Checkbox from "@/components/Checkbox";
+import MessageBar from "@/components/MessageBar";
+import QuestionFilters from "@/components/QuestionFilters";
 
 type BankQuestion = {
   id: number;
@@ -32,7 +36,7 @@ export default function AddCodingQuestion({
 }) {
   const [open, setOpen] = useState(false);
   const [questions, setQuestions] = useState<BankQuestion[]>([]);
-  const [selected, setSelected] = useState<number | null>(null);
+  const [selected, setSelected] = useState<number[]>([]);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
   const [search, setSearch] = useState("");
@@ -68,152 +72,76 @@ export default function AddCodingQuestion({
   );
 
   const add = async () => {
-    if (!selected) return;
+    if (selected.length === 0) return;
     setSaving(true);
     setError("");
     try {
-      await api.addCodingAssignmentQuestion(assignmentId, {
-        question_id: selected,
-        point_weight: 1,
-      });
-      setSelected(null);
+      await Promise.all(
+        selected.map((questionId) =>
+          api.addCodingAssignmentQuestion(assignmentId, {
+            question_id: questionId,
+            point_weight: 1,
+          }),
+        ),
+      );
+      const addedCount = selected.length;
+      setSelected([]);
       setOpen(false);
       onAdded();
-      toast.success("Đã thêm bài");
+      toast.success(`Đã thêm ${addedCount} bài`);
     } catch (e) {
       setError(e instanceof Error ? e.message : "Không thể thêm bài");
-      toast.error(e instanceof Error ? e.message : "Không thể thêm bài");
       setSaving(false);
     }
   };
 
   if (!open)
     return (
-      <button className="btn btn-primary" onClick={() => setOpen(true)}>
+      <button className="ui-button ui-button--primary" onClick={() => setOpen(true)}>
+        <Icon name="plus" />
         Thêm bài
       </button>
     );
   return (
     <div
-      style={{
-        position: "fixed",
-        inset: 0,
-        zIndex: 1000,
-        background: "rgba(0,0,0,.5)",
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
-        padding: "2.5vh 2.5vw",
-      }}
+      className="ui-modal-backdrop"
       onMouseDown={(e) => {
         if (e.target === e.currentTarget) setOpen(false);
       }}
     >
       <div
-        className="modal-wide-responsive"
-        style={{
-          width: "95vw",
-          maxWidth: 1400,
-          height: "95vh",
-          maxHeight: "95vh",
-          background: "var(--bg-surface)",
-          borderRadius: "var(--radius-lg)",
-          boxShadow: "var(--shadow-lg)",
-          display: "flex",
-          flexDirection: "column",
-          overflow: "hidden",
-        }}
+        className="ui-modal ui-modal--large"
       >
-        <div
-          style={{
-            padding: "1rem 1.5rem",
-            borderBottom: "1px solid var(--border)",
-            display: "flex",
-            justifyContent: "space-between",
-            alignItems: "center",
-          }}
-        >
-          <h3 style={{ margin: 0 }}>
+        <header className="ui-modal__header">
+          <h3 className="ui-modal__title">
             Chọn bài lập trình · {available.length} mục
           </h3>
-          <button
-            onClick={() => setOpen(false)}
-            style={{
-              background: "none",
-              border: "none",
-              cursor: "pointer",
-              fontSize: 20,
-              color: "var(--text-secondary)",
-            }}
-          >
-            ✕
+          <button className="ui-modal__close" type="button" aria-label="Đóng" onClick={() => setOpen(false)}>
+            <Icon name="close" />
           </button>
-        </div>
-        <div
-          className="filter-bar"
-          style={{
-            padding: "1rem 1.5rem",
-            background: "var(--bg-elevated)",
-            borderBottom: "1px solid var(--border)",
+        </header>
+        <QuestionFilters
+          variant="embedded"
+          search={search}
+          searchPlaceholder="Tìm nội dung hoặc ID..."
+          onChange={(key, value) => {
+            if (key === "search") setSearch(value);
+            else if (key === "subject") setSubject(value);
+            else if (key === "grade") setGrade(value);
+            else if (key === "complexity") setComplexity(value);
           }}
-        >
-          <input
-            className="input search-input"
-            placeholder="Tìm nội dung hoặc ID..."
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-          />
-          <select
-            className="select"
-            value={subject}
-            onChange={(e) => setSubject(e.target.value)}
-          >
-            <option value="">Tất cả môn</option>
-            {subjects.map((s) => (
-              <option key={s} value={s}>
-                {s}
-              </option>
-            ))}
-          </select>
-          <select
-            className="select"
-            value={grade}
-            onChange={(e) => setGrade(e.target.value)}
-          >
-            <option value="">Tất cả khối</option>
-            {[10, 11, 12].map((g) => (
-              <option key={g} value={g}>
-                Lớp {g}
-              </option>
-            ))}
-          </select>
-          <select className="select" value="cd" disabled>
-            <option value="cd">Lập trình</option>
-          </select>
-          <select
-            className="select"
-            value={complexity}
-            onChange={(e) => setComplexity(e.target.value)}
-          >
-            <option value="">Tất cả mức</option>
-            {Object.entries(COMPLEXITY_LABELS).map(([k, v]) => (
-              <option key={k} value={k}>
-                {v}
-              </option>
-            ))}
-          </select>
-          <button
-            className="btn btn-secondary"
-            onClick={() => {
-              setSearch("");
-              setSubject("");
-              setGrade("");
-              setComplexity("");
-            }}
-          >
-            Xóa lọc
-          </button>
-        </div>
+          onReset={() => {
+            setSearch("");
+            setSubject("");
+            setGrade("");
+            setComplexity("");
+          }}
+          selects={[
+            { key: "subject", value: subject, options: [{ value: "", label: "Tất cả môn" }, ...subjects.map((item) => ({ value: item, label: item }))] },
+            { key: "grade", value: grade, options: [{ value: "", label: "Tất cả khối" }, ...[10, 11, 12].map((item) => ({ value: item, label: `Lớp ${item}` }))] },
+            { key: "complexity", value: complexity, options: [{ value: "", label: "Tất cả mức" }, ...Object.entries(COMPLEXITY_LABELS).map(([value, label]) => ({ value, label }))] },
+          ]}
+        />
         <div
           style={{
             flex: 1,
@@ -238,15 +166,16 @@ export default function AddCodingQuestion({
               </p>
               {available.length === 0 ? (
                 <Link
-                  className="btn btn-primary"
+                  className="ui-button ui-button--primary"
                   style={{ marginTop: ".75rem" }}
                   href={`/questions/create?type=cd&returnTo=${encodeURIComponent(`/coding/${assignmentId}`)}`}
                 >
+                  <Icon name="plus" />
                   Tạo câu lập trình
                 </Link>
               ) : (
                 <button
-                  className="btn btn-secondary"
+                  className="ui-button ui-button--secondary"
                   onClick={() => {
                     setSearch("");
                     setSubject("");
@@ -266,20 +195,24 @@ export default function AddCodingQuestion({
                   display: "flex",
                   gap: ".75rem",
                   padding: "1rem",
-                  border: `1px solid ${selected === q.id ? "var(--accent-primary)" : "var(--border)"}`,
+                  border: `1px solid ${selected.includes(q.id) ? "var(--accent-primary)" : "var(--border)"}`,
                   background:
-                    selected === q.id
+                    selected.includes(q.id)
                       ? "rgba(6,182,212,.07)"
                       : "var(--bg-surface)",
                   borderRadius: "var(--radius-md)",
                   cursor: "pointer",
                 }}
               >
-                <input
-                  type="radio"
-                  name="coding-question"
-                  checked={selected === q.id}
-                  onChange={() => setSelected(q.id)}
+                <Checkbox
+                  checked={selected.includes(q.id)}
+                  onChange={() =>
+                    setSelected((current) =>
+                      current.includes(q.id)
+                        ? current.filter((id) => id !== q.id)
+                        : [...current, q.id],
+                    )
+                  }
                 />
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <div
@@ -310,8 +243,10 @@ export default function AddCodingQuestion({
           )}
         </div>
         {error && (
-          <div className="alert alert-error" style={{ margin: "0 1.5rem" }}>
-            {error}
+          <div style={{ margin: "0 1.5rem" }}>
+            <MessageBar intent="error" onDismiss={() => setError("")}>
+              {error}
+            </MessageBar>
           </div>
         )}
         <div
@@ -323,19 +258,20 @@ export default function AddCodingQuestion({
             alignItems: "center",
           }}
         >
-          <strong>Đã chọn: {selected ? 1 : 0} bài</strong>
+          <strong>Đã chọn: {selected.length} bài</strong>
           <div style={{ display: "flex", gap: ".5rem" }}>
             <button
-              className="btn btn-secondary"
+              className="ui-button ui-button--secondary"
               onClick={() => setOpen(false)}
             >
               Hủy
             </button>
             <button
-              className="btn btn-primary"
-              disabled={!selected || saving}
+              className="ui-button ui-button--primary"
+              disabled={selected.length === 0 || saving}
               onClick={add}
             >
+              {!saving && <Icon name="plus" />}
               {saving ? "Đang thêm..." : "Thêm bài"}
             </button>
           </div>
